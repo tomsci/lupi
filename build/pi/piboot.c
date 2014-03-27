@@ -1,4 +1,5 @@
 #include <k.h>
+#include <arm.h>
 #include <mmu.h> // DEBUG
 
 void uart_init();
@@ -30,6 +31,28 @@ asm("BX " #reg)
 
 // Sets up early stack, does Stuff
 void NAKED _start() {
+	// Skip over the exception vectors when we actually run this code during init
+	eB(r0, ".postVectors");
+	// undefined instruction vector
+	asm("B undefinedInstruction");	// +0x04
+	asm("B svc");					// +0x08
+	asm("B prefetchAbort");			// +0x0C
+	asm("B dataAbort");				// +0x10
+	asm("NOP");						// +0x14
+	asm("B irq");					// +0x18
+	asm("B fiq");					// +0x1C
+
+	asm(".postVectors:");
+
+	// Set r13_abt
+	asm("MSR cpsr_c, %0" : : "i" (KPsrModeUnd | KPsrIrqDisable | KPsrFiqDisable));
+	asm("MOV sp, %0" : : "i" (KPhysicalAbortModeStackBase + PAGE_SIZE));
+	asm("MSR cpsr_c, %0" : : "i" (KPsrModeSvc | KPsrIrqDisable | KPsrFiqDisable));
+
+	// Set the Vector Base Address Register (§3.2.43)
+	asm("ADR r0, _start"); // r0 = &_start
+	asm("MCR p15, 0, r0, c12, c0, 0");
+
 	// Early stack grows down from 0x8000. Code is at 0x8000 up
 	asm("MOV sp, #0x8000");
 	eBL(r1, "Boot");
@@ -55,6 +78,9 @@ void Boot() {
 	uart_init();
 	printk("\n\nLuPi version %s\n", LUPI_VERSION_STRING);
 	mmu_init();
+
+	//printk("About to do undefined instruction...\n");
+	//WORD(0xE3000000);
 
 //	uint reg;
 //	asm("mrs %0,CPSR" : "=r"(reg));
@@ -94,4 +120,27 @@ void NAKED dummy() {
 
 void NAKED hang() {
 	asm("B hang");
+}
+
+void undefinedInstruction() {
+	uint32 addr;
+	asm("MOV %0, r14" : "=r"(addr));
+	addr -= 4; // r14_und is the instruction after
+	printk("Undefined instruction at 0x%X\n", addr);
+	hang();
+}
+
+void NAKED prefetchAbort() {
+}
+
+void NAKED svc() {
+}
+
+void NAKED dataAbort() {
+}
+
+void NAKED irq() {
+}
+
+void NAKED fiq() {
 }

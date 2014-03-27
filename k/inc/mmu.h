@@ -4,10 +4,10 @@
 #include <k.h>
 
 /*
-Physical			Virtual
+			Physical			Virtual
 
 RW
-Vectors		00000000-00000040						(preset by pi to all jump to 0x8000)
+InitVectors	00000000-00000040						(preset by pi to all jump to 0x8000)
 PageAlloctr	00020000-00041000	F0020000-F0041000	(132kB)
 User PDEs	00100000-00200000	F0100000-F0200000	(1MB)
 Processes	00200000-00300000	F0200000-F0300000	(1MB)
@@ -21,7 +21,8 @@ Boring		00000000-00008000	- 					(ATAGS, earlyboot stack, 32k)
 
 CodeAndStuffSection:
 SelfPte		00005000-00006000	F8000000-F8001000	(4k)
-Unused							F8001000-F8004000	(12k)
+Abort stack	00004000-00005000	F8001000-F8002000	(4k)
+Unused							F8002000-F8004000	(12k)
 Guard		-----------------	F8004000-F8005000	(4k)
 Kern stack	00006000-00008000	F8005000-F8007000	(8k)
 Guard		-----------------	F8007000-F8008000	(4k)
@@ -50,6 +51,8 @@ Code		00008000-00020000	F8008000-F8020000	(96k)
 #define KPhysicalCodeBase	0x00008000u
 #define KKernelCodeBase		0xF8008000u
 #define KKernelCodesize		0x00018000
+
+#define KPhysicalAbortModeStackBase	0x00004000
 
 //////
 
