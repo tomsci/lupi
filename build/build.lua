@@ -22,6 +22,7 @@ local function loadConfig(c)
 		config.as = config.toolchainPrefix .. "as"
 		config.ld = config.toolchainPrefix .. "ld"
 		config.objcopy = config.toolchainPrefix .. "objcopy"
+		config.objdump = config.toolchainPrefix .. "objdump"
 	end
 	return env.config
 end
@@ -95,14 +96,18 @@ function compilec(source, extraArgs)
 		source = { path = source }
 	end
 
-	local overallOpts = listing and "-S" or "-c"
+	local overallOpts = source.listing and "-S" or "-c"
 	local sysOpts = source.hosted and "-ffreestanding" or "-ffreestanding -nostdinc -nostdlib"
+	if listing then
+		--# Debug is required to do interleaved listing
+		sysOpts = sysOpts .. " -g"
+	end
 	local langOpts = "-std=c99 -funsigned-char -Wall -Werror -Wno-error=unused-function"
 	local platOpts = config.platOpts or ""
 
 	local extraArgsString = join(extraArgs)
 
-	local suff = listing and ".s" or ".o"
+	local suff = source.listing and ".s" or ".o"
 	local obj = objForSrc(source.path, suff)
 	local output = "-o "..qrp(obj)
 	local opts = join {
@@ -119,6 +124,12 @@ function compilec(source, extraArgs)
 	local ok = exec(cmd)
 	if not ok then
 		error("Compile failed for "..source.path, 2)
+	end
+	if listing and not source.listing and not source.path:match("%.S$") then
+		--# Rerun the fun with listing enabled. Bit of a hack this.
+		--# Don't do it for *.S files, gcc gets confused and dumps them to stdout
+		source.listing = true
+		compilec(source, extraArgs)
 	end
 	return obj
 end
@@ -223,11 +234,6 @@ function build_kernel()
 		end
 	end
 
-	if listing then
-		print("(Not doing link, only listings)")
-		return
-	end
-
 	if config.name == "hosted" then
 		local quotedObjs = {}
 		for i, obj in ipairs(objs) do
@@ -258,6 +264,11 @@ function build_kernel()
 		local cmd = string.format("%s %s -O binary %s", config.objcopy, qrp(elf), qrp(img))
 		local ok = exec(cmd)
 		if not ok then error("Objcopy failed!") end
+
+		if listing then
+			cmd = string.format("%s -d --source -w %s > %s", config.objdump, qrp(elf), qrp(outDir .. "kernel.s"))
+			exec(cmd)
+		end
 	end
 end
 
