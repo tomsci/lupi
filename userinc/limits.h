@@ -1,0 +1,39 @@
+#ifndef LIMITS_H
+#define LIMITS_H
+
+#define SCHAR_MAX 128
+#define SCHAR_MIN (-127)
+
+#define UCHAR_MAX 255
+
+#define CHAR_MAX 255 // unsigned char, bitches
+#define CHAR_MIN 0
+
+#define USHRT_MAX 65535
+#define SHRT_MAX  32767
+#define SHRT_MIN (-32768)
+
+#define UINT_MAX 0xFFFFFFFF
+#define INT_MAX  0x7FFFFFFF
+#define INT_MIN (-2147483648)
+
+#ifdef __LP64__
+#define LONG_BIT 64
+#define ULONG_MAX  0xFFFFFFFFFFFFFFFFUL
+#define LONG_MAX   0x7FFFFFFFFFFFFFFFL
+#define LONG_MIN (-0x7FFFFFFFFFFFFFFFL-1)
+#else
+#define LONG_BIT 32
+#define ULONG_MAX  0xFFFFFFFFUL
+#define LONG_MAX   0x7FFFFFFFL
+#define LONG_MIN (-0x7FFFFFFFL-1)
+#endif
+
+#define ULLONG_MAX  0xFFFFFFFFFFFFFFFFULL
+#define LLONG_MAX   0x7FFFFFFFFFFFFFFFLL
+#define LLONG_MIN (-0x7FFFFFFFFFFFFFFFLL-1)
+
+#define WORD_BIT 32
+#define	SSIZE_MAX	LONG_MAX
+
+#endif
