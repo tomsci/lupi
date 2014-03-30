@@ -60,7 +60,7 @@
 #define CR_A  (1<<1)  // Enable strict alignment checks
 #define CR_M  (1)     // Enable MMU
 
-uint32 makeCr() {
+uint32 makeCrForMmuEnable() {
 	uint32 cr;
 	asm("MRC p15, 0, %0, c1, c0, 0" : "=r" (cr));
 	//printk("Control register init = 0x%X\n", cr);
@@ -71,25 +71,15 @@ uint32 makeCr() {
 	return cr;
 }
 
-//void mmu_enable(uintptr returnAddr) {
-//	uint32 cr = makeCr();
-//	asm("MCR p15, 0, %0, c1, c0, 0" : : "r" (cr));
-//}
-
 // Does not return; jumps to virtual address returnAddr
-void NAKED mmu_enable(uintptr returnAddr) {
-	asm("PUSH {r0}");
-	asm("BL makeCr");
-	asm("MOV r1, r0"); // r1 = CR
-	asm("POP {r0}"); // r0 = returnAddr again
-
+void NAKED mmu_setControlRegister(uint32 controlRegister, uintptr returnAddr) {
 	asm("MOV r2, #0"); // r2 = 0
-	DSB(r2);
 
-	asm("MCR p15, 0, r1, c1, c0, 0"); // Boom!
+	DSB(r2);
+	asm("MCR p15, 0, r0, c1, c0, 0"); // Boom!
 	ISB(r2); // Prevent prefetch from when MMU was disabled from going beyond this point
 
-	asm("BX r0");
+	asm("BX r1");
 	//TODO returnAddr will need to reenable instruction cache (and maybe data cache)
 }
 

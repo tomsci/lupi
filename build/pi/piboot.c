@@ -32,9 +32,10 @@ void NAKED _start() {
 	// Early stack grows down from 0x8000. Code is at 0x8000 up
 	asm("MOV sp, #0x8000");
 
-	eBL(r1, "mmu_init");
-	asm("LDR r0, =.mmuEnableReturn"); // Or where the linker thinks this is, anyway
-	eB(r1, "mmu_enable");
+	eBL(r3, "mmu_init");
+	eBL(r3, "makeCrForMmuEnable"); // r0 is now CR
+	asm("LDR r1, =.mmuEnableReturn"); // Or where the linker thinks this is, anyway
+	eB(r3, "mmu_setControlRegister");
 	asm(".mmuEnableReturn:");
 
 //	// Right, we've got some mem but our stack needs setting up again
