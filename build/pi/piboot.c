@@ -1,33 +1,4 @@
-#include <k.h>
-#include <arm.h>
-#include <mmu.h> // DEBUG
-
-void uart_init();
-void mmu_init();
-
-#ifdef MMU_DISABLED
-
-#define eBL(reg, label) asm("BL " label)
-#define eB(reg, label) asm("B " label)
-
-#else
-
-// The linker has set the code address to 0xF8008000 because that's where we'll map it
-// once we've setup the MMU. However before that happens, and branch instructions will be
-// off by 0xF8000000 because the PI bootloader loads the kernel image at 0x8000.
-#define eBL(reg, label) \
-	asm("LDR " #reg ", =" label); \
-	asm("SUB " #reg ", " #reg ", #0xF8000000"); \
-	asm("BLX " #reg)
-
-#define eB(reg, label) \
-asm("LDR " #reg ", =" label); \
-asm("SUB " #reg ", " #reg ", #0xF8000000"); \
-asm("BX " #reg)
-
-#endif
-
-#ifdef MMU_DISABLED
+#include "piboot.h"
 
 // Sets up early stack, does Stuff
 void NAKED _start() {
@@ -44,8 +15,13 @@ void NAKED _start() {
 
 	asm(".postVectors:");
 
-	// Set r13_abt
+	// Set r13_und
 	asm("MSR cpsr_c, %0" : : "i" (KPsrModeUnd | KPsrIrqDisable | KPsrFiqDisable));
+	asm("MOV sp, %0" : : "i" (KPhysicalAbortModeStackBase + PAGE_SIZE));
+	asm("MSR cpsr_c, %0" : : "i" (KPsrModeSvc | KPsrIrqDisable | KPsrFiqDisable));
+
+	// Set r13_abt
+	asm("MSR cpsr_c, %0" : : "i" (KPsrModeAbort | KPsrIrqDisable | KPsrFiqDisable));
 	asm("MOV sp, %0" : : "i" (KPhysicalAbortModeStackBase + PAGE_SIZE));
 	asm("MSR cpsr_c, %0" : : "i" (KPsrModeSvc | KPsrIrqDisable | KPsrFiqDisable));
 
@@ -70,17 +46,25 @@ void NAKED _start() {
 //	LABEL_WORD(.stackaddr, KKernelStackBase+KKernelStackSize);
 }
 
-void goDoLuaStuff();
-void interactiveLuaPrompt();
-void putch(byte);
-
 void Boot() {
 	uart_init();
 	printk("\n\nLuPi version %s\n", LUPI_VERSION_STRING);
 	mmu_init();
 
-	//printk("About to do undefined instruction...\n");
-	//WORD(0xE3000000);
+	uintptr returnAddr;
+	asm("LDR %0, =.postMmuEnable" : "=r" (returnAddr));
+	printk("About to enable MMU...\n");
+	mmu_enable(returnAddr);
+
+	asm(".postMmuEnable:");
+//	printk("About to do undefined instruction...\n");
+//	WORD(0xE3000000);
+
+	printk("About to access invalid memory...\n");
+	uint32* inval = (uint32*)0x4800000;
+	printk("*0x4800000 = %x\n", *inval);
+
+	//superpage_init();
 
 //	uint reg;
 //	asm("mrs %0,CPSR" : "=r"(reg));
@@ -105,14 +89,8 @@ void Boot() {
 
 	//goDoLuaStuff();
 
-	interactiveLuaPrompt();
+	//interactiveLuaPrompt();
 }
-
-#else
-
-#error TODO
-
-#endif
 
 void NAKED dummy() {
 	asm("BX lr");
@@ -122,25 +100,42 @@ void NAKED hang() {
 	asm("B hang");
 }
 
-void undefinedInstruction() {
+void NAKED undefinedInstruction() {
 	uint32 addr;
-	asm("MOV %0, r14" : "=r"(addr));
+	asm("MOV %0, r14" : "=r" (addr));
 	addr -= 4; // r14_und is the instruction after
 	printk("Undefined instruction at 0x%X\n", addr);
 	hang();
 }
 
 void NAKED prefetchAbort() {
+	uint32 addr;
+	asm("MOV %0, r14" : "=r" (addr));
+	addr -= 4; // r14_abt is the instruction after
+	printk("Prefetch abort at 0x%X ifsr=%X far=%X\n", addr, getIFSR(), getFAR());
+	hang();
 }
 
-void NAKED svc() {
+void svc() {
+	//TODO
+	asm("MOVS pc, r14");
 }
 
 void NAKED dataAbort() {
+	uint32 addr;
+	asm("MOV %0, r14" : "=r" (addr));
+	addr -= 8; // r14_abt is 8 bytes after (PC always 2 ahead for mem access)
+	printk("Data abort at 0x%X dfsr=%X far=%X\n", addr, getDFSR(), getFAR());
+
+	hang();
 }
 
 void NAKED irq() {
+	//TODO
+	asm("SUBS pc, r14, #4");
 }
 
 void NAKED fiq() {
+	//TODO
+	asm("SUBS pc, r14, #4");
 }

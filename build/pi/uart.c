@@ -43,8 +43,7 @@ See BCM-2835-ARM-Peripherals p11 2.2.1 Mini UART implementation details
 baud = system_clock_freq / (8 * (reg + 1)
 reg  = ((system_clock_freq / 8) / baud) - 1
 */
-#define system_clock_freq 250000000 // It's 250 MHz apparently
-#define baudReg(baud) (((system_clock_freq / 8) / baud) - 1)
+#define baudReg(baud) (((KSystemClockFreq / 8) / baud) - 1)
 #define k115200baud baudReg(115200)
 
 //-------------------------------------------------------------------------
