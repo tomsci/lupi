@@ -26,9 +26,9 @@ byte getch() {
 	return result;
 }
 
+void uart_init() {};
+
 void runUserTests();
-
-
 
 int main(int argc, char* argv[]) {
 	kernelMemory = malloc(KPhysicalRamSize);

@@ -1,6 +1,7 @@
-#include "piboot.h"
+#include <mmu.h>
+#include <arm.h>
 
-// Sets up early stack, does Stuff
+// Sets up early stack, enables MMU, then calls Boot()
 void NAKED _start() {
 	// Skip over the exception vectors when we actually run this code during init
 	asm("B .postVectors"); // Branches to labels are program-relative so not a problem
@@ -52,16 +53,6 @@ void NAKED _start() {
 	LABEL_WORD(.abtStack, KAbortStackBase + KPageSize);
 	LABEL_WORD(.irqStack, KIrqStackBase + KPageSize);
 	LABEL_WORD(.svcStack, KKernelStackBase + KKernelStackSize);
-}
-
-void Boot() {
-	uart_init();
-	printk("\n\nLuPi version %s\n", LUPI_VERSION_STRING);
-
-	printk("Start of code base is:\n");
-	printk("%X = %X\n", KKernelCodeBase, *(uint32*)KKernelCodeBase);
-
-	interactiveLuaPrompt();
 }
 
 #if 0

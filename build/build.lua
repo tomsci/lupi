@@ -149,7 +149,7 @@ function build_kernel()
 		"k/inc",
 	}
 	local sources = {
-		--"k/boot.c",
+		"k/boot.c",
 		"k/debug.c",
 		"k/pageAllocator.c",
 	}

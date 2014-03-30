@@ -73,4 +73,7 @@ Unused		-----------------	F802D000-F8100000
 #define KNumPhysicalRamPages (KPhysicalRamSize >> KPageShift)
 
 
+void mmu_init();
+void mmu_enable(uintptr returnAddr);
+
 #endif
