@@ -254,8 +254,8 @@ function build_kernel()
 			--# TODO fix hardcoded path!
 			table.insert(args, "/Users/tomsci/Documents/gcc-arm/gcc-arm-none-eabi-4_8-2013q4/lib/gcc/arm-none-eabi/4.8.3/armv6-m/libgcc.a")
 		end
-		table.insert(args, "-Ttext 0x8000 -Tbss 0x28000")
-		--table.insert(args, "-Ttext 0xF8008000")
+		--table.insert(args, "-Ttext 0x8000 -Tbss 0x28000")
+		table.insert(args, "-Ttext 0xF8008000")
 		local cmd = string.format("%s %s -o %s", config.ld, join(args), qrp(elf))
 		local ok = exec(cmd)
 		if not ok then error("Link failed!") end

@@ -77,9 +77,9 @@ void NAKED mmu_setControlRegister(uint32 controlRegister, uintptr returnAddr) {
 
 	DSB(r2);
 	asm("MCR p15, 0, r0, c1, c0, 0"); // Boom!
-	ISB(r2); // Prevent prefetch from when MMU was disabled from going beyond this point
 
 	asm("BX r1");
+	ISB(r2); // Prevent prefetch from when MMU was disabled from going beyond this point. Probably.
 	//TODO returnAddr will need to reenable instruction cache (and maybe data cache)
 }
 
@@ -185,10 +185,10 @@ void mmu_init() {
 	sectPte[PTE_IDX(KKernelStackBase) + 1] = (KPhysicalStackBase + KPageSize) | KPteKernelData;
 
 	// Code!
-//	for (int i = 0; i < KKernelCodesize >> KPageShift; i++) {
-//		phys = KPhysicalCodeBase + (i << KPageShift);
-//		sectPte[PTE_IDX(KKernelCodeBase) + i] = phys | KPteKernelCode;
-//	}
+	for (int i = 0; i < KKernelCodesize >> KPageShift; i++) {
+		phys = KPhysicalCodeBase + (i << KPageShift);
+		sectPte[PTE_IDX(KKernelCodeBase) + i] = phys | KPteKernelCode;
+	}
 
 	// Map the kern PDEs themselves
 	for (int i = 0; i < 4; i++) {

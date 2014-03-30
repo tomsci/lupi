@@ -48,7 +48,7 @@ void NAKED _start() {
 	asm("BL Boot");
 	asm("B hang");
 
-	LABEL_WORD(.vectors, KPhysicalCodeBase);
+	LABEL_WORD(.vectors, KKernelCodeBase);
 	LABEL_WORD(.abtStack, KAbortStackBase + KPageSize);
 	LABEL_WORD(.irqStack, KIrqStackBase + KPageSize);
 	LABEL_WORD(.svcStack, KKernelStackBase + KKernelStackSize);
@@ -57,14 +57,13 @@ void NAKED _start() {
 void Boot() {
 	uart_init();
 	printk("\n\nLuPi version %s\n", LUPI_VERSION_STRING);
-	//mmu_init();
 
-//	uintptr returnAddr;
-//	asm("LDR %0, =.postMmuEnable" : "=r" (returnAddr));
-//	//printk("About to enable MMU...\n");
-//	mmu_enable(returnAddr);
+	printk("Start of code base is:\n");
+	printk("%X = %X\n", KKernelCodeBase, *(uint32*)KKernelCodeBase);
+}
 
-//	asm(".postMmuEnable:");
+#if 0
+void StuffWeDontDoAnyMore() {
 //	printk("About to do undefined instruction...\n");
 //	WORD(0xE3000000);
 
@@ -104,6 +103,7 @@ void Boot() {
 
 	//interactiveLuaPrompt();
 }
+#endif
 
 void NAKED dummy() {
 	asm("BX lr");
