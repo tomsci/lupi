@@ -5,6 +5,17 @@
 
 #include <ctype.h>
 #include <setjmp.h>
+
+void* memset(void* ptr, byte val, int len) {
+	// TODO a more efficient version
+	byte* b = (byte*)ptr;
+	byte* end = b + len;
+	while (b != end) {
+		*b++ = val;
+	}
+	return ptr;
+}
+
 #include <string.h>
 
 // Huge hack of a pow fn, we only handle positive integers

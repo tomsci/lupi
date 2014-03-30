@@ -9,23 +9,6 @@
 #define KPsrModeSvc		0x13
 #define KPsrModeAbort	0x17
 #define KPsrModeUnd		0x1B
-
-static inline uint32 getFAR() {
-	uint32 ret;
-	asm("MRC p15, 0, %0, c6, c0, 0" : "=r" (ret));
-	return ret;
-}
-
-static inline uint32 getDFSR() {
-	uint32 ret;
-	asm("MRC p15, 0, %0, c5, c0, 0" : "=r" (ret));
-	return ret;
-}
-
-static inline uint32 getIFSR() {
-	uint32 ret;
-	asm("MRC p15, 0, %0, c5, c0, 1" : "=r" (ret));
-	return ret;
-}
+#define KPsrModeIrq		0x12
 
 #endif

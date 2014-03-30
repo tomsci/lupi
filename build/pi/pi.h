@@ -17,9 +17,6 @@
 
 #define KSystemClockFreq	250000000 // 250 MHz
 
-#define MMU_DISABLED
-
-
 //#define KPeripheralBase	KPeripheralPhys
 #define KPeripheralBase		0xF2000000
 //#define KTimerBase		0xF2003000

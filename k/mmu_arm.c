@@ -83,27 +83,10 @@ void NAKED mmu_setControlRegister(uint32 controlRegister, uintptr returnAddr) {
 	//TODO returnAddr will need to reenable instruction cache (and maybe data cache)
 }
 
-/*
-inline void* memset(void* ptr, byte val, int len) {
-	// TODO a more efficient version
-	byte* b = (byte*)ptr;
-	byte* end = b + len;
-	while (b != end) {
-		*b++ = val;
+#define zeroPages(ptr, n) \
+	for (uint32 *p = ptr, *end = (uint32*)(((uint8*)ptr) + (n << KPageShift)); p != end; p++) {\
+		*p = 0; \
 	}
-	return ptr;
-}
-*/
-
-static void zeroPages(void* ptr, int numPages) {
-	uint32* p = ptr;
-	while (numPages--) {
-		void* end = p + (PAGE_SIZE / 4);
-		while (p != end) {
-			*p++ = 0;
-		}
-	}
-}
 
 /*
 Enter and exit with MMU disabled
@@ -112,6 +95,7 @@ Sets up the minimal set of page tables at KPhysicalPdeBase
 Note: Anything within the brackets of pde[xyz] or pte[xyz] should NOT contain the word 'physical'.
 If it does, I've confused the fact that the PTE offsets refer to the VIRTUAL addresses.
 */
+/*
 void REAL_mmu_init() {
 	// Set up just enough mapping to allow access to the kern PDE, so we can enable the MMU and do
 	// the rest of the PTE setup in virtual addresses
@@ -170,11 +154,13 @@ void REAL_mmu_init() {
 	asm("MCR p15, 0, %0, c2, c0, 2" : : "r" (ttbcr)); // p193
 	// That's it, all the remaining mappings can be done with MMU enabled
 }
+*/
 
 void mmu_init() {
 	uint32* pde = (uint32*)KPhysicalPdeBase;
 	zeroPages(pde, 4);
 
+	// Everything defaults to identity mappings. Gradually this loop should be eliminated
 	uint32 phys = 0;
 	for (uint32 i = 0; i < KNumPdes; i++) {
 		uint32 entry = phys | KPdeSectionJfdi;
@@ -188,6 +174,31 @@ void mmu_init() {
 	for (int i = 0; i < KPeripheralSize >> KOneMegShift; i++) {
 		pde[peripheralMemIdx + i] = (KPeripheralPhys + (i << KOneMegShift)) | KPdeSectionKernelData;
 	}
+
+	// Map section zero
+	pde[KSectionZero >> KAddrToPdeIndexShift] = KPhysicalSect0Pte | KPdePageTable;
+	uint32* sectPte = (uint32*)KPhysicalSect0Pte;
+	zeroPages(sectPte, 1);
+	sectPte[PTE_IDX(KAbortStackBase)] = KPhysicalAbortStackBase | KPteKernelData;
+	sectPte[PTE_IDX(KIrqStackBase)] = KPhysicalIrqStackBase | KPteKernelData;
+	sectPte[PTE_IDX(KKernelStackBase)] = KPhysicalStackBase | KPteKernelData;
+	sectPte[PTE_IDX(KKernelStackBase) + 1] = (KPhysicalStackBase + KPageSize) | KPteKernelData;
+
+	// Code!
+//	for (int i = 0; i < KKernelCodesize >> KPageShift; i++) {
+//		phys = KPhysicalCodeBase + (i << KPageShift);
+//		sectPte[PTE_IDX(KKernelCodeBase) + i] = phys | KPteKernelCode;
+//	}
+
+	// Map the kern PDEs themselves
+	for (int i = 0; i < 4; i++) {
+		uint32 phys = KPhysicalPdeBase + (i << KPageShift);
+		sectPte[PTE_IDX(KKernelPdeBase) + i] = phys | KPteKernelData;
+	}
+
+	// And the section zero pte
+	sectPte[PTE_IDX(KSectionZeroPte)] = KPhysicalSect0Pte | KPteKernelData;
+
 
 	pde[0x4800000 >> KAddrToPdeIndexShift] = 0; // No access here
 

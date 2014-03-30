@@ -3,8 +3,7 @@
 // Sets up early stack, does Stuff
 void NAKED _start() {
 	// Skip over the exception vectors when we actually run this code during init
-	eB(r0, ".postVectors");
-	// undefined instruction vector
+	asm("B .postVectors"); // Branches to labels are program-relative so not a problem
 	asm("B undefinedInstruction");	// +0x04
 	asm("B svc");					// +0x08
 	asm("B prefetchAbort");			// +0x0C
@@ -15,36 +14,44 @@ void NAKED _start() {
 
 	asm(".postVectors:");
 
-	// Set r13_und
-	asm("MSR cpsr_c, %0" : : "i" (KPsrModeUnd | KPsrIrqDisable | KPsrFiqDisable));
-	asm("MOV sp, %0" : : "i" (KPhysicalAbortModeStackBase + PAGE_SIZE));
-	asm("MSR cpsr_c, %0" : : "i" (KPsrModeSvc | KPsrIrqDisable | KPsrFiqDisable));
-
-	// Set r13_abt
-	asm("MSR cpsr_c, %0" : : "i" (KPsrModeAbort | KPsrIrqDisable | KPsrFiqDisable));
-	asm("MOV sp, %0" : : "i" (KPhysicalAbortModeStackBase + PAGE_SIZE));
-	asm("MSR cpsr_c, %0" : : "i" (KPsrModeSvc | KPsrIrqDisable | KPsrFiqDisable));
-
-	// Set the Vector Base Address Register (§3.2.43)
-	asm("ADR r0, _start"); // r0 = &_start
-	asm("MCR p15, 0, r0, c12, c0, 0");
-
 	// Early stack grows down from 0x8000. Code is at 0x8000 up
 	asm("MOV sp, #0x8000");
 
-	eBL(r3, "mmu_init");
-	eBL(r3, "makeCrForMmuEnable"); // r0 is now CR
-	asm("LDR r1, =.mmuEnableReturn"); // Or where the linker thinks this is, anyway
-	eB(r3, "mmu_setControlRegister");
+	asm("BL mmu_init");
+	asm("BL makeCrForMmuEnable"); // r0 is now CR
+	asm("LDR r1, =.mmuEnableReturn");
+	asm("BL mmu_setControlRegister");
 	asm(".mmuEnableReturn:");
+	// From this point on, we are running with MMU on, and code is actually located where
+	// the linker thought it was (ie KKernelCodeBase not KPhysicalCodeBase)
 
-//	// Right, we've got some mem but our stack needs setting up again
-//	asm("LDR sp, .stackaddr");
+	// Set r13_und
+	asm("MSR cpsr_c, %0" : : "i" (KPsrModeUnd | KPsrIrqDisable | KPsrFiqDisable));
+	asm("LDR sp, .abtStack");
 
-	eBL(r1, "Boot");
+	// Set r13_abt
+	asm("MSR cpsr_c, %0" : : "i" (KPsrModeAbort | KPsrIrqDisable | KPsrFiqDisable));
+	asm("LDR sp, .abtStack");
+
+	// Set r13_irq
+	asm("MSR cpsr_c, %0" : : "i" (KPsrModeIrq | KPsrIrqDisable | KPsrFiqDisable));
+	asm("LDR sp, .irqStack");
+
+	// And back to supervisor mode to set our MMU-enabled stack address
+	asm("MSR cpsr_c, %0" : : "i" (KPsrModeSvc | KPsrIrqDisable | KPsrFiqDisable));
+	asm("LDR sp, .svcStack");
+
+	// Set the Vector Base Address Register (§3.2.43)
+	asm("LDR r0, .vectors");
+	asm("MCR p15, 0, r0, c12, c0, 0");
+
+	asm("BL Boot");
 	asm("B hang");
 
-//	LABEL_WORD(.stackaddr, KKernelStackBase+KKernelStackSize);
+	LABEL_WORD(.vectors, KPhysicalCodeBase);
+	LABEL_WORD(.abtStack, KAbortStackBase + KPageSize);
+	LABEL_WORD(.irqStack, KIrqStackBase + KPageSize);
+	LABEL_WORD(.svcStack, KKernelStackBase + KKernelStackSize);
 }
 
 void Boot() {
@@ -60,6 +67,9 @@ void Boot() {
 //	asm(".postMmuEnable:");
 //	printk("About to do undefined instruction...\n");
 //	WORD(0xE3000000);
+
+//	printk("Start of code base is:");
+//	printk("%X\n", *(uint32*)KKernelCodeBase);
 
 	printk("About to access invalid memory...\n");
 	uint32* inval = (uint32*)0x4800000;
@@ -109,6 +119,24 @@ void NAKED undefinedInstruction() {
 	addr -= 4; // r14_und is the instruction after
 	printk("Undefined instruction at 0x%X\n", addr);
 	hang();
+}
+
+static inline uint32 getFAR() {
+	uint32 ret;
+	asm("MRC p15, 0, %0, c6, c0, 0" : "=r" (ret));
+	return ret;
+}
+
+static inline uint32 getDFSR() {
+	uint32 ret;
+	asm("MRC p15, 0, %0, c5, c0, 0" : "=r" (ret));
+	return ret;
+}
+
+static inline uint32 getIFSR() {
+	uint32 ret;
+	asm("MRC p15, 0, %0, c5, c0, 1" : "=r" (ret));
+	return ret;
 }
 
 void NAKED prefetchAbort() {
