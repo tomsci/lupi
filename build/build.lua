@@ -167,6 +167,7 @@ function build_kernel()
 		table.insert(userIncludes, 1, "-include "..qrp("build/"..config.name.."/"..config.userInclude))
 	end
 
+	local includes = {}
 	if config.klua then
 		for _,src in ipairs(luaSources) do
 			table.insert(sources, { path = src, user = true })
@@ -176,9 +177,9 @@ function build_kernel()
 			table.insert(sources, { path = "usersrc/memcmp_arm.S", user = true })
 		end
 		table.insert(sources, { path = "usersrc/crt.c", user = true })
+		table.insert(includes, "-DKLUA")
 	end
 
-	local includes = {}
 	if config.include then
 		table.insert(includes, "-include "..qrp("build/"..config.name.."/"..config.include))
 	end

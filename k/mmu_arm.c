@@ -158,16 +158,8 @@ void REAL_mmu_init() {
 
 void mmu_init() {
 	uint32* pde = (uint32*)KPhysicalPdeBase;
+	// Default no access
 	zeroPages(pde, 4);
-
-	// Everything defaults to identity mappings. Gradually this loop should be eliminated
-	uint32 phys = 0;
-	for (uint32 i = 0; i < KNumPdes; i++) {
-		uint32 entry = phys | KPdeSectionJfdi;
-		//printk("PDE for %X = %X\n", i * (1024*1024), entry);
-		pde[i] = entry;
-		phys += 1 MB;
-	}
 
 	// Map peripheral memory.
 	int peripheralMemIdx = KPeripheralBase >> KAddrToPdeIndexShift;
@@ -186,7 +178,7 @@ void mmu_init() {
 
 	// Code!
 	for (int i = 0; i < KKernelCodesize >> KPageShift; i++) {
-		phys = KPhysicalCodeBase + (i << KPageShift);
+		uint32 phys = KPhysicalCodeBase + (i << KPageShift);
 		sectPte[PTE_IDX(KKernelCodeBase) + i] = phys | KPteKernelCode;
 	}
 
@@ -201,6 +193,10 @@ void mmu_init() {
 
 
 	pde[0x4800000 >> KAddrToPdeIndexShift] = 0; // No access here
+
+#ifdef KLUA
+	pde[0x00200000 >> KAddrToPdeIndexShift] = KPdeSectionKernelData;
+#endif
 
 	SetTTBR(0, KPhysicalPdeBase);
 	SetTTBR(1, KPhysicalPdeBase);

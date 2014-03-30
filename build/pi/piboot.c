@@ -60,6 +60,8 @@ void Boot() {
 
 	printk("Start of code base is:\n");
 	printk("%X = %X\n", KKernelCodeBase, *(uint32*)KKernelCodeBase);
+
+	interactiveLuaPrompt();
 }
 
 #if 0
