@@ -181,26 +181,22 @@ void REAL_mmu_init() {
 	// That's it, all the remaining mappings can be done with MMU enabled
 }
 
-// TEST VERSION. Sets the whole address space mapping to the same as phys addresses,
-// except for a little bit
 void mmu_init() {
 	uint32* pde = (uint32*)KPhysicalPdeBase;
 	zeroPages(pde, 4);
-//	pde[0] = KPdeSectionJfdi;
-//	pde[512] = KPeripheralPhys | KPdeSectionPeripheral;
-//	pde[513] = (KPeripheralPhys + 1 MB) | KPdeSectionPeripheral;
-//	pde[514] = (KPeripheralPhys + 2 MB) | KPdeSectionPeripheral;
 
 	uint32 phys = 0;
 	for (uint32 i = 0; i < KNumPdes; i++) {
 		uint32 entry = phys | KPdeSectionJfdi;
-//		if (i >= 512 && i < 515) {
-//			// Perif mem
-//			entry = phys | KPdeSectionPeripheral;
-//		}
-//		printk("PDE for %X = %X\n", i * (1024*1024), entry);
+		//printk("PDE for %X = %X\n", i * (1024*1024), entry);
 		pde[i] = entry;
 		phys += 1 MB;
+	}
+
+	// Map peripheral memory.
+	int peripheralMemIdx = KPeripheralBase >> KAddrToPdeIndexShift;
+	for (int i = 0; i < KPeripheralSize >> KOneMegShift; i++) {
+		pde[peripheralMemIdx + i] = (KPeripheralPhys + (i << KOneMegShift)) | KPdeSectionKernelData;
 	}
 
 	pde[0x4800000 >> KAddrToPdeIndexShift] = 0; // No access here
@@ -213,6 +209,23 @@ void mmu_init() {
 	asm("MCR p15, 0, %0, c3, c0, 0" : : "r" (everythingIsPermitted));
 }
 
+void mmu_identity_init() {
+	uint32* pde = (uint32*)KPhysicalPdeBase;
+
+	uint32 phys = 0;
+	for (uint32 i = 0; i < KNumPdes; i++) {
+		uint32 entry = phys | KPdeSectionJfdi;
+		//		printk("PDE for %X = %X\n", i * (1024*1024), entry);
+		pde[i] = entry;
+		phys += 1 MB;
+	}
+	SetTTBR(0, KPhysicalPdeBase);
+	SetTTBR(1, KPhysicalPdeBase);
+	SetTTBCR(0);
+	// Set DACR to get the hell out of the way
+	uint32 everythingIsPermitted = 0xFFFFFFFF;
+	asm("MCR p15, 0, %0, c3, c0, 0" : : "r" (everythingIsPermitted));
+}
 
 /*
 void mmu_freePagesForProcess(Process* p) {

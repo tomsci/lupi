@@ -31,16 +31,16 @@ void NAKED _start() {
 
 	// Early stack grows down from 0x8000. Code is at 0x8000 up
 	asm("MOV sp, #0x8000");
-	eBL(r1, "Boot");
 
-//	eBL(r1, "mmu_init");
-//	asm("LDR r0, =.mmuEnableReturn"); // Or where the linker thinks this is, anyway
-//	eB(r1, "enable_mmu");
-//
-//	asm(".mmuEnableReturn:");
+	eBL(r1, "mmu_init");
+	asm("LDR r0, =.mmuEnableReturn"); // Or where the linker thinks this is, anyway
+	eB(r1, "mmu_enable");
+	asm(".mmuEnableReturn:");
+
 //	// Right, we've got some mem but our stack needs setting up again
 //	asm("LDR sp, .stackaddr");
 
+	eBL(r1, "Boot");
 	asm("B hang");
 
 //	LABEL_WORD(.stackaddr, KKernelStackBase+KKernelStackSize);
@@ -49,20 +49,22 @@ void NAKED _start() {
 void Boot() {
 	uart_init();
 	printk("\n\nLuPi version %s\n", LUPI_VERSION_STRING);
-	mmu_init();
+	//mmu_init();
 
-	uintptr returnAddr;
-	asm("LDR %0, =.postMmuEnable" : "=r" (returnAddr));
-	printk("About to enable MMU...\n");
-	mmu_enable(returnAddr);
+//	uintptr returnAddr;
+//	asm("LDR %0, =.postMmuEnable" : "=r" (returnAddr));
+//	//printk("About to enable MMU...\n");
+//	mmu_enable(returnAddr);
 
-	asm(".postMmuEnable:");
+//	asm(".postMmuEnable:");
 //	printk("About to do undefined instruction...\n");
 //	WORD(0xE3000000);
 
 	printk("About to access invalid memory...\n");
 	uint32* inval = (uint32*)0x4800000;
 	printk("*0x4800000 = %x\n", *inval);
+
+	printk("Shouldn't get here\n");
 
 	//superpage_init();
 
