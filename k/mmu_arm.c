@@ -1,5 +1,6 @@
 #include <k.h>
 #include <mmu.h>
+#include <pageAllocator.h>
 
 /*
  * Page Directory = "First-level translation table"
@@ -29,8 +30,6 @@
 #define SetTTBCR(val)			asm("MCR p15, 0, %0, c2, c0, 2"   : : "r" (val)) // p193
 
 #define KNumPdes 4096 // number of Page Directory Entries is always 4096x1MB entries, on a 32-bit machine (unless we're using truncated PDs, see below)
-
-#define KNumPhysicalRamPages (KPhysicalRamSize >> KPageShift)
 
 
 // See p356
@@ -95,76 +94,15 @@ Sets up the minimal set of page tables at KPhysicalPdeBase
 Note: Anything within the brackets of pde[xyz] or pte[xyz] should NOT contain the word 'physical'.
 If it does, I've confused the fact that the PTE offsets refer to the VIRTUAL addresses.
 */
-/*
-void REAL_mmu_init() {
-	// Set up just enough mapping to allow access to the kern PDE, so we can enable the MMU and do
-	// the rest of the PTE setup in virtual addresses
-	uint32* pde = (uint32*)KPhysicalPdeBase;
-
-	// Start off with the entire PDE invalidated
-	// 00000000 in a PDE or PTE means 'no access', conveniently
-	//memset(pde, 0, KNumPdes * sizeof(uint32));
-	zeroPages(pde, 4); // Full PDE takes up 16kB, ie 4 pages
-
-	// Map the kern PDEs themselves
-	pde[KKernelPdeBase >> KAddrToPdeIndexShift] = KPhysicalPdeBase | KPdeSectionKernelData;
-
-	// Map peripheral memory.
-	int peripheralMemIdx = KPeripheralBase >> KAddrToPdeIndexShift;
-	for (int i = 0; i < KPeripheralSize >> KOneMegShift; i++) {
-		pde[peripheralMemIdx + i] = (KPeripheralPhys + (i << KOneMegShift)) | KPdeSectionKernelData;
-	}
-
-	// Set a page table for code and stuff
-	pde[KCodeAnStuffSection >> KAddrToPdeIndexShift] = KPhysicalStuffPte | KPdePageTable;
-	uint32* stuffPte = (uint32*)KPhysicalStuffPte;
-	zeroPages(stuffPte, 1);
-
-	// Map the PTE, which is itself within the KCodeAnStuffSection
-	stuffPte[0] = KPhysicalStuffPte | KPteKernelCode;
-
-	//TODO SuperPage
-
-	// Map the kernel stack
-	const int stackPageOffset = (KKernelStackBase & KSectionMask) >> KPageShift;
-	stuffPte[stackPageOffset] = KPhysicalStackBase | KPteKernelData;
-	stuffPte[stackPageOffset+1] = (KPhysicalStackBase + PAGE_SIZE) | KPteKernelData;
-
-	// Map the code pages
-	const int numCodePages = (KKernelCodesize >> KPageShift);
-	const int codeStartPageOffset = (KKernelCodeBase & KSectionMask) >> KPageShift;
-	ASSERT_COMPILE(numCodePages == 24);
-	ASSERT_COMPILE(codeStartPageOffset == 8);
-	for (int i = 0; i < numCodePages; i++) {
-		int entry = codeStartPageOffset + i;
-		stuffPte[entry] = (KPhysicalCodeBase + (i << KPageShift)) | KPteKernelCode;
-	}
-
-	// TODO what should TTBR0 be set to before we have any actual processes?
-	// For now set to same as TTBR1
-	uint32 ttbr0 = KPhysicalPdeBase; // We don't set any of the other bits in TTBR1
-	asm("MCR p15, 0, %0, c2, c0, 0" : : "r" (ttbr0)); // p192
-
-
-	uint32 ttbr1 = KPhysicalPdeBase; // We don't set any of the other bits in TTBR1
-	asm("MCR p15, 0, %0, c2, c0, 1" : : "r" (ttbr1)); // p192
-
-	// we will use TTBR0 for everything, temporarily
-	uint32 ttbcr = 0; //TODO TTBCR_N;
-	asm("MCR p15, 0, %0, c2, c0, 2" : : "r" (ttbcr)); // p193
-	// That's it, all the remaining mappings can be done with MMU enabled
-}
-*/
-
 void mmu_init() {
 	uint32* pde = (uint32*)KPhysicalPdeBase;
 	// Default no access
 	zeroPages(pde, 4);
 
-	// Map peripheral memory.
+	// Map peripheral memory as a couple of sections
 	int peripheralMemIdx = KPeripheralBase >> KAddrToPdeIndexShift;
-	for (int i = 0; i < KPeripheralSize >> KOneMegShift; i++) {
-		pde[peripheralMemIdx + i] = (KPeripheralPhys + (i << KOneMegShift)) | KPdeSectionKernelData;
+	for (int i = 0; i < KPeripheralSize >> KSectionShift; i++) {
+		pde[peripheralMemIdx + i] = (KPeripheralPhys + (i << KSectionShift)) | KPdeSectionKernelData;
 	}
 
 	// Map section zero
@@ -191,13 +129,6 @@ void mmu_init() {
 	// And the section zero pte
 	sectPte[PTE_IDX(KSectionZeroPte)] = KPhysicalSect0Pte | KPteKernelData;
 
-
-	pde[0x4800000 >> KAddrToPdeIndexShift] = 0; // No access here
-
-#ifdef KLUA
-	pde[0x00200000 >> KAddrToPdeIndexShift] = KPdeSectionKernelData;
-#endif
-
 	SetTTBR(0, KPhysicalPdeBase);
 	SetTTBR(1, KPhysicalPdeBase);
 	SetTTBCR(0);
@@ -216,12 +147,59 @@ void mmu_identity_init() {
 		pde[i] = entry;
 		phys += 1 MB;
 	}
+
+	pde[0x4800000 >> KAddrToPdeIndexShift] = 0; // No access here
+
 	SetTTBR(0, KPhysicalPdeBase);
 	SetTTBR(1, KPhysicalPdeBase);
 	SetTTBCR(0);
 	// Set DACR to get the hell out of the way
 	uint32 everythingIsPermitted = 0xFFFFFFFF;
 	asm("MCR p15, 0, %0, c3, c0, 0" : : "r" (everythingIsPermitted));
+}
+
+static void mmu_doMapPagesInSection(uintptr virtualAddress, uint32* sectPte, uintptr physicalAddress, int numPages) {
+	for (int i = 0; i < numPages; i++) {
+		uint32 phys = physicalAddress + (i << KPageShift);
+		sectPte[PTE_IDX(virtualAddress) + i] = phys | KPteKernelData;
+	}
+}
+
+void mmu_mapSect0Data(uintptr virtualAddress, uintptr physicalAddress, int npages) {
+	uint32* sectPte = (uint32*)KSectionZeroPte;
+	mmu_doMapPagesInSection(virtualAddress, sectPte, physicalAddress, npages);
+}
+
+void mmu_mapSection(PageAllocator* pa, uintptr virtualAddress) {
+	// To map a whole section we need 256 contiguous pages *aligned on a section boundary*
+	uintptr phys = pageAllocator_allocAligned(pa, KPageUsed, KPagesInSection, 1<<KSectionShift);
+	uint32* pde = (uint32*)KKernelPdeBase;
+	pde[virtualAddress >> KAddrToPdeIndexShift] = phys | KPdeSectionKernelData;
+}
+
+void mmu_mapSectionAsPages(PageAllocator* pa, uintptr virtualAddress, uintptr pteAddr) {
+	// Get a shiny new page from the allocator, to hold the page table
+	uint32 pageTablePhysical = pageAllocator_alloc(pa, KPageUsed, 1);
+	// Map the PTE page into section zero (pteAddr is assumed to be in section zero)
+	mmu_mapSect0Data(pteAddr, pageTablePhysical, KPageSize);
+	// Now update so we can write to the new PTE page
+	mmu_finishedUpdatingPageTables();
+	zeroPages((uint32*)pteAddr, 1); // The section starts out with all pages unmapped
+
+	// And update the kerk PDE with this PTE
+	uint32* pde = (uint32*)KKernelPdeBase;
+	pde[virtualAddress >> KAddrToPdeIndexShift] = pageTablePhysical | KPdePageTable;
+}
+
+void mmu_mapPageInSection(PageAllocator* pa, uint32* pte, uintptr virtualAddress) {
+	uint32 newPagePhysical = pageAllocator_alloc(pa, KPageUsed, 1);
+	pte[PTE_IDX(virtualAddress)] = newPagePhysical | KPteKernelData;
+}
+
+void NAKED mmu_finishedUpdatingPageTables() {
+	asm("MOV r0, #0");
+	DSB(r0);
+	asm("BX lr");
 }
 
 /*

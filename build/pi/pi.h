@@ -21,4 +21,8 @@
 #define KPeripheralBase		0xF2000000
 //#define KTimerBase		0xF2003000
 
+#ifdef KLUA
+#define KLuaHeapBase		0x00200000
+#endif
+
 #endif // LUPI_BUILD_PI_H

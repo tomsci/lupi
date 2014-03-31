@@ -150,7 +150,7 @@ static int uintToHex(uint val, char* restrict str, int width, char filler, bool 
 	int idx = sizeof(buf);
 	do {
 		uint digit = val & 0xF;
-		if (digit > 10) {
+		if (digit >= 10) {
 			buf[--idx] = a + digit - 10;
 		} else {
 			buf[--idx] = '0' + digit;

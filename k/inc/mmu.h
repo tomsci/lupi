@@ -31,20 +31,23 @@ Guard		-----------------	F8007000-F8008000	(4k)
 Code		00008000-00028000	F8008000-F8028000	(128k)
 Kern PDE	00028000-0002C000	F8028000-F802C000	(16k)
 Sect 0 PTE	00003000-00004000	F802C000-F802D000	(4k)
-Unused		-----------------	F802D000-F8100000
+Procs PTE	dontcare-dontcare	F802D000-F802E000	(4k)
+Unused		-----------------	F802E000-F8080000
+PageAlloctr	0002C000-dontcare	F8080000-F8100000	(512k)
 
+Processes	dontcare-dontcare	F8100000-F8200000	(1 MB)
 */
 
-#define KPageSize 4096
-#define KPageShift 12
-#define KOneMegShift 20
 #define MB *1024*1024
-#define KAddrToPdeIndexShift KOneMegShift
+#define KSectionShift 20
+#define KAddrToPdeIndexShift KSectionShift
 #define KAddrToPdeAddrShift (KAddrToPdeIndexShift - 2)
 #define KPageTableSize		4096
 #define KSectionMask		0x000FFFFFu
+#define KPagesInSection		(1 << (KSectionShift-KPageShift)) // ie 256
 
 #define PTE_IDX(virtAddr)	(((virtAddr) & KSectionMask) >> KPageShift)
+#define PAGE_ROUND(addr)		((addr + KPageSize - 1) & ~(KPageSize-1))
 
 #define KSectionZero		0xF8000000u
 
@@ -68,12 +71,23 @@ Unused		-----------------	F802D000-F8100000
 #define KAbortStackBase		0xF8001000u
 #define KIrqStackBase		0xF8003000u
 
+#define KPhysPageAllocator	0x0002C000u
+#define KPageAllocatorAddr	0xF8080000u
+
+#define KProcessesBase		0xF8100000u
+#define KProcessesPte		0xF802D000u
+
+
 //////
 
-#define KNumPhysicalRamPages (KPhysicalRamSize >> KPageShift)
-
+typedef struct PageAllocator PageAllocator;
 
 void mmu_init();
 void mmu_enable(uintptr returnAddr);
+void mmu_mapSect0Data(uintptr virtualAddress, uintptr physicalAddress, int size);
+void mmu_mapSection(PageAllocator* pa, uintptr virtualAddress);
+void mmu_mapSectionAsPages(PageAllocator* pa, uintptr virtualAddress, uintptr pteAddr);
+void mmu_mapPageInSection(PageAllocator* pa, uint32* pte, uintptr virtualAddress);
+void mmu_finishedUpdatingPageTables();
 
 #endif

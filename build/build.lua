@@ -209,7 +209,7 @@ function build_kernel()
 
 	if config.klua then
 		--# klua.c is a special case as it sits between kernel and user code, and needs to access bits of both. It is primarily user (has user includes) but also has access to the platform -include file
-		local includes = {}
+		local includes = { "-DKLUA" }
 		if config.include then
 			table.insert(includes, "-include "..qrp("build/"..config.name.."/"..config.include))
 		end

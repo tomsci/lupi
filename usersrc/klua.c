@@ -17,9 +17,6 @@ byte getch();
 
 #ifndef USE_HOST_MALLOC_FOR_LUA
 
-// TODO this needs updating once we enable the MMU
-#define KLuaHeap (KPhysicalRamBase + 0x00200000)
-
 // Dumbest allocator in the world. Doesn't reclaim memory, just returns sucessively growing
 // pointers. We shall see if it's good enough....
 
@@ -30,7 +27,7 @@ typedef struct Heap {
 	long alloced;
 } Heap;
 
-#define GetHeap() ((Heap*)KLuaHeap)
+#define GetHeap() ((Heap*)KLuaHeapBase)
 #define align(ptr) ((((uintptr)(ptr)) + 0x7) & ~0x7)
 
 #endif // USE_HOST_MALLOC_FOR_LUA
@@ -84,13 +81,16 @@ void* lua_alloc_fn(void *ud, void *ptr, size_t osize, size_t nsize) {
 		return ptr;
 	}
 
-	h->nallocs++;
 	void* result = (void*)h->top;
 	h->top = align(h->top + nsize);
-	if (h->top > KPhysicalRamBase + KPhysicalRamSize) {
-		printk("No mem!\n");
+	// Don't bother checking - let the MMU fault us
+	/*
+	if (h->top > KLuaHeapBase + 1*1024*1024) {
+		printk("No mem! nallocs=%d\n", h->nallocs);
 		abort();
 	}
+	*/
+	h->nallocs++;
 	h->alloced += nsize;
 	if (ptr) {
 		// Remember to copy in the reallocd mem!
@@ -166,7 +166,7 @@ void interactiveLuaPrompt() {
 				putbyte(' ');
 				putbyte(ch);
 			}
-		} else {
+		} else if (lpos < sizeof(line)-1) {
 			line[lpos++] = ch;
 			printk("%c", (int)ch);
 		}

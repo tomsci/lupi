@@ -43,4 +43,6 @@ typedef __builtin_va_list va_list;
 
 #define memcpy(dest, src, size)	__builtin_memcpy(dest, src, size)
 
+#define offsetof(type, member)	__builtin_offsetof(type, member)
+
 #endif

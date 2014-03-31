@@ -1,24 +1,27 @@
 #ifndef PAGEALLOCATOR_H
 #define PAGEALLOCATOR_H
 
-#include <mmu.h>
-
 #define KPageFree 0 // must be zero
 #define KPageUsed 1 // TODO more info needed here I think!
 
 typedef struct PageAllocator {
-	uint8 pageInfo[KNumPhysicalRamPages];
+	int numPages;
 	int firstFreePage;
-	uint8 spare[4092];
+	uint8 pageInfo[1]; // Extends beyond struct, up to numPages
 } PageAllocator;
 
-
-#ifdef BCM2835
-ASSERT_COMPILE((sizeof(PageAllocator) & 0xFFF) == 0);
-ASSERT_COMPILE(sizeof(PageAllocator) == 132*1024); // Just for my own sanity, obviously dependant on phys mem size
-#endif
-
-int pageAllocator_doAlloc(PageAllocator* allocator, uint8 type, int num);
+void pageAllocator_init(PageAllocator* allocator, int numPages);
+uintptr pageAllocator_allocAligned(PageAllocator* allocator, uint8 type, int num, int alignment);
 void pageAllocator_doFree(PageAllocator* allocator, int idx, int num);
+
+
+// Returns the size in bytes of a PageAllocator object that is configured to track numPages's worth
+// of pages.
+#define pageAllocator_size(numPages) (offsetof(PageAllocator, pageInfo) + numPages)
+
+static inline uintptr pageAllocator_alloc(PageAllocator* allocator, uint8 type, int num) {
+	return pageAllocator_allocAligned(allocator, type, num, 0);
+}
+
 
 #endif
