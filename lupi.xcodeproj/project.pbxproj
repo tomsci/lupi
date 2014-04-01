@@ -20,6 +20,7 @@
 		DB61BB6A18D46DD8006F9F69 /* doc */ = {isa = PBXFileReference; lastKnownFileType = folder; path = doc; sourceTree = "<group>"; };
 		DB61BB6B18D46DF5006F9F69 /* k */ = {isa = PBXFileReference; lastKnownFileType = folder; path = k; sourceTree = "<group>"; };
 		DB61BB6C18D46E1D006F9F69 /* build */ = {isa = PBXFileReference; lastKnownFileType = folder; path = build; sourceTree = "<group>"; };
+		DB67DBED18EB644D00158EEF /* modules */ = {isa = PBXFileReference; lastKnownFileType = folder; path = modules; sourceTree = "<group>"; };
 		DBBF9E0F18E4860800863C6E /* .gitignore */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
 		DBE8D28918E4CF9500B517A2 /* kernel.s */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.asm; name = kernel.s; path = bin/pi/kernel.s; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -47,6 +48,7 @@
 				DB61BB6B18D46DF5006F9F69 /* k */,
 				DB4772DF18D64DF900F037B5 /* lua */,
 				DB4772E618D6E47A00F037B5 /* luaconf */,
+				DB67DBED18EB644D00158EEF /* modules */,
 				DB4772D718D63AF300F037B5 /* userinc */,
 				DB10490918DF02F200EB92A2 /* usersrc */,
 				DBBF9E0F18E4860800863C6E /* .gitignore */,
@@ -59,7 +61,7 @@
 /* Begin PBXLegacyTarget section */
 		DB04757118D995A9006A8090 /* pi */ = {
 			isa = PBXLegacyTarget;
-			buildArgumentsString = "-c \"lua ./build/build.lua pi\"";
+			buildArgumentsString = "-c \"lua ./build/build.lua hosted\"";
 			buildConfigurationList = DB04757218D995AA006A8090 /* Build configuration list for PBXLegacyTarget "pi" */;
 			buildPhases = (
 			);
