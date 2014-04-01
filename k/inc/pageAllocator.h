@@ -19,9 +19,6 @@ void pageAllocator_doFree(PageAllocator* allocator, int idx, int num);
 // of pages.
 #define pageAllocator_size(numPages) (offsetof(PageAllocator, pageInfo) + numPages)
 
-static inline uintptr pageAllocator_alloc(PageAllocator* allocator, uint8 type, int num) {
-	return pageAllocator_allocAligned(allocator, type, num, 0);
-}
-
+#define pageAllocator_alloc(allocator, type, num) pageAllocator_allocAligned(allocator, type, num, 0)
 
 #endif

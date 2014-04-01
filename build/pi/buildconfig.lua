@@ -15,6 +15,7 @@ config = {
 	extraKernelSources = {
 		"k/mmu_arm.c",
 		"build/pi/uart.c",
+		"build/pi/irq.c",
 	},
 
 	extraStdInc = "build/pi/stdinc",

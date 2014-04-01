@@ -47,7 +47,7 @@ Processes	dontcare-dontcare	F8100000-F8200000	(1 MB)
 #define KPagesInSection		(1 << (KSectionShift-KPageShift)) // ie 256
 
 #define PTE_IDX(virtAddr)	(((virtAddr) & KSectionMask) >> KPageShift)
-#define PAGE_ROUND(addr)		((addr + KPageSize - 1) & ~(KPageSize-1))
+#define PAGE_ROUND(addr)	((addr + KPageSize - 1) & ~(KPageSize-1))
 
 #define KSectionZero		0xF8000000u
 

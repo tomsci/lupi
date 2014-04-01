@@ -14,28 +14,13 @@ extern void dummy ( unsigned int );
 #define AUX_MU_STAT_REG	(KPeripheralBase + 0x00215064)
 #define AUX_MU_BAUD_REG	(KPeripheralBase + 0x00215068)
 
-// See BCM-2835-ARM-Peripherals p90
-#define GPFSEL1			(KPeripheralBase + 0x00200004)
-#define GPSET0			(KPeripheralBase + 0x0020001C)
-#define GPCLR0			(KPeripheralBase + 0x00200028)
-#define GPPUD			(KPeripheralBase + 0x00200094)
-#define GPPUDCLK0		(KPeripheralBase + 0x00200098)
-
 //GPIO14  TXD0 and TXD1
 //GPIO15  RXD0 and RXD1
 //alt function 5 for uart1
 //alt function 0 for uart0
 
-static NOINLINE NAKED uint32 GET32(uint32 addr) {
-	asm("ldr r0,[r0]");
-	asm("bx lr");
-	return addr; // Shuts up stupid compiler warning - why doesn't nekkid handle this?
-}
-
-static NOINLINE NAKED void PUT32(uint32 addr, uint32 val) {
-    asm("str r1,[r0]");
-    asm("bx lr");
-}
+uint32 GET32(uint32 addr);
+void PUT32(uint32 addr, uint32 val);
 
 /*
 See BCM-2835-ARM-Peripherals p11 2.2.1 Mini UART implementation details

@@ -38,10 +38,19 @@
 // Section   NS  0 nG  S |APX ---TEX-- | --AP- P --Domain- XN| C B 1 0
 // PageTable .... Page table address ....      P --Domain- 0 |NS 0 0 1
 
-#define KPdeSectionKernelData	0x00000412 // NS=0, nG=0, S=0, APX=b001, XN=1, P=C=B=0
+#ifdef NON_SECURE
+#define PDE_SECTION_NS_BIT (1<<19)
+#define PDE_PAGETABLE_NS_BIT (1<<3)
+#else
+#define PDE_SECTION_NS_BIT 0
+#define PDE_PAGETABLE_NS_BIT 0
+#endif
+
+#define KPdeSectionKernelData	(0x00000412 | PDE_SECTION_NS_BIT) // nG=0, S=0, APX=b001, XN=1, P=C=B=0
 #define KPdeSectionJfdi			0x00000402 // NS=0, nG=0, S=0, APX=b001, XN=0, P=C=B=0
 //#define KPdeSectionPeripheral	0x00002412 // NS=0, nG=0, S=0, APX=b001, TEX=b010, XN=1, P=C=B=0
-#define KPdePageTable			0x00000001 // NS=0, P=0
+#define KPdeSectionPeripheral	KPdeSectionKernelData
+#define KPdePageTable			(0x00000001 | PDE_PAGETABLE_NS_BIT) // NS=0, P=0
 
 // See p357
 // 11 10  9  8 | 7 6 5 4 | 3 2 1 0
@@ -102,7 +111,7 @@ void mmu_init() {
 	// Map peripheral memory as a couple of sections
 	int peripheralMemIdx = KPeripheralBase >> KAddrToPdeIndexShift;
 	for (int i = 0; i < KPeripheralSize >> KSectionShift; i++) {
-		pde[peripheralMemIdx + i] = (KPeripheralPhys + (i << KSectionShift)) | KPdeSectionKernelData;
+		pde[peripheralMemIdx + i] = (KPeripheralPhys + (i << KSectionShift)) | KPdeSectionPeripheral;
 	}
 
 	// Map section zero

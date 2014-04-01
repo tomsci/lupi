@@ -3,6 +3,8 @@
 #include <pageAllocator.h>
 
 void uart_init();
+void irq_init();
+void irq_enable();
 //void goDoLuaStuff();
 void interactiveLuaPrompt();
 
@@ -36,6 +38,9 @@ void Boot() {
 	// only sets up the PDE for them)
 	mmu_mapSectionAsPages(pa, KProcessesBase, KProcessesPte);
 	mmu_finishedUpdatingPageTables();
+
+	irq_init();
+	//irq_enable();
 
 #ifdef KLUA
 	mmu_mapSection(pa, KLuaHeapBase);

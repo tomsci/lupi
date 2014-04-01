@@ -102,6 +102,17 @@ void NAKED dummy() {
 	asm("BX lr");
 }
 
+NOINLINE NAKED uint32 GET32(uint32 addr) {
+	asm("ldr r0,[r0]");
+	asm("bx lr");
+	return addr; // Shuts up stupid compiler warning - why doesn't nekkid handle this?
+}
+
+NOINLINE NAKED void PUT32(uint32 addr, uint32 val) {
+    asm("str r1,[r0]");
+    asm("bx lr");
+}
+
 void NAKED hang() {
 	asm("B hang");
 }
@@ -154,12 +165,7 @@ void NAKED dataAbort() {
 	hang();
 }
 
-void NAKED irq() {
-	//TODO
-	asm("SUBS pc, r14, #4");
-}
-
 void NAKED fiq() {
-	//TODO
+	printk("FIQ???\n");
 	asm("SUBS pc, r14, #4");
 }

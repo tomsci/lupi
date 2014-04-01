@@ -25,4 +25,11 @@
 #define KLuaHeapBase		0x00200000
 #endif
 
+// See BCM-2835-ARM-Peripherals p90
+#define GPFSEL1			(KPeripheralBase + 0x00200004)
+#define GPSET0			(KPeripheralBase + 0x0020001C)
+#define GPCLR0			(KPeripheralBase + 0x00200028)
+#define GPPUD			(KPeripheralBase + 0x00200094)
+#define GPPUDCLK0		(KPeripheralBase + 0x00200098)
+
 #endif // LUPI_BUILD_PI_H
