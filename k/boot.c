@@ -2,6 +2,8 @@
 #include <mmu.h>
 #include <pageAllocator.h>
 
+#ifndef HOSTED
+
 void uart_init();
 void irq_init();
 void irq_enable();
@@ -48,3 +50,5 @@ void Boot() {
 	interactiveLuaPrompt();
 #endif
 }
+
+#endif // HOSTED

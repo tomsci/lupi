@@ -26,13 +26,14 @@ byte getch() {
 	return result;
 }
 
-void uart_init() {};
+void hang() {
+	abort();
+}
 
 void runUserTests();
 
 int main(int argc, char* argv[]) {
 	kernelMemory = malloc(KPhysicalRamSize);
-	memset(kernelMemory, 0x12, KPhysicalRamSize);
 
 	// Can't believe I have to fiddle with termios just to get reading from stdin to work unbuffered...
 	struct termios t;
@@ -42,6 +43,8 @@ int main(int argc, char* argv[]) {
 	t.c_cc[VMIN] = 1;
 	t.c_cc[VTIME] = 0;
 	tcsetattr(fileno(stdin), TCSANOW, &t);
+
+	printk("\n\n" LUPI_VERSION_STRING "\n");
 
 	runUserTests();
 	//printk("Ok.\n");
