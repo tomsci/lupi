@@ -173,5 +173,43 @@ void interactiveLuaPrompt() {
 	}
 }
 
+const char* getLuaModule(const char* name, int* length);
 
+static int putch_lua(lua_State* L) {
+	int ch = lua_tointeger(L, 1);
+	putbyte((byte)ch);
+	return 0;
+}
 
+static int getch_lua(lua_State* L) {
+	lua_pushinteger(L, getch());
+	return 1;
+}
+
+// A variant of interactiveLuaPrompt that lets us write the actual intepreter loop as a lua module
+void runLuaIntepreterModule() {
+#ifdef USE_HOST_MALLOC_FOR_LUA
+	lua_State* L = luaL_newstate();
+#else
+	heapReset();
+	lua_State* L = lua_newstate(lua_alloc_fn, GetHeap());
+#endif
+	luaL_openlibs(L);
+
+	int n;
+	const char* mod = getLuaModule("interpreter", &n);
+	if (!mod) {
+		printk("No lua interpreter module!\n");
+		abort();
+	}
+	luaL_loadstring(L, mod);
+	lua_call(L, 0, 0);
+	lua_pushcfunction(L, putch_lua);
+	lua_setglobal(L, "putch");
+	lua_pushcfunction(L, getch_lua);
+	lua_setglobal(L, "getch");
+	lua_getglobal(L, "main");
+	lua_call(L, 0, 0);
+	// Shouldn't return
+	abort();
+}

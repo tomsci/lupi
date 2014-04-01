@@ -1,7 +1,7 @@
 #ifndef LUPI_K_H
 #define LUPI_K_H
 
-#define LUPI_VERSION_STRING "LuPi 0.13"
+#define LUPI_VERSION_STRING "LuPi 0.14"
 
 typedef unsigned long PhysAddr;
 

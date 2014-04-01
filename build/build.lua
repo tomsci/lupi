@@ -320,6 +320,7 @@ luaSources = {
 
 luaModules = {
 	"modules/test.lua",
+	"modules/interpreter.lua",
 }
 
 function build_lua()
@@ -392,7 +393,7 @@ function generateLuaModulesSource()
 	}
 ]]
 	for modName, cname in pairs(modMap) do
-		f:write("char const*const "..cname..";\n")
+		f:write("extern char const*const "..cname..";\n")
 		table.insert(fn, tst:format(modName, sizeMap[cname], cname))
 	end
 	table.insert(fn, "	return NULL;")

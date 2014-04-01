@@ -5,6 +5,8 @@
 
 void goDoLuaStuff();
 void interactiveLuaPrompt();
+void runLuaIntepreterModule();
+void runUserTests();
 
 void* kernelMemory;
 
@@ -30,8 +32,6 @@ void hang() {
 	abort();
 }
 
-void runUserTests();
-
 int main(int argc, char* argv[]) {
 	kernelMemory = malloc(KPhysicalRamSize);
 
@@ -44,13 +44,14 @@ int main(int argc, char* argv[]) {
 	t.c_cc[VTIME] = 0;
 	tcsetattr(fileno(stdin), TCSANOW, &t);
 
-	printk("\n\n" LUPI_VERSION_STRING "\n");
+	printk(LUPI_VERSION_STRING "\n");
 
 	runUserTests();
 	//printk("Ok.\n");
 
 	//goDoLuaStuff();
-	interactiveLuaPrompt();
+	//interactiveLuaPrompt();
+	runLuaIntepreterModule();
 
 	return 0;
 }
