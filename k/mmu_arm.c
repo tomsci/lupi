@@ -19,12 +19,6 @@
 //}
 
 
-// reg must contain zero for all of these
-#define DMB(reg)				asm("MCR p15, 0, " #reg ", c7, c10, 5")
-#define	DSB(reg)				asm("mcr p15, 0, " #reg ", c7, c10, 4")
-#define	ISB(reg)				asm("mcr p15, 0, " #reg ", c7, c5, 4") // AKA prefetch flush
-
-#define InvalidateIcache(reg)	asm("MCR p15, 0, " #reg ", c7, c5, 0")
 
 #define SetTTBR(n, val)			asm("MCR p15, 0, %0, c2, c0, " #n : : "r" (val)) // p192
 #define SetTTBCR(val)			asm("MCR p15, 0, %0, c2, c0, 2"   : : "r" (val)) // p193
@@ -118,6 +112,7 @@ void mmu_init() {
 	pde[KSectionZero >> KAddrToPdeIndexShift] = KPhysicalSect0Pte | KPdePageTable;
 	uint32* sectPte = (uint32*)KPhysicalSect0Pte;
 	zeroPages(sectPte, 1);
+	// Don't strictly need to set up these next two yet, but might as well.
 	sectPte[PTE_IDX(KAbortStackBase)] = KPhysicalAbortStackBase | KPteKernelData;
 	sectPte[PTE_IDX(KIrqStackBase)] = KPhysicalIrqStackBase | KPteKernelData;
 	sectPte[PTE_IDX(KKernelStackBase)] = KPhysicalStackBase | KPteKernelData;

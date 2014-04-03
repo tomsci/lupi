@@ -1,24 +1,5 @@
 extern void dummy ( unsigned int );
 
-// See BCM-2835-ARM-Peripherals p8
-#define AUX_ENABLES		(KPeripheralBase + 0x00215004)
-#define AUX_MU_IO_REG	(KPeripheralBase + 0x00215040)
-#define AUX_MU_IER_REG	(KPeripheralBase + 0x00215044)
-#define AUX_MU_IIR_REG	(KPeripheralBase + 0x00215048)
-#define AUX_MU_LCR_REG	(KPeripheralBase + 0x0021504C)
-#define AUX_MU_MCR_REG	(KPeripheralBase + 0x00215050)
-#define AUX_MU_LSR_REG	(KPeripheralBase + 0x00215054)
-#define AUX_MU_MSR_REG	(KPeripheralBase + 0x00215058)
-#define AUX_MU_SCRATCH	(KPeripheralBase + 0x0021505C)
-#define AUX_MU_CNTL_REG	(KPeripheralBase + 0x00215060)
-#define AUX_MU_STAT_REG	(KPeripheralBase + 0x00215064)
-#define AUX_MU_BAUD_REG	(KPeripheralBase + 0x00215068)
-
-//GPIO14  TXD0 and TXD1
-//GPIO15  RXD0 and RXD1
-//alt function 5 for uart1
-//alt function 0 for uart0
-
 uint32 GET32(uint32 addr);
 void PUT32(uint32 addr, uint32 val);
 
@@ -43,32 +24,33 @@ reg  = ((system_clock_freq / 8) / baud) - 1
 //
 //-------------------------------------------------------------------------
 
-
 void uart_init() {
-    PUT32(AUX_ENABLES,1);
-    PUT32(AUX_MU_IER_REG,0);
-    PUT32(AUX_MU_CNTL_REG,0);
-    PUT32(AUX_MU_LCR_REG,3);
-    PUT32(AUX_MU_MCR_REG,0);
-    PUT32(AUX_MU_IER_REG,0);
-    PUT32(AUX_MU_IIR_REG,0xC6);
-    PUT32(AUX_MU_BAUD_REG, k115200baud);
+	PUT32(AUX_ENABLES,1);
+	PUT32(AUX_MU_CNTL_REG,0);
+	PUT32(AUX_MU_LCR_REG,3);
+	PUT32(AUX_MU_MCR_REG,0);
+	PUT32(AUX_MU_IER_REG, AUX_MU_EnableReceiveInterrupt);
+	PUT32(AUX_MU_IIR_REG, AUX_MU_ClearReceiveFIFO | AUX_MU_ClearTransmitFIFO);
+	PUT32(AUX_MU_BAUD_REG, k115200baud);
 
-    unsigned int ra;
-    ra=GET32(GPFSEL1);
-    ra&=~(7<<12); //gpio14
-    ra|=2<<12;    //alt5
-    ra&=~(7<<15); //gpio15
-    ra|=2<<15;    //alt5
-    PUT32(GPFSEL1,ra);
+	unsigned int ra;
+	ra = GET32(GPFSEL1);
+	// Alt5 for GPIO 14 is TXD1
+	SetGpioFunctionForPin(ra, 14, KGpioAlt5);
+	// Alt5 for GPIO 15 is RXD1
+	SetGpioFunctionForPin(ra, 15, KGpioAlt5);
+	PUT32(GPFSEL1, ra);
 
-    PUT32(GPPUD,0);
-    for(ra=0;ra<150;ra++) dummy(ra);
-    PUT32(GPPUDCLK0,(1<<14)|(1<<15));
-    for(ra=0;ra<150;ra++) dummy(ra);
-    PUT32(GPPUDCLK0,0);
+	PUT32(GPPUD,0);
+	for(ra=0;ra<150;ra++) dummy(ra);
+	PUT32(GPPUDCLK0,(1<<14)|(1<<15));
+	for(ra=0;ra<150;ra++) dummy(ra);
+	PUT32(GPPUDCLK0,0);
 
-    PUT32(AUX_MU_CNTL_REG,3);
+	PUT32(AUX_MU_CNTL_REG,3);
+
+	// The mini uart uses the AUX interrupt not the UART one.
+	PUT32(IRQ_ENABLE_1, 1 << AUX_INT);
 }
 
 void putbyte(byte c) {

@@ -14,20 +14,8 @@
 
 //#define SYSTIMERCLO (KPeripheralBase + 0x3004)
 
-#define IRQ_BASIC (KPeripheralBase + 0xB200)
-#define IRQ_PEND1 (KPeripheralBase + 0xB204)
-#define IRQ_PEND2 (KPeripheralBase + 0xB208)
-#define IRQ_FIQ_CONTROL (KPeripheralBase + 0xB210)
-#define IRQ_ENABLE_BASIC (KPeripheralBase + 0xB218)
-#define IRQ_DISABLE_BASIC (KPeripheralBase + 0xB224)
-
 uint32 GET32(uint32 addr);
 void PUT32(uint32 addr, uint32 val);
-
-//#define KGpioFunctionSelectPinMask (7)
-//#define KGpioFunctionSelectOutput (1)
-//#define PIN_SHIFT(n) ((n)*3) // n is relative to base of the relevant register (ie in function select register 1, to set pin 19 you'd shift by PIN_SHIFT(9)
-//#define SetGpioFunctionForPin(reg, pin, val) reg = (((reg) & ~(KGpioFunctionSelectPinMask << PIN_SHIFT(pin))) | (((val) & KGpioFunctionSelectPinMask) << PIN_SHIFT(pin)))
 
 #define KTimerControlReset 0x003E0020 // Prescale = 3E, InterruptEnable=1
 #define KTimerControl23BitCounter (1<<1)
@@ -37,19 +25,11 @@ void PUT32(uint32 addr, uint32 val);
 
 /*
 This will setup the system timer and start it running and producing interrupts
-(which won't get delivered until they are enabled in CPSR)
+(which won't get delivered until they are enabled in CPSR, eg by calling irq_enable())
 */
 
 void irq_init() {
-//	unsigned int ra;
-
 	PUT32(IRQ_DISABLE_BASIC,1);
-
-//	ra=GET32(GPFSEL1);
-//	SetGpioFunctionForPin(ra, 6, KGpioFunctionSelectOutput); // Pin 16 in fn select register 1
-//	PUT32(GPFSEL1,ra);
-//
-//	PUT32(GPSET0,1<<16); // Sets pin 16
 
 	PUT32(ARM_TIMER_CTL,KTimerControlReset & ~KTimerControlInterruptEnable); // disable interrupt
 	PUT32(ARM_TIMER_LOD,1000000-1);
@@ -73,10 +53,34 @@ void NAKED irq_enable() {
 	asm("bx lr");
 }
 
+void handleIrq() {
+	uint32 irqBasicPending = GET32(IRQ_BASIC);
+	if (irqBasicPending & 1) {
+		// Timer IRQ
+		//TODO tick();
+		PUT32(ARM_TIMER_CLI,0);
+	}
+	if (irqBasicPending & (1 << 8)) {
+		// IRQ Pending Reg 1
+		uint32 pending1 = GET32(IRQ_PEND1);
+		if (pending1 & (1 << AUX_INT)) {
+			// We don't enable SPI interrupts so we don't need to bother checking AUXIRQ
+			uint32 iir = GET32(AUX_MU_IIR_REG);
+			if (iir & AUX_MU_IIR_ReceiveInterrupt) {
+				printk("Got char %c!\n", GET32(AUX_MU_IO_REG));
+				PUT32(AUX_MU_IIR_REG, AUX_MU_ClearReceiveFIFO);
+			}
+		}
+	}
+	if (irqBasicPending & (1 << 9)) {
+		// IRQ Pending Reg 2
+		// TODO
+	}
+}
+
 void NAKED irq() {
 	asm("push {r0-r12, lr}");
-	printk("IRQ!\n");
-	PUT32(ARM_TIMER_CLI,0);
+	handleIrq();
 	asm("pop  {r0-r12, lr}");
 	asm("SUBS pc, r14, #4");
 }

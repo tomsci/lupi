@@ -42,13 +42,15 @@ void Boot() {
 	mmu_finishedUpdatingPageTables();
 
 	irq_init();
-	//irq_enable();
 
 #ifdef KLUA
 	mmu_mapSection(pa, KLuaHeapBase);
 	mmu_finishedUpdatingPageTables();
 	interactiveLuaPrompt();
 #endif
+
+	irq_enable();
+	// Stuff...
 }
 
 #endif // HOSTED
