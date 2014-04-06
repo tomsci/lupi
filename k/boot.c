@@ -9,7 +9,8 @@ void uart_init();
 void irq_init();
 void irq_enable();
 //void goDoLuaStuff();
-void interactiveLuaPrompt();
+//void interactiveLuaPrompt();
+void runLuaIntepreterModule();
 const char* getLuaModule(const char* moduleName, int* modSize);
 
 void Boot() {
@@ -55,7 +56,8 @@ void Boot() {
 #ifdef KLUA
 	mmu_mapSectionContiguous(Al, KLuaHeapBase, KPageKluaHeap);
 	mmu_finishedUpdatingPageTables();
-	interactiveLuaPrompt();
+	//interactiveLuaPrompt();
+	runLuaIntepreterModule();
 #endif
 
 	irq_enable();
@@ -70,11 +72,10 @@ void Boot() {
 
 	process_init(p); // This also does a switch_process()
 	TheSuperPage->currentThread = firstThreadForProcess(p);
-	//int modSize;
-	//const char* mod = getLuaModule("intepreter", &modSize);
+	int modSize;
+	const char* mod = getLuaModule("interpreter", &modSize);
 	printk("process_start\n");
-	process_start(NULL, NULL, 0, firstThreadForProcess(p)->savedRegisters[13]);
-	//process_start("interpreter", mod, modSize, firstThreadForProcess(p)->savedRegisters[13]);
+	process_start("interpreter", mod, modSize, firstThreadForProcess(p)->savedRegisters[13]);
 }
 
 //TODO move this stuff

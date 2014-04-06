@@ -99,6 +99,6 @@ static inline Process* processForThread(Thread* t) {
 
 void process_start(const char* moduleName, const char* module, int moduleSize, uint32 sp);
 bool process_init(Process* p);
-uintptr process_grow_heap(Process* p, int incr);
+bool process_grow_heap(Process* p, int incr);
 
 #endif // LUPI_K_H

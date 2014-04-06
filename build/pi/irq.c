@@ -67,7 +67,7 @@ void handleIrq() {
 			// We don't enable SPI interrupts so we don't need to bother checking AUXIRQ
 			uint32 iir = GET32(AUX_MU_IIR_REG);
 			if (iir & AUX_MU_IIR_ReceiveInterrupt) {
-				printk("Got char %c!\n", GET32(AUX_MU_IO_REG));
+				//TODO printk("Got char %c!\n", GET32(AUX_MU_IO_REG));
 				PUT32(AUX_MU_IIR_REG, AUX_MU_ClearReceiveFIFO);
 			}
 		}

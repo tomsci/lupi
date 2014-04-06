@@ -44,15 +44,18 @@ bool thread_init(Process* p, int index) {
 }
 
 void NAKED process_start(const char* moduleName, const char* module, int moduleSize, uint32 sp) {
+#ifndef KLUA
 	ModeSwitch(KPsrModeUsr|KPsrFiqDisable);
 	// We are in user mode now! So no calling printk(), or doing priviledged stuff
 	asm("MOV sp, r3");
 	asm("LDR pc, =newProcessEntryPoint");
 	// And we're off. Shouldn't ever return
+#endif
 	hang(); //TODO
 }
 
-uintptr process_grow_heap(Process* p, int incr) {
+bool process_grow_heap(Process* p, int incr) {
+	//printk("+process_grow_heap %d heapLimit=%p\n", incr, (void*)p->heapLimit);
 	bool dec = (incr < 0);
 	int amount;
 	if (dec) amount = (-incr) & ~(KPageSize - 1); // Be sure not to free more than was asked to
@@ -64,14 +67,13 @@ uintptr process_grow_heap(Process* p, int incr) {
 		}
 		p->heapLimit = p->heapLimit - amount;
 		mmu_unmapPagesInProcess(Al, p, p->heapLimit, amount >> KPageShift);
-		return p->heapLimit;
+		return true;
 	} else {
 		bool ok = mmu_mapPagesInProcess(Al, p, p->heapLimit, amount >> KPageShift);
 		if (ok) {
 			p->heapLimit += amount;
-			return p->heapLimit;
-		} else {
-			return -1;
+			//printk("-process_grow_heap heapLimit=%p\n", (void*)p->heapLimit);
 		}
+		return ok;
 	}
 }

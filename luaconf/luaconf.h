@@ -243,7 +243,7 @@ void lupi_printstring(const char* str);
 #define luai_writeline() lupi_printstring("\n")
 #endif
 
-#define luai_writestringerror(s, p) lupi_printstring(s) //TODO the format parameter!
+#define luai_writestringerror(s, p) lupi_printstring(s); lupi_printstring(p); luai_writeline() //TODO the format parameter!
 #endif
 //END TOMSCI
 
