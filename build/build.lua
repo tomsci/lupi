@@ -159,11 +159,14 @@ end
 function build_kernel()
 	local sysIncludes = {
 		"k/inc",
+		"userinc/lupi",
 	}
 	local sources = {
 		"k/boot.c",
 		"k/debug.c",
 		"k/pageAllocator.c",
+		"k/process.c",
+		"k/svc.c",
 	}
 	for _, src in ipairs(config.extraKernelSources or {}) do
 		table.insert(sources, src)
@@ -171,6 +174,7 @@ function build_kernel()
 	local userIncludes = {
 		"-isystem "..qrp("userinc"),
 		"-I "..qrp("luaconf"),
+		"-isystem "..qrp("lua"),
 	}
 	if config.extraStdInc then
 		table.insert(userIncludes, 1, "-isystem "..qrp(config.extraStdInc))
@@ -180,7 +184,7 @@ function build_kernel()
 	end
 
 	local includes = {}
-	if config.klua then
+	if config.klua or config.ulua then
 		for _,src in ipairs(luaSources) do
 			table.insert(sources, { path = src, user = true })
 		end
@@ -192,7 +196,16 @@ function build_kernel()
 			table.insert(sources, { path = "usersrc/memcmp_arm.S", user = true })
 		end
 		table.insert(sources, { path = "usersrc/crt.c", user = true })
-		table.insert(includes, "-DKLUA")
+		if config.klua then
+			table.insert(includes, "-DKLUA")
+			table.insert(userIncludes, "-DKLUA")
+		else -- ulua
+			table.insert(sources, mallocSource)
+		end
+	end
+	if not config.klua then
+		table.insert(sources, { path = "usersrc/ulua.c", user = true })
+		table.insert(sources, { path = "usersrc/uexec.c", user = true })
 	end
 
 	if config.include then
@@ -231,6 +244,7 @@ function build_kernel()
 		table.insert(includes, "-isystem "..qrp("userinc"))
 		table.insert(includes, "-I "..qrp("luaconf"))
 		table.insert(includes, "-isystem "..qrp("lua"))
+		table.insert(includes, "-isystem "..qrp("k/inc"))
 
 		local obj = compilec({
 			path = "usersrc/klua.c",
@@ -256,7 +270,7 @@ function build_kernel()
 			quotedObjs[i] = qrp(obj)
 		end
 		local out = qrp("bin/lupik")
-		local cmd = string.format("%s -g -o %s %s ", config.cc, out, join(objs))
+		local cmd = string.format("%s -arch i386 -g -o %s %s ", config.cc, out, join(objs))
 		exec(cmd)
 	else
 		--# The proper code - link time!
@@ -265,13 +279,14 @@ function build_kernel()
 		for i, obj in ipairs(objs) do
 			args[i] = qrp(obj)
 		end
-		if config.klua then
+		if config.klua or config.ulua then
 			--# I need your clothes, your boots and your run-time EABI helper functions
 			--# TODO fix hardcoded path!
 			table.insert(args, "/Users/tomsci/Documents/gcc-arm/gcc-arm-none-eabi-4_8-2013q4/lib/gcc/arm-none-eabi/4.8.3/armv6-m/libgcc.a")
 		end
 		--table.insert(args, "-Ttext 0x8000 -Tbss 0x28000")
-		table.insert(args, "-Ttext 0xF8008000")
+		-- The only BSS we have is in malloc.c, userside, so we can set to a user address
+		table.insert(args, "-Ttext 0xF8008000 -Tbss 0x00007000")
 		local cmd = string.format("%s %s -o %s", config.ld, join(args), qrp(elf))
 		local ok = exec(cmd)
 		if not ok then error("Link failed!") end
@@ -326,6 +341,22 @@ luaSources = {
 luaModules = {
 	"modules/test.lua",
 	"modules/interpreter.lua",
+}
+
+mallocSource = {
+	path = "usersrc/malloc.c",
+	user = true,
+	copts = {
+		"-DHAVE_MMAP=0",
+		"-DHAVE_MREMAP=0",
+		"-DHAVE_MORECORE=1",
+		"-DMORECORE=sbrk",
+		"-DUSE_BUILTIN_FFS=1",
+		"-DLACKS_UNISTD_H",
+		"-DLACKS_SYS_PARAM_H",
+		"-DNO_MALLOC_STATS=1", -- Avoids fprintf dep
+		"-DMALLOC_FAILURE_ACTION=", -- no errno
+	},
 }
 
 function build_lua()

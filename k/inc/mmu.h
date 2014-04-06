@@ -1,42 +1,7 @@
 #ifndef MMU_H
 #define MMU_H
 
-#include <k.h>
-
-/*
-			Physical			Virtual
-
-RW
-InitVectors	00000000-00000040						(preset by pi to all jump to 0x8000)
-PageAlloctr	00020000-00041000	F0020000-F0041000	(132kB)
-User PDEs	00100000-00200000	F0100000-F0200000	(1MB)
-Processes	00200000-00300000	F0200000-F0300000	(1MB)
-Kern PDEs	00300000-00400000	F0300000-F0400000	(1MB)
-
-Lua heap	00400000-...?							TEMPORARY!
-
-
-Boring		00000000-00008000	- 					(ATAGS, earlyboot stack, 32k)
-
-
-Section Zero:
-
-Guard		-----------------	F8000000-F8001000	(4k)
-Abort stack	00004000-00005000	F8001000-F8002000	(4k)
-Guard		-----------------	F8002000-F8003000	(4k)
-IRQ stack	00005000-00006000	F8003000-F8004000	(4k)
-Guard		-----------------	F8004000-F8005000	(4k)
-Kern stack	00006000-00008000	F8005000-F8007000	(8k)
-Guard		-----------------	F8007000-F8008000	(4k)
-Code		00008000-00028000	F8008000-F8028000	(128k)
-Kern PDE	00028000-0002C000	F8028000-F802C000	(16k)
-Sect 0 PTE	00003000-00004000	F802C000-F802D000	(4k)
-Procs PTE	dontcare-dontcare	F802D000-F802E000	(4k)
-Unused		-----------------	F802E000-F8080000
-PageAlloctr	0002C000-dontcare	F8080000-F8100000	(512k)
-
-Processes	dontcare-dontcare	F8100000-F8200000	(1 MB)
-*/
+#include <stddef.h>
 
 #define MB *1024*1024
 #define KSectionShift 20
@@ -49,45 +14,71 @@ Processes	dontcare-dontcare	F8100000-F8200000	(1 MB)
 #define PTE_IDX(virtAddr)	(((virtAddr) & KSectionMask) >> KPageShift)
 #define PAGE_ROUND(addr)	((addr + KPageSize - 1) & ~(KPageSize-1))
 
-#define KSectionZero		0xF8000000u
+#define PDE_FOR_PROCESS(p) (((uintptr)(p)) | 0x00200000) // Whee for crazy hacks
+#define PT_FOR_PROCESS(p, sectionNum) ((uint32*)(KProcessPtBase | (indexForProcess(p) << KSectionShift) | (sectionNum << KPageShift)))
 
-#define KPhysicalSect0Pte	0x00003000u
-#define KSectionZeroPte		0xF802C000u
+// masks off all bits except those that distinguish one Process from another
+#define MASKED_PROC_PTR(p) (((uintptr)(p)) & 0x000FF000)
 
-#define KPhysicalPdeBase	0x00028000u
-#define KKernelPdeBase		0xF8028000u
-
-#define KPhysicalStackBase	0x00006000u
-#define KKernelStackBase	0xF8005000u
-#define KKernelStackSize	0x00002000u // 8kB
-
-#define KPhysicalCodeBase	0x00008000u
-#define KKernelCodeBase		0xF8008000u
-#define KKernelCodesize		0x00020000
-
-#define KPhysicalAbortStackBase	0x00004000u
-#define KPhysicalIrqStackBase	0x00005000u
-
-#define KAbortStackBase		0xF8001000u
-#define KIrqStackBase		0xF8003000u
-
-#define KPhysPageAllocator	0x0002C000u
-#define KPageAllocatorAddr	0xF8080000u
-
-#define KProcessesBase		0xF8100000u
-#define KProcessesPte		0xF802D000u
-
-
-//////
+#define KERN_PT_FOR_PROCESS_PTS(p) (KKernPtForProcPts | MASKED_PROC_PTR(p))
 
 typedef struct PageAllocator PageAllocator;
 
 void mmu_init();
 void mmu_enable(uintptr returnAddr);
 void mmu_mapSect0Data(uintptr virtualAddress, uintptr physicalAddress, int size);
-void mmu_mapSection(PageAllocator* pa, uintptr virtualAddress);
-void mmu_mapSectionAsPages(PageAllocator* pa, uintptr virtualAddress, uintptr pteAddr);
-void mmu_mapPageInSection(PageAllocator* pa, uint32* pte, uintptr virtualAddress);
+
+/*
+ * Maps 1MB of physically contiguous memory in the top-level PDE at the given virtual address.
+ */
+uintptr mmu_mapSectionContiguous(PageAllocator* pa, uintptr virtualAddress, uint8 type);
+
+
+/*
+ * Let 'PTS' be the section where the page table for the new section is going to go.
+ * This function does 3 things.
+ * 1) It allocates a physical page to be a page table, and maps this into PTS at pteAddr (using PTS's page table, 'ptsPt').
+ * 2) It tells the top-level PDE that virtualAddress is a 1MB section defined by the newly-allocated
+ *    page table.
+ * 3) zeros the new page table so all of the section starts out unmapped
+ */
+
+bool mmu_mapSection(PageAllocator* pa, uintptr sectionAddress, uintptr ptAddress, uint32* ptsPt);
+
+/*
+ * Convenience function to create a new section whose page table is in section zero and is called
+ * '<sectionName>_pt'.
+ */
+#define mmu_createSection(pa, sectionName) \
+	mmu_mapSection(pa, sectionName, sectionName ## _pt, (uint32*)KSectionZeroPt)
+
+/*
+ * Allocates a new physical page with the specified type, and maps it into the section whose page
+ * table is located at 'pt', giving the page the virtual address 'virtualAddress'. virtualAddress
+ * really better point into the section given by pt otherwise BAD THINGS will happen.
+ * Returns the physical address of the new page
+ */
+uintptr mmu_mapPageInSection(PageAllocator* pa, uint32* pt, uintptr virtualAddress, uint8 type);
+
+bool mmu_createUserSection(PageAllocator* pa, Process* p, int sectionIdx);
+
+/*
+ * Map pages into the user process p. Will call mmu_createUserSection if necessary.
+ */
+bool mmu_mapPagesInProcess(PageAllocator* pa, Process* p, uintptr virtualAddress, int numPages);
+
+/*
+ * Pages need not be in same section, although behaviour is
+ * undefined if any of the PTs involved don't actually exist
+ */
+void mmu_unmapPagesInProcess(PageAllocator* pa, Process* p, uintptr virtualAddress, int numPages);
+
 void mmu_finishedUpdatingPageTables();
+
+/*
+ * Sets TTBR0 and contextId register to the values appropriate for process p. Also sets
+ * TheSuperPage->currentProcess to p.
+ */
+void switch_process(Process* p);
 
 #endif

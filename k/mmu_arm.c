@@ -1,5 +1,6 @@
 #include <k.h>
 #include <mmu.h>
+#include <arm.h>
 #include <pageAllocator.h>
 
 /*
@@ -11,7 +12,7 @@
  */
 
 #define TTBCR_N 2 // Max user address space = 1GB, 1024 PDEs
-#define KNumUserPdes 1024
+#define KMaxUserAddress 0x40000000
 
 
 //static uint32* getPageDirectoryForProcess(uint processIdx) {
@@ -50,9 +51,10 @@
 // 11 10  9  8 | 7 6 5 4 | 3 2 1 0
 // ------------|---------|---------
 // nG  S APX --TEX-- -AP | C B 1 XN
-#define KPteKernelCode			0x00000212 // C=B=0, XN=0, APX=b101, S=0, TEX=0, nG=0
+#define KPteKernelCode			0x00000222 // C=B=0, XN=0, APX=b110, S=0, TEX=0, nG=0
 #define KPteKernelData			0x00000013 // C=B=0, XN=1, APX=b001, S=0, TEX=0, nG=0
 //#define KPtePeripheralMem		0x00000093 // C=B=0, XN=1, APX=b001, S=0, TEX=b010, nG=0
+#define KPteUserData			0x00000833 // C=B=0, XN=1, APX=b011, S=0, TEX=0, nG=1
 
 
 // Control register bits, see p176
@@ -85,7 +87,8 @@ void NAKED mmu_setControlRegister(uint32 controlRegister, uintptr returnAddr) {
 	//TODO returnAddr will need to reenable instruction cache (and maybe data cache)
 }
 
-#define zeroPages(ptr, n) \
+// Macro for when we're too early to call zeroPage()
+#define init_zeroPages(ptr, n) \
 	for (uint32 *p = ptr, *end = (uint32*)(((uint8*)ptr) + (n << KPageShift)); p != end; p++) {\
 		*p = 0; \
 	}
@@ -100,7 +103,7 @@ If it does, I've confused the fact that the PTE offsets refer to the VIRTUAL add
 void mmu_init() {
 	uint32* pde = (uint32*)KPhysicalPdeBase;
 	// Default no access
-	zeroPages(pde, 4);
+	init_zeroPages(pde, 4);
 
 	// Map peripheral memory as a couple of sections
 	int peripheralMemIdx = KPeripheralBase >> KAddrToPdeIndexShift;
@@ -109,9 +112,9 @@ void mmu_init() {
 	}
 
 	// Map section zero
-	pde[KSectionZero >> KAddrToPdeIndexShift] = KPhysicalSect0Pte | KPdePageTable;
-	uint32* sectPte = (uint32*)KPhysicalSect0Pte;
-	zeroPages(sectPte, 1);
+	pde[KSectionZero >> KAddrToPdeIndexShift] = KPhysicalSect0Pt | KPdePageTable;
+	uint32* sectPte = (uint32*)KPhysicalSect0Pt;
+	init_zeroPages(sectPte, 1);
 	// Don't strictly need to set up these next two yet, but might as well.
 	sectPte[PTE_IDX(KAbortStackBase)] = KPhysicalAbortStackBase | KPteKernelData;
 	sectPte[PTE_IDX(KIrqStackBase)] = KPhysicalIrqStackBase | KPteKernelData;
@@ -130,17 +133,18 @@ void mmu_init() {
 		sectPte[PTE_IDX(KKernelPdeBase) + i] = phys | KPteKernelData;
 	}
 
-	// And the section zero pte
-	sectPte[PTE_IDX(KSectionZeroPte)] = KPhysicalSect0Pte | KPteKernelData;
+	// And make sure we can the section zero pte ourselves once the MMU is on
+	sectPte[PTE_IDX(KSectionZeroPt)] = KPhysicalSect0Pt | KPteKernelData;
 
 	SetTTBR(0, KPhysicalPdeBase);
 	SetTTBR(1, KPhysicalPdeBase);
-	SetTTBCR(0);
-	// Set DACR to get the hell out of the way
-	uint32 everythingIsPermitted = 0xFFFFFFFF;
-	asm("MCR p15, 0, %0, c3, c0, 0" : : "r" (everythingIsPermitted));
+	SetTTBCR(TTBCR_N);
+	// Set DACR to get the hell out of the way and don't screw with our access permissions
+	uint32 clientMeUp = 0x1;
+	asm("MCR p15, 0, %0, c3, c0, 0" : : "r" (clientMeUp));
 }
 
+#if 0
 void mmu_identity_init() {
 	uint32* pde = (uint32*)KPhysicalPdeBase;
 
@@ -161,6 +165,7 @@ void mmu_identity_init() {
 	uint32 everythingIsPermitted = 0xFFFFFFFF;
 	asm("MCR p15, 0, %0, c3, c0, 0" : : "r" (everythingIsPermitted));
 }
+#endif
 
 static void mmu_doMapPagesInSection(uintptr virtualAddress, uint32* sectPte, uintptr physicalAddress, int numPages) {
 	for (int i = 0; i < numPages; i++) {
@@ -170,34 +175,42 @@ static void mmu_doMapPagesInSection(uintptr virtualAddress, uint32* sectPte, uin
 }
 
 void mmu_mapSect0Data(uintptr virtualAddress, uintptr physicalAddress, int npages) {
-	uint32* sectPte = (uint32*)KSectionZeroPte;
-	mmu_doMapPagesInSection(virtualAddress, sectPte, physicalAddress, npages);
+	uint32* sectPt = (uint32*)KSectionZeroPt;
+	mmu_doMapPagesInSection(virtualAddress, sectPt, physicalAddress, npages);
 }
 
-void mmu_mapSection(PageAllocator* pa, uintptr virtualAddress) {
+uintptr mmu_mapSectionContiguous(PageAllocator* pa, uintptr virtualAddress, uint8 type) {
 	// To map a whole section we need 256 contiguous pages *aligned on a section boundary*
-	uintptr phys = pageAllocator_allocAligned(pa, KPageUsed, KPagesInSection, 1<<KSectionShift);
-	uint32* pde = (uint32*)KKernelPdeBase;
-	pde[virtualAddress >> KAddrToPdeIndexShift] = phys | KPdeSectionKernelData;
+	uintptr phys = pageAllocator_allocAligned(pa, type, KPagesInSection, 1<<KSectionShift);
+	if (phys) {
+		uint32* pde = (uint32*)KKernelPdeBase;
+		pde[virtualAddress >> KAddrToPdeIndexShift] = phys | KPdeSectionKernelData;
+	}
+	return phys;
 }
 
-void mmu_mapSectionAsPages(PageAllocator* pa, uintptr virtualAddress, uintptr pteAddr) {
-	// Get a shiny new page from the allocator, to hold the page table
-	uint32 pageTablePhysical = pageAllocator_alloc(pa, KPageUsed, 1);
-	// Map the PTE page into section zero (pteAddr is assumed to be in section zero)
-	mmu_mapSect0Data(pteAddr, pageTablePhysical, KPageSize);
+bool mmu_mapSection(PageAllocator* pa, uintptr sectionAddress, uintptr ptAddress, uint32* ptsPt) {
+	// Map a page for the section pt into the ptsPt
+	uint32 pageTablePhysical = mmu_mapPageInSection(pa, ptsPt, ptAddress, KPageSect0);
+	if (!pageTablePhysical) return false;
+
 	// Now update so we can write to the new PTE page
 	mmu_finishedUpdatingPageTables();
-	zeroPages((uint32*)pteAddr, 1); // The section starts out with all pages unmapped
+	zeroPage((uint32*)ptAddress); // The section starts out with all pages unmapped
 
-	// And update the kerk PDE with this PTE
+	// And update the kern PDE with this PT
 	uint32* pde = (uint32*)KKernelPdeBase;
-	pde[virtualAddress >> KAddrToPdeIndexShift] = pageTablePhysical | KPdePageTable;
+	pde[sectionAddress >> KAddrToPdeIndexShift] = pageTablePhysical | KPdePageTable;
+
+	return true;
 }
 
-void mmu_mapPageInSection(PageAllocator* pa, uint32* pte, uintptr virtualAddress) {
-	uint32 newPagePhysical = pageAllocator_alloc(pa, KPageUsed, 1);
-	pte[PTE_IDX(virtualAddress)] = newPagePhysical | KPteKernelData;
+uintptr mmu_mapPageInSection(PageAllocator* pa, uint32* pt, uintptr virtualAddress, uint8 type) {
+	uint32 newPagePhysical = pageAllocator_alloc(pa, type, 1);
+	if (newPagePhysical) {
+		pt[PTE_IDX(virtualAddress)] = newPagePhysical | KPteKernelData;
+	}
+	return newPagePhysical;
 }
 
 void NAKED mmu_finishedUpdatingPageTables() {
@@ -213,3 +226,95 @@ void mmu_freePagesForProcess(Process* p) {
 	// Then, free up the pages used by the page tables
 }
 */
+
+bool mmu_createUserSection(PageAllocator* pa, Process* p, int sectionIdx) {
+	// We need a new page for the user PT for this section.
+	uint32* newPt = PT_FOR_PROCESS(p, sectionIdx);
+	//printk("+mmu_createUserSection %d newPt=%p\n", sectionIdx, newPt);
+	uint32* kernPt = KERN_PT_FOR_PROCESS_PTS(p);
+	uint32 ptPhysical = mmu_mapPageInSection(pa, kernPt, (uintptr)newPt, KPageUserPt);
+	if (!ptPhysical) return false;
+	mmu_finishedUpdatingPageTables();
+	zeroPage(newPt); // Default no access to anything
+	// Now add this page to the user PDE
+	uint32* pde = (uint32*)PDE_FOR_PROCESS(p);
+	pde[sectionIdx] = ptPhysical | KPdePageTable;
+	//printk("-mmu_createUserSection %d\n", sectionIdx);
+	return true;
+}
+
+bool mmu_mapPagesInProcess(PageAllocator* pa, Process* p, uintptr virtualAddress, int numPages) {
+	//printk("mmu_mapPagesInProcess va=%p n=%d\n", (void*)virtualAddress, numPages);
+	ASSERT(numPages > 0);
+	// User processes can only map up to 1GB due to how we've configured TTBCR
+	ASSERT(virtualAddress <= KMaxUserAddress - numPages * KPageSize);
+	int sectionIdx = virtualAddress >> KSectionShift;
+	const uintptr endAddr = virtualAddress + (numPages << KPageShift);
+	int numSections = ((endAddr-1) >> KSectionShift) - sectionIdx + 1;
+	uint32* pde = (uint32*)PDE_FOR_PROCESS(p);
+	// Make sure all required sections are created
+	for (int i = sectionIdx; i < sectionIdx + numSections; i++) {
+		if (!pde[i]) {
+			// PT hasn't been created yet
+			bool ok = mmu_createUserSection(pa, p, i);
+			if (!ok) return false;
+		}
+	}
+	uint32* const pt = PT_FOR_PROCESS(p, sectionIdx);
+	// The PTs are contiguous so we don't need to worry about whether we cross sections - just
+	// keep incrementing pte until we're done
+	uint32* pte = pt + PTE_IDX(virtualAddress);
+	uint32* endPte = pte + numPages;
+	while (pte != endPte) {
+		uint32 newPagePhysical = pageAllocator_alloc(pa, KPageUser, 1);
+		if (!newPagePhysical) {
+			// Erk, better cleanup
+			mmu_unmapPagesInProcess(pa, p, virtualAddress, pte - pt);
+			return false;
+		}
+		*pte = newPagePhysical | KPteUserData;
+		pte++;
+	}
+	ASSERT(TheSuperPage->currentProcess == p); // Otherwise we can't rely on TTBR0 to give us access to virtualAddress
+	mmu_finishedUpdatingPageTables();
+	// All user memory starts out zeroed; it's just how we roll
+	for (uintptr ptr = virtualAddress; ptr != endAddr; ptr += KPageSize) {
+		zeroPage((void*)ptr);
+	}
+	return true;
+
+}
+
+void mmu_unmapPagesInProcess(PageAllocator* pa, Process* p, uintptr virtualAddress, int numPages) {
+	ASSERT(numPages >= 0);
+	ASSERT(virtualAddress <= KMaxUserAddress - numPages * KPageSize);
+	int sectionIdx = virtualAddress >> KSectionShift;
+	uint32* pde = (uint32*)PDE_FOR_PROCESS(p);
+	ASSERT(pde[sectionIdx]); // PT must be created
+	uint32* pt = PT_FOR_PROCESS(p, sectionIdx);
+	uint32* pte = pt + PTE_IDX(virtualAddress);
+	uint32* endPte = pte + numPages;
+	while (pte != endPte) {
+		uintptr physicalAddress = *pte & ~(KPageSize - 1);
+		pageAllocator_free(pa, physicalAddress);
+		pte++;
+	}
+	//TODO invalidate caches, TLB
+}
+
+void switch_process(Process* p) {
+	uint32 asid = indexForProcess(p);
+
+	SetTTBR(0, p->pdePhysicalAddress);
+
+	// Set context ID register
+	uint32 zero = 0;
+	DSB_inline(zero);
+	asm("MCR p15, 0, %0, c13, c0, 1" : : "r" (asid));
+	ISB_inline(zero);
+
+	TheSuperPage->currentProcess = p;
+	// I think we're done - setting context ID does all the flushing required
+	// P is for plenty!
+	TheSuperPage->currentThread = firstThreadForProcess(p);
+}

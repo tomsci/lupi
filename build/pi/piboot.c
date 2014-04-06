@@ -1,3 +1,4 @@
+#include <k.h>
 #include <mmu.h>
 #include <arm.h>
 
@@ -18,8 +19,21 @@ void NAKED _start() {
 	// Early stack grows down from 0x8000. Code is at 0x8000 up
 	asm("MOV sp, #0x8000");
 
+#ifdef NON_SECURE
+	// Drop to non-secure mode by setting Secure Config Register
+	// Must be done before mmu_init and mmu_setControlRegister otherwise we'll set up the
+	// Secure config registers instead of the nonsecure
+	asm("MOV r0, %0" : : "i" (KScrAW | KScrFW | KScrNS));
+	asm("MCR p15, 0, r0, c1, c1, 0");
+#endif
+
 	asm("BL mmu_init");
 	asm("BL makeCrForMmuEnable"); // r0 is now CR
+	/* This next instruction fetches the virtual address (ie where we told the linker we were
+	 * going to put stuff when we built the kernel) of the next instruction. When we enable the
+	 * MMU all our code will magically move from physical addresses at 0x8000 to 0xF8008000,
+	 * therefore we can't simply rely on LR or a PC-relative branch.
+	 */
 	asm("LDR r1, =.mmuEnableReturn");
 	asm("BL mmu_setControlRegister");
 	asm(".mmuEnableReturn:");
@@ -27,19 +41,19 @@ void NAKED _start() {
 	// the linker thought it was (ie KKernelCodeBase not KPhysicalCodeBase)
 
 	// Set r13_und
-	asm("MSR cpsr_c, %0" : : "i" (KPsrModeUnd | KPsrIrqDisable | KPsrFiqDisable));
+	ModeSwitch(KPsrModeUnd | KPsrIrqDisable | KPsrFiqDisable);
 	asm("LDR sp, .abtStack");
 
 	// Set r13_abt
-	asm("MSR cpsr_c, %0" : : "i" (KPsrModeAbort | KPsrIrqDisable | KPsrFiqDisable));
+	ModeSwitch(KPsrModeAbort | KPsrIrqDisable | KPsrFiqDisable);
 	asm("LDR sp, .abtStack");
 
 	// Set r13_irq
-	asm("MSR cpsr_c, %0" : : "i" (KPsrModeIrq | KPsrIrqDisable | KPsrFiqDisable));
+	ModeSwitch(KPsrModeIrq | KPsrIrqDisable | KPsrFiqDisable);
 	asm("LDR sp, .irqStack");
 
 	// And back to supervisor mode to set our MMU-enabled stack address
-	asm("MSR cpsr_c, %0" : : "i" (KPsrModeSvc | KPsrIrqDisable | KPsrFiqDisable));
+	ModeSwitch(KPsrModeSvc | KPsrIrqDisable | KPsrFiqDisable);
 	asm("LDR sp, .svcStack");
 
 	// Set the Vector Base Address Register (§3.2.43)
@@ -114,6 +128,8 @@ NOINLINE NAKED void PUT32(uint32 addr, uint32 val) {
 }
 
 void NAKED hang() {
+	asm("MOV r0, #0");
+	WFI(r0); // Stops us spinning like crazy
 	asm("B hang");
 }
 
@@ -151,8 +167,14 @@ void NAKED prefetchAbort() {
 	hang();
 }
 
-void svc() {
-	//TODO
+void NAKED svc() {
+	// For now, save onto supervisor mode stack.
+	// In due course, should be put in TheSuperPage->currentThread->savedRegisters
+	asm("PUSH {r4-r12, r14}");
+	// r0, r1, r2 already have the correct data in them for handleSvc()
+	asm("BL handleSvc");
+
+	asm("POP {r4-r12, r14}");
 	asm("MOVS pc, r14");
 }
 

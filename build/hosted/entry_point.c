@@ -29,7 +29,7 @@ byte getch() {
 }
 
 void hang() {
-	abort();
+	exit(0);
 }
 
 int main(int argc, char* argv[]) {
@@ -44,7 +44,11 @@ int main(int argc, char* argv[]) {
 	t.c_cc[VTIME] = 0;
 	tcsetattr(fileno(stdin), TCSANOW, &t);
 
-	printk(LUPI_VERSION_STRING "\n");
+	printk(LUPI_VERSION_STRING);
+	const char* lupi = " \xF0\x9F\x8C\x99\xF0\x9D\x9B\x91\n";
+	while (*lupi) {
+		putbyte(*lupi++);
+	}
 
 	runUserTests();
 	//printk("Ok.\n");

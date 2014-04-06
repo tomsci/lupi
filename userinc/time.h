@@ -3,7 +3,7 @@
 
 typedef long time_t;
 
-time_t time(time_t *tloc) {
+static time_t time(time_t *tloc) {
 	//TODO
 	if (tloc) *tloc = -1;
 	return -1;

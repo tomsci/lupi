@@ -1,13 +1,12 @@
 // Support fns for lua when it's being run in the kernel
+// This file is considered a user source, but it also has access to kernel headers
 #include <lua.h>
 #include <lualib.h>
 #include <lauxlib.h>
 #include <string.h>
+#include <stdlib.h>
+#include <k.h>
 
-// This file is considered a user source, so it doesn't have access to any of the kernel headers
-// (except for the platform -include file)
-// Therefore any kernel functions (like printk) must be forward-declared rather than #included
-void printk(const char* fmt, ...) ATTRIBUTE_PRINTF(1, 2);
 void putbyte(byte b);
 byte getch();
 

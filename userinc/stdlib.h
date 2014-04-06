@@ -17,4 +17,7 @@ static inline char* getenv(const char* name) {
 // Provided by crt.c
 long strtol(const char *restrict str, char **restrict endptr, int base);
 
+// Provided by ulua.c (or klua.c or the hosted environment)
+void abort() __attribute__((noreturn));
+
 #endif

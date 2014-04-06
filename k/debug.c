@@ -26,9 +26,13 @@ static char* uintToStr(ulong val, char* buf, int buflen) {
 	char* result = buf + buflen - 1;
 	*result = 0;
 	do {
-		int i = val % 10;
+//		int i = val % 10;
+//		*(--result) = '0' + i;
+//		val = val / 10;
+		ulong newVal = val / 10;
+		int i = val - (newVal * 10);
 		*(--result) = '0' + i;
-		val = val / 10;
+		val = newVal;
 	} while (val && result != buf);
 	return result;
 }

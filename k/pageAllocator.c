@@ -85,7 +85,16 @@ uintptr pageAllocator_allocAligned(PageAllocator* allocator, uint8 type, int num
 	return KPhysicalRamBase + (idx << KPageShift);
 }
 
-void pageAllocator_doFree(PageAllocator* allocator, int idx, int num) {
+
+int pageAllocator_pagesInUse(PageAllocator* pa) {
+	int result = 0;
+	for (int i = 0; i < pa->numPages; i++) {
+		if (pa->pageInfo[i]) result++;
+	}
+	return result;
+}
+
+static void pageAllocator_doFree(PageAllocator* allocator, int idx, int num) {
 	uint8* p = &allocator->pageInfo[idx];
 	const uint8* endp = p + num;
 	for (; p != endp; p++) {
@@ -96,3 +105,7 @@ void pageAllocator_doFree(PageAllocator* allocator, int idx, int num) {
 	}
 }
 
+void pageAllocator_free(PageAllocator* pa, uintptr addr) {
+	int idx = addr >> KPageShift;
+	pageAllocator_doFree(pa, idx, 1);
+}

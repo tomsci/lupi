@@ -2,11 +2,15 @@
 #define LUPI_BUILD_PI_H
 
 #include <stddef.h>
+#include <memmap.h>
 
 #define ARM
 #define ARMV6
 #define ARM1176
 #define BCM2835
+
+#define NON_SECURE // Ie we do drop to NS mode
+
 
 #define KPeripheralPhys		0x20000000
 #define KPeripheralSize		0x00300000

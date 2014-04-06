@@ -61,7 +61,7 @@
 /* Begin PBXLegacyTarget section */
 		DB04757118D995A9006A8090 /* pi */ = {
 			isa = PBXLegacyTarget;
-			buildArgumentsString = "-c \"lua ./build/build.lua hosted\"";
+			buildArgumentsString = "-c \"lua ./build/build.lua pi\"";
 			buildConfigurationList = DB04757218D995AA006A8090 /* Build configuration list for PBXLegacyTarget "pi" */;
 			buildPhases = (
 			);

@@ -46,6 +46,4 @@ typedef __builtin_va_list va_list;
 
 #define offsetof(type, member)	__builtin_offsetof(type, member)
 
-#define abort()					__builtin_abort()
-
 #endif

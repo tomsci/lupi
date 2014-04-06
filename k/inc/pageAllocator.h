@@ -2,7 +2,14 @@
 #define PAGEALLOCATOR_H
 
 #define KPageFree 0 // must be zero
-#define KPageUsed 1 // TODO more info needed here I think!
+#define KPageSect0 1
+#define KPageAllocator 2
+#define KPageProcess 3
+#define KPageUserPde 4
+#define KPageUserPt 5
+#define KPageUser 6
+#define KPageKluaHeap 7
+#define KPageKernPtForProcPts 8
 
 typedef struct PageAllocator {
 	int numPages;
@@ -12,8 +19,8 @@ typedef struct PageAllocator {
 
 void pageAllocator_init(PageAllocator* allocator, int numPages);
 uintptr pageAllocator_allocAligned(PageAllocator* allocator, uint8 type, int num, int alignment);
-void pageAllocator_doFree(PageAllocator* allocator, int idx, int num);
-
+void pageAllocator_free(PageAllocator* pa, uintptr addr);
+int pageAllocator_pagesInUse(PageAllocator* allocator);
 
 // Returns the size in bytes of a PageAllocator object that is configured to track numPages's worth
 // of pages.

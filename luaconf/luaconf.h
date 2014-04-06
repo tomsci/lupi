@@ -203,6 +203,8 @@
 */
 #define LUA_IDSIZE	60
 
+#ifdef KLUA //TOMSCI
+
 void printk(const char* fmt, ...) ATTRIBUTE_PRINTF(1, 2); //TOMSCI
 
 /*
@@ -230,6 +232,21 @@ void printk(const char* fmt, ...) ATTRIBUTE_PRINTF(1, 2); //TOMSCI
 */
 #define luai_writestringerror(s, p) printk(s, p)
 //END TOMSCI
+
+//BEGIN TOMSCI
+#else
+//TODO
+
+void lupi_printstring(const char* str);
+#if defined(LUA_LIB) || defined(lua_c)
+#define luai_writestring(s,l) lupi_printstring(s)
+#define luai_writeline() lupi_printstring("\n")
+#endif
+
+#define luai_writestringerror(s, p) lupi_printstring(s) //TODO the format parameter!
+#endif
+//END TOMSCI
+
 
 
 /*
