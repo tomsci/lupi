@@ -13,10 +13,10 @@ bool process_init(Process* p) {
 	// Assume the Process page itself is already mapped, but nothing else necessarily is
 	p->pid = TheSuperPage->nextPid++;
 	uint32* pde = (uint32*)PDE_FOR_PROCESS(p);
-	uint32* kernPtForTheUserPts = KERN_PT_FOR_PROCESS_PTS(p);
+	uint32* kernPtForTheUserPts = (uint32*)KERN_PT_FOR_PROCESS_PTS(p);
 	if (!p->pdePhysicalAddress) {
 		p->pdePhysicalAddress = mmu_mapPageInSection(Al, (uint32*)KProcessesPdeSection_pt, (uintptr)pde, KPageUserPde);
-		uintptr userPtsStart = PT_FOR_PROCESS(p, 0);
+		uintptr userPtsStart = (uintptr)PT_FOR_PROCESS(p, 0);
 		mmu_mapSection(Al, userPtsStart, (uintptr)kernPtForTheUserPts, (uint32*)KKernPtForProcPts_pt);
 		//TODO check return code
 	}
