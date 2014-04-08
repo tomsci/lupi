@@ -51,3 +51,20 @@ function main()
 		end
 	end
 end
+
+
+-- This is only used (when on pi) to validate the output of running hosted luac.
+function dump(modName)
+	local function printstring(str)
+		for i = 1, #str do
+			putch(str:byte(i))
+		end
+	end
+	local data = string.dump(getModuleFn(modName))
+	for i = 1, #data, 16 do
+		for j = 0, 15 do
+			printstring(string.format("%02x ", data:byte(i+j)))
+		end
+		print("")
+	end
+end

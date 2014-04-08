@@ -187,6 +187,32 @@ static int getch_lua(lua_State* L) {
 	return 1;
 }
 
+struct ModuleInfo {
+	const char* module;
+	int size;
+};
+
+static const char* readerFn(lua_State* L, void* data, size_t* size) {
+	struct ModuleInfo* info = (struct ModuleInfo*)data;
+	if (info->size == 0) return NULL;
+	*size = info->size;
+	info->size = 0;
+	return info->module;
+}
+
+static int getModuleFn_lua(lua_State* L) {
+	const char* modName = lua_tostring(L, 1);
+	int len;
+	const char* mod = getLuaModule(modName, &len);
+	struct ModuleInfo readerInfo = { mod, len };
+	int ret = lua_load(L, readerFn, &readerInfo, modName, NULL);
+	if (ret) {
+		// Error
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
 // A variant of interactiveLuaPrompt that lets us write the actual intepreter loop as a lua module
 void runLuaIntepreterModule() {
 #ifdef USE_HOST_MALLOC_FOR_LUA
@@ -203,12 +229,18 @@ void runLuaIntepreterModule() {
 		printk("No lua interpreter module!\n");
 		abort();
 	}
-	luaL_loadstring(L, mod);
+	int ret = luaL_loadstring(L, mod);
+	if (ret) {
+		printk("Error %d loading interpreter module!\n%s\n", ret, lua_tostring(L, lua_gettop(L)));
+		abort();
+	}
 	lua_call(L, 0, 0);
 	lua_pushcfunction(L, putch_lua);
 	lua_setglobal(L, "putch");
 	lua_pushcfunction(L, getch_lua);
 	lua_setglobal(L, "getch");
+	lua_pushcfunction(L, getModuleFn_lua);
+	lua_setglobal(L, "getModuleFn");
 	lua_getglobal(L, "main");
 	lua_call(L, 0, 0);
 	// Shouldn't return
