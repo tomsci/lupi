@@ -1,6 +1,8 @@
 #ifndef LUPI_K_H
 #define LUPI_K_H
 
+#include <std.h>
+
 #define LUPI_VERSION_STRING "LuPi 0.15"
 
 typedef unsigned long PhysAddr;

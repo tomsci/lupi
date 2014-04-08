@@ -3,7 +3,6 @@
 
 #define HOSTED
 
-#include <stddef.h>
 #include <memmap.h>
 
 extern void* kernelMemory;

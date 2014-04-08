@@ -1,5 +1,7 @@
 // Support fns for lua when it's being run in the kernel
 // This file is considered a user source, but it also has access to kernel headers
+#include <stddef.h>
+#define LUPI_STDDEF_H // Stop kernel redefining std stuff
 #include <lua.h>
 #include <lualib.h>
 #include <lauxlib.h>

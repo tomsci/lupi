@@ -1,7 +1,7 @@
 #ifndef MMU_H
 #define MMU_H
 
-#include <stddef.h>
+#include <std.h>
 
 #define MB *1024*1024
 #define KSectionShift 20
