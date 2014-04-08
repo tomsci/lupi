@@ -213,6 +213,12 @@ static int getModuleFn_lua(lua_State* L) {
 	return 1;
 }
 
+static int panicFn(lua_State* L) {
+	const char* str = lua_tostring(L, lua_gettop(L));
+	printk("\nLua panic: %s\n", str);
+	return 0;
+}
+
 // A variant of interactiveLuaPrompt that lets us write the actual intepreter loop as a lua module
 void runLuaIntepreterModule() {
 #ifdef USE_HOST_MALLOC_FOR_LUA
@@ -235,6 +241,7 @@ void runLuaIntepreterModule() {
 		printk("Error %d loading interpreter module!\n%s\n", ret, lua_tostring(L, lua_gettop(L)));
 		abort();
 	}
+	lua_atpanic(L, panicFn);
 	lua_call(L, 0, 0);
 	lua_pushcfunction(L, putch_lua);
 	lua_setglobal(L, "putch");

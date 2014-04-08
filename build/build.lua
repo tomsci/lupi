@@ -388,18 +388,6 @@ mallocSource = {
 	},
 }
 
-function build_lua()
-	local includes = {
-		"-isystem", qrp("userinc"),
-		"-I", qrp("luaconf"),
-	}
-
-	mkdir("bin/obj-"..config.name.."/lua")
-	for _, source in ipairs(luaSources) do
-		compilec(source, includes)
-	end
-end
-
 function generateLuaModulesSource()
 	local dirs = calculateUniqueDirsFromSources("bin/obj-"..config.name.."/", luaModules)
 	for dir, _ in pairs(dirs) do

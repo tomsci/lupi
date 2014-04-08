@@ -1,3 +1,5 @@
+#include <std.h>
+
 extern void dummy ( unsigned int );
 
 uint32 GET32(uint32 addr);

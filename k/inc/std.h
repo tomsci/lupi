@@ -1,5 +1,5 @@
-#ifndef LUPI_STDDEF_H
-#define LUPI_STDDEF_H
+#ifndef LUPI_STD_H
+#define LUPI_STD_H
 
 typedef signed char int8;
 typedef short int16;

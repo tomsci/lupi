@@ -1,7 +1,6 @@
 #ifndef LUPI_BUILD_PI_H
 #define LUPI_BUILD_PI_H
 
-#include <std.h>
 #include <memmap.h>
 
 #define ARM
