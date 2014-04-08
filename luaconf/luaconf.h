@@ -203,50 +203,43 @@
 */
 #define LUA_IDSIZE	60
 
-#ifdef KLUA //TOMSCI
 
-void printk(const char* fmt, ...) ATTRIBUTE_PRINTF(1, 2); //TOMSCI
-
+#if defined(LUACONF_FULL_FAT_STDIO) //TOMSCI
 /*
 @@ luai_writestring/luai_writeline define how 'print' prints its results.
 ** They are only used in libraries and the stand-alone program. (The #if
 ** avoids including 'stdio.h' everywhere.)
 */
 #if defined(LUA_LIB) || defined(lua_c)
-//BEGIN TOMSCI
-//#include <stdio.h>
-//#define luai_writestring(s,l)	fwrite((s), sizeof(char), (l), stdout)
-//#define luai_writeline()	(luai_writestring("\n", 1), fflush(stdout))
-#define luai_writestring(s,l) printk("%s", s)
-#define luai_writeline() printk("\n")
-//END TOMSCI
+#include <stdio.h>
+#define luai_writestring(s,l)	fwrite((s), sizeof(char), (l), stdout)
+#define luai_writeline()	(luai_writestring("\n", 1), fflush(stdout))
 #endif
 
 /*
 @@ luai_writestringerror defines how to print error messages.
 ** (A format string with one argument is enough for Lua...)
 */
-/*BEGIN TOMSCI
 #define luai_writestringerror(s,p) \
-	(fprintf(stderr, (s), (p)), fflush(stderr))
-*/
-#define luai_writestringerror(s, p) printk(s, p)
-//END TOMSCI
+(fprintf(stderr, (s), (p)), fflush(stderr))
 
 //BEGIN TOMSCI
+#elif defined(KLUA)
+
+void printk(const char* fmt, ...) ATTRIBUTE_PRINTF(1, 2);
+#define luai_writestring(s,l) printk("%s", s)
+#define luai_writeline() printk("\n")
+#define luai_writestringerror(s, p) printk(s, p)
+
 #else
-//TODO
 
 void lupi_printstring(const char* str);
-#if defined(LUA_LIB) || defined(lua_c)
 #define luai_writestring(s,l) lupi_printstring(s)
 #define luai_writeline() lupi_printstring("\n")
-#endif
-
 #define luai_writestringerror(s, p) lupi_printstring(s); lupi_printstring(p); luai_writeline() //TODO the format parameter!
+
 #endif
 //END TOMSCI
-
 
 
 /*
