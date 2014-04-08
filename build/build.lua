@@ -8,6 +8,7 @@ local cmdargs = {...}
 baseDir = "/Users/tomsci/Documents/lupi/"
 verbose = false
 listing = false
+preprocess = false
 config = nil
 
 local function loadConfig(c)
@@ -112,7 +113,7 @@ function compilec(source, extraArgs)
 		source = { path = source }
 	end
 
-	local overallOpts = source.listing and "-S" or "-c"
+	local overallOpts = preprocess and "-E" or source.listing and "-S" or "-c"
 	local sysOpts = (source.hosted or config.fullyHosted) and "-ffreestanding" or "-ffreestanding -nostdinc -nostdlib"
 	if listing then
 		--# Debug is required to do interleaved listing
@@ -123,7 +124,7 @@ function compilec(source, extraArgs)
 
 	local extraArgsString = join(extraArgs)
 
-	local suff = source.listing and ".s" or ".o"
+	local suff = preprocess and ".i" or source.listing and ".s" or ".o"
 	local obj = objForSrc(source.path, suff)
 	local output = "-o "..qrp(obj)
 	local opts = join {
@@ -286,6 +287,11 @@ function build_kernel()
 			local user = source.user and not config.fullyHosted --# Fully hosted config means user attribute has no real meaning, so is ignored in that case
 			table.insert(objs, compilec(source, user and userIncludes or includes))
 		end
+	end
+
+	if preprocess then
+		--# We're done
+		return
 	end
 
 	if config.link then
@@ -469,6 +475,8 @@ function run()
 			verbose = true
 		elseif a == "-l" or a == "--listing" then
 			listing = true
+		elseif a == "-p" or a == "--preprocess" then
+			preprocess = true
 		else
 			table.insert(platforms, a)
 		end
