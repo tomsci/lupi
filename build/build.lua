@@ -12,7 +12,8 @@ config = nil
 
 local function loadConfig(c)
 	local env = {
-		print = print,
+		print = print, error = error, ipairs = ipairs, pairs = pairs, table = table, string = string, os = os,
+		build = _G, -- Yeah yeah, hacky but gets the job done
 	}
 	local f = assert(loadfile(baseDir.."build/"..c.."/buildconfig.lua", nil, env))
 	f()
@@ -24,6 +25,14 @@ local function loadConfig(c)
 		config.objcopy = config.toolchainPrefix .. "objcopy"
 		config.objdump = config.toolchainPrefix .. "objdump"
 	end
+	config.name = c
+	if config.lua == nil then
+		config.lua = config.klua or config.ulua
+	end
+	if not config.link then
+		config.link = env.link
+	end
+
 	return env.config
 end
 
@@ -220,8 +229,6 @@ function build_kernel()
 	for dir, _ in pairs(dirs) do
 		mkdir(dir)
 	end
-	local outDir = "bin/" .. config.name .. "/"
-	mkdir(outDir)
 
 	local objs = {}
 	if config.entryPoint then
@@ -264,16 +271,12 @@ function build_kernel()
 		end
 	end
 
-	if config.name == "hosted" then
-		local quotedObjs = {}
-		for i, obj in ipairs(objs) do
-			quotedObjs[i] = qrp(obj)
-		end
-		local out = qrp("bin/lupik")
-		local cmd = string.format("%s -arch i386 -g -o %s %s ", config.cc, out, join(objs))
-		exec(cmd)
+	if config.link then
+		config.link(objs)
 	else
 		--# The proper code - link time!
+		local outDir = "bin/" .. config.name .. "/"
+		mkdir(outDir)
 		local elf = outDir .. "kernel.elf"
 		local args = {}
 		for i, obj in ipairs(objs) do
@@ -464,7 +467,6 @@ function run()
 			exec(cmd)
 		else
 			config = loadConfig(platform)
-			config.name = platform
 			build_kernel()
 			--build_lua()
 			for _,step in ipairs(config.buildSteps or {}) do
