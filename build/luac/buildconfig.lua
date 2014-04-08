@@ -6,7 +6,7 @@ config = {
 	fullyHosted = true,
 
 	sources = {
-		{ path = "lua/luac.c" },
+		{ path = "lua/luac.c", user = true },
 	},
 
 	lua = true,

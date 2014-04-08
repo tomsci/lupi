@@ -229,7 +229,8 @@ void runLuaIntepreterModule() {
 		printk("No lua interpreter module!\n");
 		abort();
 	}
-	int ret = luaL_loadstring(L, mod);
+	struct ModuleInfo info = { mod, n };
+	int ret = lua_load(L, readerFn, &info, "interpreter", NULL);
 	if (ret) {
 		printk("Error %d loading interpreter module!\n%s\n", ret, lua_tostring(L, lua_gettop(L)));
 		abort();
