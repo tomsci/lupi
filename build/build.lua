@@ -113,7 +113,7 @@ function compilec(source, extraArgs)
 	end
 
 	local overallOpts = source.listing and "-S" or "-c"
-	local sysOpts = source.hosted and "-ffreestanding" or "-ffreestanding -nostdinc -nostdlib"
+	local sysOpts = (source.hosted or config.fullyHosted) and "-ffreestanding" or "-ffreestanding -nostdinc -nostdlib"
 	if listing then
 		--# Debug is required to do interleaved listing
 		sysOpts = sysOpts .. " -g"
@@ -170,14 +170,25 @@ function build_kernel()
 		"k/inc",
 		"userinc/lupi",
 	}
-	local sources = {
-		"k/boot.c",
-		"k/debug.c",
-		"k/pageAllocator.c",
-		"k/process.c",
-		"k/svc.c",
-	}
-	for _, src in ipairs(config.extraKernelSources or {}) do
+	local sources
+	if machineIs("host") then
+		--# We make no assumptions about what host wants to compile by default
+		sources = {}
+	else
+		sources = {
+			"k/boot.c",
+			"k/debug.c",
+			"k/lock.c",
+			"k/pageAllocator.c",
+			"k/process.c",
+			"k/svc.c",
+		}
+	end
+	if machineIs("arm") then
+		table.insert(sources, "k/mmu_arm.c")
+	end
+
+	for _, src in ipairs(config.sources or {}) do
 		table.insert(sources, src)
 	end
 	local userIncludes = {
@@ -193,26 +204,31 @@ function build_kernel()
 	end
 
 	local includes = {}
-	if config.klua or config.ulua then
+	local includeModules = config.klua or config.ulua
+	if config.lua then
 		for _,src in ipairs(luaSources) do
 			table.insert(sources, { path = src, user = true })
 		end
-		for _, src in ipairs(generateLuaModulesSource()) do
-			table.insert(sources, { path = src, user = true })
+		if includeModules then
+			for _, src in ipairs(generateLuaModulesSource()) do
+				table.insert(sources, { path = src, user = true })
+			end
 		end
 		if machineIs("arm") then
 			table.insert(sources, { path = "usersrc/memcpy_arm.S", user = true })
 			table.insert(sources, { path = "usersrc/memcmp_arm.S", user = true })
 		end
-		table.insert(sources, { path = "usersrc/crt.c", user = true })
+		if not config.fullyHosted then
+			table.insert(sources, { path = "usersrc/crt.c", user = true })
+		end
 		if config.klua then
 			table.insert(includes, "-DKLUA")
 			table.insert(userIncludes, "-DKLUA")
-		else -- ulua
+		elseif config.ulua then
 			table.insert(sources, mallocSource)
 		end
 	end
-	if not config.klua then
+	if config.ulua then
 		table.insert(sources, { path = "usersrc/ulua.c", user = true })
 		table.insert(sources, { path = "usersrc/uexec.c", user = true })
 	end
@@ -267,7 +283,8 @@ function build_kernel()
 		if source.path:match("%.s$") then
 			table.insert(objs, assemble(source.path))
 		else
-			table.insert(objs, compilec(source, source.user and userIncludes or includes))
+			local user = source.user and not config.fullyHosted --# Fully hosted config means user attribute has no real meaning, so is ignored in that case
+			table.insert(objs, compilec(source, user and userIncludes or includes))
 		end
 	end
 

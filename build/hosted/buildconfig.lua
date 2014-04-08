@@ -1,9 +1,11 @@
 config = {
 	cc = "gcc",
 	include = "hosted.h",
+	machine = { "host" },
 	platOpts = "-O0 -g -arch i386",
 
-	extraKernelSources = {
+	sources = {
+		"k/debug.c",
 		{ path = "build/hosted/entry_point.c", hosted = true },
 		{ path = "usersrc/tests.c", user = true },
 	},

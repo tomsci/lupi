@@ -12,8 +12,7 @@ config = {
 
 	entryPoint = "build/pi/piboot.c",
 
-	extraKernelSources = {
-		"k/mmu_arm.c",
+	sources = {
 		"build/pi/uart.c",
 		"build/pi/irq.c",
 	},
