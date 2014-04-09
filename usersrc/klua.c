@@ -174,8 +174,6 @@ void interactiveLuaPrompt() {
 	}
 }
 
-const char* getLuaModule(const char* name, int* length);
-
 static int putch_lua(lua_State* L) {
 	int ch = lua_tointeger(L, 1);
 	putbyte((byte)ch);
@@ -187,37 +185,13 @@ static int getch_lua(lua_State* L) {
 	return 1;
 }
 
-struct ModuleInfo {
-	const char* module;
-	int size;
-};
-
-static const char* readerFn(lua_State* L, void* data, size_t* size) {
-	struct ModuleInfo* info = (struct ModuleInfo*)data;
-	if (info->size == 0) return NULL;
-	*size = info->size;
-	info->size = 0;
-	return info->module;
-}
-
-static int getModuleFn_lua(lua_State* L) {
-	const char* modName = lua_tostring(L, 1);
-	int len;
-	const char* mod = getLuaModule(modName, &len);
-	struct ModuleInfo readerInfo = { mod, len };
-	int ret = lua_load(L, readerFn, &readerInfo, modName, NULL);
-	if (ret) {
-		// Error
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
 static int panicFn(lua_State* L) {
 	const char* str = lua_tostring(L, lua_gettop(L));
 	printk("\nLua panic: %s\n", str);
 	return 0;
 }
+
+lua_State* newLuaStateForModule(const char* moduleName, lua_State* L);
 
 // A variant of interactiveLuaPrompt that lets us write the actual intepreter loop as a lua module
 void runLuaIntepreterModule() {
@@ -227,30 +201,29 @@ void runLuaIntepreterModule() {
 	heapReset();
 	lua_State* L = lua_newstate(lua_alloc_fn, GetHeap());
 #endif
-	luaL_openlibs(L);
+	L = newLuaStateForModule("interpreter", L);
+	// the interpreter module is now at top of L stack
+	if (!L) abort();
 
-	int n;
-	const char* mod = getLuaModule("interpreter", &n);
-	if (!mod) {
-		printk("No lua interpreter module!\n");
-		abort();
-	}
-	struct ModuleInfo info = { mod, n };
-	int ret = lua_load(L, readerFn, &info, "interpreter", NULL);
-	if (ret) {
-		printk("Error %d loading interpreter module!\n%s\n", ret, lua_tostring(L, lua_gettop(L)));
-		abort();
-	}
 	lua_atpanic(L, panicFn);
-	lua_call(L, 0, 0);
 	lua_pushcfunction(L, putch_lua);
 	lua_setglobal(L, "putch");
 	lua_pushcfunction(L, getch_lua);
 	lua_setglobal(L, "getch");
-	lua_pushcfunction(L, getModuleFn_lua);
-	lua_setglobal(L, "getModuleFn");
-	lua_getglobal(L, "main");
+	lua_getfield(L, -1, "main");
 	lua_call(L, 0, 0);
 	// Shouldn't return
 	abort();
 }
+
+/*
+int klua_dump_reader(const char* name, lua_Reader reader, void* readData, lua_Writer writer, void* writeData) {
+	lua_State* L = luaL_newstate();
+	luaL_openlibs(L);
+	int ret = lua_load(L, reader, readData, name, NULL);
+	if (ret) return ret;
+	ret = lua_dump(L, writer, writeData);
+	lua_close(L);
+	return ret;
+}
+*/

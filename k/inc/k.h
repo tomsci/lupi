@@ -99,7 +99,7 @@ static inline Process* processForThread(Thread* t) {
 	
 }
 
-void process_start(const char* moduleName, const char* module, int moduleSize, uint32 sp);
+void process_start(const char* moduleName, uint32 sp);
 bool process_init(Process* p);
 bool process_grow_heap(Process* p, int incr);
 

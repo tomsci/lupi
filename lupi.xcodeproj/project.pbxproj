@@ -61,7 +61,7 @@
 /* Begin PBXLegacyTarget section */
 		DB04757118D995A9006A8090 /* pi */ = {
 			isa = PBXLegacyTarget;
-			buildArgumentsString = "-c \"lua ./build/build.lua hosted\"";
+			buildArgumentsString = "-c \"lua ./build/build.lua pi -m\"";
 			buildConfigurationList = DB04757218D995AA006A8090 /* Build configuration list for PBXLegacyTarget "pi" */;
 			buildPhases = (
 			);
@@ -70,6 +70,20 @@
 			dependencies = (
 			);
 			name = pi;
+			passBuildSettingsInEnvironment = 0;
+			productName = lupi;
+		};
+		DB6E563F18F5D0AF00DEFEDA /* hosted */ = {
+			isa = PBXLegacyTarget;
+			buildArgumentsString = "-c \"lua ./build/build.lua hosted\"";
+			buildConfigurationList = DB6E564018F5D0AF00DEFEDA /* Build configuration list for PBXLegacyTarget "hosted" */;
+			buildPhases = (
+			);
+			buildToolPath = /usr/local/bin/fish;
+			buildWorkingDirectory = /Users/tomsci/Documents/lupi;
+			dependencies = (
+			);
+			name = hosted;
 			passBuildSettingsInEnvironment = 0;
 			productName = lupi;
 		};
@@ -108,6 +122,7 @@
 			targets = (
 				DB04757118D995A9006A8090 /* pi */,
 				DB9E032D18F3E62B00117098 /* luac */,
+				DB6E563F18F5D0AF00DEFEDA /* hosted */,
 			);
 		};
 /* End PBXProject section */
@@ -200,6 +215,84 @@
 		DB61BB6018D385AC006F9F69 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+			};
+			name = Release;
+		};
+		DB6E564118F5D0AF00DEFEDA /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUGGING_SYMBOLS = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.9;
+				ONLY_ACTIVE_ARCH = YES;
+				OTHER_CFLAGS = "";
+				OTHER_LDFLAGS = "";
+				PRODUCT_NAME = "pi copy";
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		DB6E564218F5D0AF00DEFEDA /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.9;
+				OTHER_CFLAGS = "";
+				OTHER_LDFLAGS = "";
+				PRODUCT_NAME = "pi copy";
+				SDKROOT = macosx;
 			};
 			name = Release;
 		};
@@ -302,6 +395,15 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		DB6E564018F5D0AF00DEFEDA /* Build configuration list for PBXLegacyTarget "hosted" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				DB6E564118F5D0AF00DEFEDA /* Debug */,
+				DB6E564218F5D0AF00DEFEDA /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		DB9E032E18F3E62B00117098 /* Build configuration list for PBXLegacyTarget "luac" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -309,6 +411,7 @@
 				DB9E033018F3E62B00117098 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};

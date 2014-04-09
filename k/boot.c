@@ -72,10 +72,8 @@ void Boot() {
 
 	process_init(p); // This also does a switch_process()
 	TheSuperPage->currentThread = firstThreadForProcess(p);
-	int modSize;
-	const char* mod = getLuaModule("interpreter", &modSize);
 	printk("process_start\n");
-	process_start("interpreter", mod, modSize, firstThreadForProcess(p)->savedRegisters[13]);
+	process_start("interpreter", firstThreadForProcess(p)->savedRegisters[13]);
 }
 
 //TODO move this stuff

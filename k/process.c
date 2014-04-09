@@ -43,11 +43,11 @@ bool thread_init(Process* p, int index) {
 	return true;
 }
 
-void NAKED process_start(const char* moduleName, const char* module, int moduleSize, uint32 sp) {
+void NAKED process_start(const char* moduleName, uint32 sp) {
 #ifndef KLUA
 	ModeSwitch(KPsrModeUsr|KPsrFiqDisable);
 	// We are in user mode now! So no calling printk(), or doing priviledged stuff
-	asm("MOV sp, r3");
+	asm("MOV sp, r1");
 	asm("LDR pc, =newProcessEntryPoint");
 	// And we're off. Shouldn't ever return
 #endif

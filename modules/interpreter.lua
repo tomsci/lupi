@@ -152,7 +152,7 @@ local function doMain()
 		if string.char(ch) == "\r" then
 			print("")
 			local lineString = table.concat(line)
-			local fn, err = load(lineString, "<stdin>")
+			local fn, err = load(lineString, "<stdin>", nil, _ENV)
 			didLine(lineString) -- even if it didn't compile, it still goes in the history'
 			if fn then
 				local ok, err = pcall(fn)
