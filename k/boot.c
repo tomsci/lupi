@@ -68,12 +68,15 @@ void Boot() {
 	s->currentProcess = NULL;
 	s->currentThread = NULL;
 	s->nextPid = 1;
+	s->numValidProcessPages = 1;
+
+	firstProcess->pid = 0;
 	firstProcess->pdePhysicalAddress = 0;
 
-	process_init(firstProcess); // This also does a switch_process()
-	TheSuperPage->currentThread = firstThreadForProcess(firstProcess);
+	Process* p = process_new("interpreter");
+	ASSERT(p == firstProcess);
 	printk("process_start\n");
-	process_start(firstProcess, "interpreter");
+	process_start(firstProcess);
 }
 
 //TODO move this stuff
@@ -99,5 +102,13 @@ void NAKED zeroPage(void* page) {
 	asm("BX lr");
 }
 
+void zeroPages(void* addr, int num) {
+	uintptr ptr = ((uintptr)addr);
+	const uintptr endAddr = ptr + (num << KPageShift);
+	while (ptr != endAddr) {
+		zeroPage((void*)ptr);
+		ptr += KPageSize;
+	}
+}
 
 #endif // HOSTED

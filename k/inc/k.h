@@ -26,6 +26,7 @@ Hmm, the "one page per process" limit turns out to be somewhat limiting...
 #define USER_STACK_SIZE (16*1024)
 
 void zeroPage(void* addr);
+void zeroPages(void* addr, int num);
 void printk(const char* fmt, ...) ATTRIBUTE_PRINTF(1, 2);
 void hexdump(const char* addr, int len);
 void worddump(const char* addr, int len);
@@ -81,6 +82,7 @@ typedef struct SuperPage {
 	uint32 nextPid;
 	Process* currentProcess;
 	Thread* currentThread;
+	int numValidProcessPages;
 } SuperPage;
 
 ASSERT_COMPILE(sizeof(SuperPage) <= KPageSize);
@@ -101,8 +103,8 @@ static inline Process* processForThread(Thread* t) {
 	
 }
 
-void process_start(Process* p, const char* moduleName);
-bool process_init(Process* p);
+Process* process_new(const char* name);
+void process_start(Process* p);
 bool process_grow_heap(Process* p, int incr);
 
 #endif // LUPI_K_H

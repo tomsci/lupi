@@ -276,12 +276,6 @@ bool mmu_mapPagesInProcess(PageAllocator* pa, Process* p, uintptr virtualAddress
 		*pte = newPagePhysical | KPteUserData;
 		pte++;
 	}
-	ASSERT(TheSuperPage->currentProcess == p); // Otherwise we can't rely on TTBR0 to give us access to virtualAddress
-	mmu_finishedUpdatingPageTables();
-	// All user memory starts out zeroed; it's just how we roll
-	for (uintptr ptr = virtualAddress; ptr != endAddr; ptr += KPageSize) {
-		zeroPage((void*)ptr);
-	}
 	return true;
 }
 
@@ -336,6 +330,4 @@ void switch_process(Process* p) {
 
 	TheSuperPage->currentProcess = p;
 	// I think we're done - setting context ID does all the flushing required
-	// P is for plenty!
-	TheSuperPage->currentThread = firstThreadForProcess(p);
 }

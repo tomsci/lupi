@@ -2,18 +2,18 @@
 #include <lua.h>
 #include <lualib.h>
 #include <lauxlib.h>
+
 #include <lupi/exec.h>
+void exec_putch(uint ch);
+int exec_getch();
+int exec_createProcess(const char* name);
 
 uint32 user_ProcessPid;
 char user_ProcessName[32];
 
-
 void abort() {
 	for(;;) {} //TODO
 }
-
-void exec_putch(uint ch);
-int exec_getch();
 
 static int putch_lua(lua_State* L) {
 	int ch = lua_tointeger(L, 1);
@@ -31,6 +31,12 @@ static int getProcessName(lua_State* L) {
 	return 1;
 }
 
+static int createProcess(lua_State* L) {
+	const char* name = lua_tostring(L, 1);
+	/*int err =*/ exec_createProcess(name);
+	return 0; // TODO some error handling
+}
+
 lua_State* newLuaStateForModule(const char* moduleName, lua_State* L);
 
 void newProcessEntryPoint() {
@@ -43,14 +49,22 @@ void newProcessEntryPoint() {
 
 	// I'm sure a whole bunch of stuff will need setting up here...
 	// TODO need a better way of managing the serial port...
-	luaL_Reg globals[] = {
+	static const luaL_Reg globals[] = {
 		{ "putch", putch_lua },
 		{ "getch", getch_lua },
+		{ NULL, NULL }
+	};
+	static const luaL_Reg lupi_funcs[] = {
 		{ "getProcessName", getProcessName },
+		{ "createProcess", createProcess },
 		{ NULL, NULL }
 	};
 	lua_rawgeti(L, LUA_REGISTRYINDEX, LUA_RIDX_GLOBALS);
 	luaL_setfuncs(L, globals, 0);
+	lua_newtable(L);
+	luaL_setfuncs(L, lupi_funcs, 0);
+	lua_setfield(L, -2, "lupi");
+
 	lua_pop(L, 1);
 
 	lua_getfield(L, -1, "main");

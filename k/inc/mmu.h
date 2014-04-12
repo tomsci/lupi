@@ -63,7 +63,8 @@ uintptr mmu_mapPageInSection(PageAllocator* pa, uint32* pt, uintptr virtualAddre
 bool mmu_createUserSection(PageAllocator* pa, Process* p, int sectionIdx);
 
 /*
- * Map pages into the user process p. Will call mmu_createUserSection if necessary.
+ * Map pages into the user process p. Will call mmu_createUserSection if necessary. Note, does
+ * NOT zero the memory. That is caller's responsiblility.
  */
 bool mmu_mapPagesInProcess(PageAllocator* pa, Process* p, uintptr virtualAddress, int numPages);
 

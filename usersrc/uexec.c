@@ -23,3 +23,7 @@ void NAKED exec_putch(uint ch) {
 uint NAKED exec_getch() {
 	EXEC1(KExecGetch);
 }
+
+int NAKED exec_createProcess(const char* name) {
+	EXEC1(KExecCreateProcess);
+}

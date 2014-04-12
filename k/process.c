@@ -15,7 +15,7 @@ extern char user_ProcessName[];
 
 bool thread_init(Process* p, int index);
 
-bool process_init(Process* p) {
+static bool process_init(Process* p, const char* processName) {
 	// Assume the Process page itself is already mapped, but nothing else necessarily is
 	p->pid = TheSuperPage->nextPid++;
 	uint32* pde = (uint32*)PDE_FOR_PROCESS(p);
@@ -27,14 +27,21 @@ bool process_init(Process* p) {
 		//TODO check return code
 	}
 	zeroPage(pde);
-	switch_process(p); // Have to do this before calling mmu_mapPagesInProcess
 
 	mmu_mapPagesInProcess(Al, p, KUserBss, 1 + KNumPreallocatedUserPages);
-	p->heapLimit = KUserHeapBase + (KNumPreallocatedUserPages << KPageShift);
+	p->heapLimit = KUserHeapBase;
 
 	// Setup initial thread
 	p->numThreads = 1;
 	thread_init(p, 0);
+
+	char* pname = p->name;
+	char ch;
+	do {
+		ch = *processName++;
+		*pname++ = ch;
+	} while (ch);
+
 	return true;
 }
 
@@ -60,19 +67,25 @@ static void NAKED do_process_start(uint32 sp) {
 	hang(); //TODO
 }
 
-void process_start(Process* p, const char* moduleName) {
-	// Now we've switched process and mapped the BSS, we can set up the user_* variables, as well as the Process->name field
+void process_start(Process* p) {
+	switch_process(p);
+	Thread* t = firstThreadForProcess(p);
+	TheSuperPage->currentThread = t;
+	// Now we've switched process and mapped the BSS, we first need to zero all initial memory
+	zeroPages((void*)KUserBss, 1 + KNumPreallocatedUserPages);
+	zeroPages((void*)userStackAddress(t), USER_STACK_SIZE >> KPageShift);
+
+	// And we can set up the user_* variables
 	user_ProcessPid = p->pid;
-	char* pname = p->name;
 	char* userpname = user_ProcessName;
+	const char* pname = p->name;
 	// Poor man's memcpy
 	char ch;
 	do {
-		ch = *moduleName++;
-		*pname++ = ch;
+		ch = *pname++;
 		*userpname++ = ch;
 	} while (ch);
-	uint32 sp = firstThreadForProcess(p)->savedRegisters[13];
+	uint32 sp = t->savedRegisters[13];
 	do_process_start(sp);
 }
 
@@ -89,13 +102,46 @@ bool process_grow_heap(Process* p, int incr) {
 		}
 		p->heapLimit = p->heapLimit - amount;
 		mmu_unmapPagesInProcess(Al, p, p->heapLimit, amount >> KPageShift);
+		mmu_finishedUpdatingPageTables();
 		return true;
 	} else {
-		bool ok = mmu_mapPagesInProcess(Al, p, p->heapLimit, amount >> KPageShift);
+		const int npages = amount >> KPageShift;
+		bool ok = mmu_mapPagesInProcess(Al, p, p->heapLimit, npages);
 		if (ok) {
+			mmu_finishedUpdatingPageTables();
+			zeroPages((void*)p->heapLimit, npages);
 			p->heapLimit += amount;
 			//printk("-process_grow_heap heapLimit=%p\n", (void*)p->heapLimit);
 		}
 		return ok;
 	}
+}
+
+Process* process_new(const char* name) {
+	// First see if there is a spare Process* we can use
+	SuperPage* s = TheSuperPage;
+	Process* p = 0;
+	for (int i = 0; i < s->numValidProcessPages; i++) {
+		Process* candidate = GetProcess(i);
+		if (candidate->pid == 0) {
+			p = candidate;
+			break;
+		}
+	}
+	if (!p && s->numValidProcessPages < MAX_PROCESSES) {
+		// Map ourselves a new one
+		Process* newp = GetProcess(s->numValidProcessPages);
+		uintptr phys = mmu_mapPageInSection(Al, (uint32*)KProcessesSection_pt, (uintptr)newp, KPageProcess);
+		if (phys) {
+			mmu_finishedUpdatingPageTables();
+			p = newp;
+			s->numValidProcessPages++;
+		}
+	}
+
+	if (p) {
+		bool ok = process_init(p, name);
+		if (!ok) p = NULL;
+	}
+	return p;
 }
