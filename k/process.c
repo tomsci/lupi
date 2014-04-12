@@ -7,6 +7,12 @@
 #define KNumPreallocatedUserPages 0
 #define userStackAddress(t) (KUserStacksBase + t->index * (USER_STACK_SIZE + KPageSize))
 
+// These will refer to the *user* addresses of these variables, in the BSS.
+// Therefore, can only be referenced when process_switch()ed to the
+// appropriate Process.
+extern uint32 user_ProcessPid;
+extern char user_ProcessName[];
+
 bool thread_init(Process* p, int index);
 
 bool process_init(Process* p) {
@@ -43,15 +49,31 @@ bool thread_init(Process* p, int index) {
 	return true;
 }
 
-void NAKED process_start(const char* moduleName, uint32 sp) {
+static void NAKED do_process_start(uint32 sp) {
 #ifndef KLUA
 	ModeSwitch(KPsrModeUsr|KPsrFiqDisable);
 	// We are in user mode now! So no calling printk(), or doing priviledged stuff
-	asm("MOV sp, r1");
+	asm("MOV sp, r0");
 	asm("LDR pc, =newProcessEntryPoint");
 	// And we're off. Shouldn't ever return
 #endif
 	hang(); //TODO
+}
+
+void process_start(Process* p, const char* moduleName) {
+	// Now we've switched process and mapped the BSS, we can set up the user_* variables, as well as the Process->name field
+	user_ProcessPid = p->pid;
+	char* pname = p->name;
+	char* userpname = user_ProcessName;
+	// Poor man's memcpy
+	char ch;
+	do {
+		ch = *moduleName++;
+		*pname++ = ch;
+		*userpname++ = ch;
+	} while (ch);
+	uint32 sp = firstThreadForProcess(p)->savedRegisters[13];
+	do_process_start(sp);
 }
 
 bool process_grow_heap(Process* p, int incr) {

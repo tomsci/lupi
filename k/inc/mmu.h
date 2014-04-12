@@ -67,6 +67,8 @@ bool mmu_createUserSection(PageAllocator* pa, Process* p, int sectionIdx);
  */
 bool mmu_mapPagesInProcess(PageAllocator* pa, Process* p, uintptr virtualAddress, int numPages);
 
+bool mmu_mapKernelPageInProcess(Process* p, uintptr physicalAddress, uintptr virtualAddress, bool readWrite);
+
 /*
  * Pages need not be in same section, although behaviour is
  * undefined if any of the PTs involved don't actually exist

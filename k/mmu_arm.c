@@ -55,6 +55,7 @@
 #define KPteKernelData			0x00000013 // C=B=0, XN=1, APX=b001, S=0, TEX=0, nG=0
 //#define KPtePeripheralMem		0x00000093 // C=B=0, XN=1, APX=b001, S=0, TEX=b010, nG=0
 #define KPteUserData			0x00000833 // C=B=0, XN=1, APX=b011, S=0, TEX=0, nG=1
+#define KPteRoUserData			0x00000823 // C=B=0, XN=1, APX=b010, S=0, TEX=0, nG=1
 
 
 // Control register bits, see p176
@@ -282,8 +283,28 @@ bool mmu_mapPagesInProcess(PageAllocator* pa, Process* p, uintptr virtualAddress
 		zeroPage((void*)ptr);
 	}
 	return true;
-
 }
+
+bool mmu_mapKernelPageInProcess(Process* p, uintptr physicalAddress, uintptr virtualAddress, bool readWrite) {
+	int sectionIdx = virtualAddress >> KSectionShift;
+	uint32* const pt = PT_FOR_PROCESS(p, sectionIdx);
+	uint32* pte = pt + PTE_IDX(virtualAddress);
+
+	uint32* pde = (uint32*)PDE_FOR_PROCESS(p);
+	ASSERT(pde[sectionIdx]); // Section must already be mapped
+	/*
+	// Make sure section exists
+	if (!pde[sectionIdx]) {
+		// PT hasn't been created yet
+		bool ok = mmu_createUserSection(pa, p, i);
+		if (!ok) return false;
+	}
+	*/
+
+	*pte = physicalAddress | (readWrite ? KPteUserData : KPteRoUserData);
+	return true;
+}
+
 
 void mmu_unmapPagesInProcess(PageAllocator* pa, Process* p, uintptr virtualAddress, int numPages) {
 	ASSERT(numPages >= 0);

@@ -47,7 +47,8 @@ void Boot() {
 	mmu_createSection(Al, KKernPtForProcPts);
 
 	// One Process page for first proc
-	mmu_mapPageInSection(Al, (uint32*)KProcessesSection_pt, (uintptr)GetProcess(0), KPageProcess);
+	Process* firstProcess = GetProcess(0);
+	mmu_mapPageInSection(Al, (uint32*)KProcessesSection_pt, (uintptr)firstProcess, KPageProcess);
 
 	mmu_finishedUpdatingPageTables();
 
@@ -67,13 +68,12 @@ void Boot() {
 	s->currentProcess = NULL;
 	s->currentThread = NULL;
 	s->nextPid = 1;
-	Process* p = GetProcess(0); // The only one mapped, which we did a few lines up
-	p->pdePhysicalAddress = 0;
+	firstProcess->pdePhysicalAddress = 0;
 
-	process_init(p); // This also does a switch_process()
-	TheSuperPage->currentThread = firstThreadForProcess(p);
+	process_init(firstProcess); // This also does a switch_process()
+	TheSuperPage->currentThread = firstThreadForProcess(firstProcess);
 	printk("process_start\n");
-	process_start("interpreter", firstThreadForProcess(p)->savedRegisters[13]);
+	process_start(firstProcess, "interpreter");
 }
 
 //TODO move this stuff

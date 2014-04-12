@@ -20,6 +20,8 @@ Hmm, the "one page per process" limit turns out to be somewhat limiting...
 */
 #define MAX_THREADS 48
 
+#define MAX_PROCESS_NAME 32
+
 // I'll be generous
 #define USER_STACK_SIZE (16*1024)
 
@@ -53,13 +55,13 @@ enum ThreadState {
 
 
 /*
-Note this page is also mapped read-only into the process's user-side address space, because
-ISLAGIATT.
+This structure is one page in size (maximum, and is always page-aligned.
 */
 typedef struct Process {
 	uint32 pid;
 	uintptr pdePhysicalAddress;
 	uintptr heapLimit;
+	char name[MAX_PROCESS_NAME];
 
 	uint8 numThreads;
 	Thread threads[MAX_THREADS];
@@ -99,7 +101,7 @@ static inline Process* processForThread(Thread* t) {
 	
 }
 
-void process_start(const char* moduleName, uint32 sp);
+void process_start(Process* p, const char* moduleName);
 bool process_init(Process* p);
 bool process_grow_heap(Process* p, int incr);
 

@@ -210,6 +210,8 @@ void runLuaIntepreterModule() {
 	lua_setglobal(L, "putch");
 	lua_pushcfunction(L, getch_lua);
 	lua_setglobal(L, "getch");
+	lua_pushstring(L, "klua> ");
+	lua_setfield(L, -2, "prompt");
 	lua_getfield(L, -1, "main");
 	lua_call(L, 0, 0);
 	// Shouldn't return
