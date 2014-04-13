@@ -27,3 +27,7 @@ uint NAKED exec_getch() {
 int NAKED exec_createProcess(const char* name) {
 	EXEC1(KExecCreateProcess);
 }
+
+uint64 NAKED exec_getUptime() {
+	EXEC1(KExecGetUptime);
+}

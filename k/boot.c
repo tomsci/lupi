@@ -52,6 +52,7 @@ void Boot() {
 
 	mmu_finishedUpdatingPageTables();
 
+	zeroPage(TheSuperPage);
 	irq_init();
 	irq_enable();
 
@@ -64,8 +65,6 @@ void Boot() {
 
 	// Start first process (so exciting!)
 	SuperPage* s = TheSuperPage;
-	s->currentProcess = NULL;
-	s->currentThread = NULL;
 	s->nextPid = 1;
 	s->numValidProcessPages = 1;
 
@@ -181,6 +180,9 @@ void NAKED svc() {
 	asm("MOV r3, sp"); // Full descending stack means sp now points to the regs we saved
 	// r0, r1, r2 already have the correct data in them for handleSvc()
 	asm("BL handleSvc");
+	// Avoid leaking kernel info into user space (like we really care!)
+	asm("MOV r2, #0");
+	asm("MOV r3, #0");
 
 	asm("POP {r4-r12, r14}");
 	asm("MOVS pc, r14");

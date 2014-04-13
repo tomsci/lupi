@@ -7,6 +7,7 @@
 void exec_putch(uint ch);
 int exec_getch();
 int exec_createProcess(const char* name);
+int exec_getUptime();
 
 uint32 user_ProcessPid;
 char user_ProcessName[32];
@@ -37,6 +38,12 @@ static int createProcess(lua_State* L) {
 	return 0; // TODO some error handling
 }
 
+static int getUptime(lua_State* L) {
+	uint64 t = exec_getUptime();
+	lua_pushinteger(L, t); // Hmm we should support 64-bit in Lua code...
+	return 1;
+}
+
 lua_State* newLuaStateForModule(const char* moduleName, lua_State* L);
 
 void newProcessEntryPoint() {
@@ -57,6 +64,7 @@ void newProcessEntryPoint() {
 	static const luaL_Reg lupi_funcs[] = {
 		{ "getProcessName", getProcessName },
 		{ "createProcess", createProcess },
+		{ "getUptime", getUptime },
 		{ NULL, NULL }
 	};
 	lua_rawgeti(L, LUA_REGISTRYINDEX, LUA_RIDX_GLOBALS);

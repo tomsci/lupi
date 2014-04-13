@@ -5,7 +5,7 @@ void putbyte(byte b);
 bool byteReady();
 byte getch();
 
-int handleSvc(int cmd, uintptr arg1, uintptr arg2, void* savedRegisters) {
+int64 handleSvc(int cmd, uintptr arg1, uintptr* arg2, void* savedRegisters) {
 	Process* p = TheSuperPage->currentProcess;
 	Thread* t = TheSuperPage->currentThread;
 
@@ -40,6 +40,8 @@ int handleSvc(int cmd, uintptr arg1, uintptr arg2, void* savedRegisters) {
 			// this thread is ready so will get jumped back to user mode with the result
 			// of the SVC call all nicely filled in in r0.
 		}
+		case KExecGetUptime:
+			return TheSuperPage->uptime;
 		default:
 			break;
 	}

@@ -1,6 +1,8 @@
 #include <k.h>
 #include <arm.h>
 
+//#define SLOW_TIME
+
 // See BCM-2835-ARM-Peripherals p196
 #define ARM_TIMER_LOD (KPeripheralBase + 0xB400)
 #define ARM_TIMER_VAL (KPeripheralBase + 0xB404)
@@ -16,12 +18,13 @@
 
 uint32 GET32(uint32 addr);
 void PUT32(uint32 addr, uint32 val);
+void tick();
 
-#define KTimerControlReset 0x003E0020 // Prescale = 3E, InterruptEnable=1
+#define KTimerControlReset 0x00F90020 // Prescale = 0xF9=249, InterruptEnable=1
 #define KTimerControl23BitCounter (1<<1)
 #define KTimerControlInterruptEnable (1<<5)
 #define KTimerControlTimerEnable (1<<7)
-
+#define KTimerControlFreeRunningTimerEnable (1<<9)
 
 /*
 This will setup the system timer and start it running and producing interrupts
@@ -32,11 +35,19 @@ void irq_init() {
 	PUT32(IRQ_DISABLE_BASIC,1);
 
 	PUT32(ARM_TIMER_CTL,KTimerControlReset & ~KTimerControlInterruptEnable); // disable interrupt
+#ifdef SLOW_TIME
+	// One tick per second
 	PUT32(ARM_TIMER_LOD,1000000-1);
 	PUT32(ARM_TIMER_RLD,1000000-1);
-	PUT32(ARM_TIMER_DIV,0x000000F9);
+#else
+	// Tick every 1ms
+	PUT32(ARM_TIMER_LOD,1000-1);
+	PUT32(ARM_TIMER_RLD,1000-1);
+#endif
+
+	PUT32(ARM_TIMER_DIV,0x000000F9); // F9=249 means the 250MHz system timer will be divided down to 1MHz
 	PUT32(ARM_TIMER_CLI,0);
-	PUT32(ARM_TIMER_CTL, KTimerControlReset | KTimerControlTimerEnable | KTimerControl23BitCounter);
+	PUT32(ARM_TIMER_CTL, KTimerControlReset | KTimerControlTimerEnable | KTimerControl23BitCounter | KTimerControlFreeRunningTimerEnable);
 
 //	PUT32(ARM_TIMER_LOD,2000000-1);
 //	PUT32(ARM_TIMER_RLD,2000000-1);
@@ -54,10 +65,11 @@ void NAKED irq_enable() {
 }
 
 void handleIrq() {
+	//printk("IRQ!\n");
 	uint32 irqBasicPending = GET32(IRQ_BASIC);
 	if (irqBasicPending & 1) {
 		// Timer IRQ
-		//TODO tick();
+		tick();
 		PUT32(ARM_TIMER_CLI,0);
 	}
 	if (irqBasicPending & (1 << 8)) {
@@ -67,6 +79,7 @@ void handleIrq() {
 			// We don't enable SPI interrupts so we don't need to bother checking AUXIRQ
 			uint32 iir = GET32(AUX_MU_IIR_REG);
 			if (iir & AUX_MU_IIR_ReceiveInterrupt) {
+				//printk("CNT=%d\n", GET32(ARM_TIMER_CNT));
 				//TODO printk("Got char %c!\n", GET32(AUX_MU_IO_REG));
 				Thread* t = TheSuperPage->blockedUartReceiveIrqHandler;
 				if (t) {

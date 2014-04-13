@@ -57,7 +57,7 @@ enum ThreadState {
 
 
 /*
-This structure is one page in size (maximum, and is always page-aligned.
+This structure is one page in size (maximum), and is always page-aligned.
 */
 typedef struct Process {
 	uint32 pid;
@@ -85,6 +85,7 @@ typedef struct SuperPage {
 	Thread* currentThread;
 	int numValidProcessPages;
 	Thread* blockedUartReceiveIrqHandler;
+	uint64 uptime; // in ms
 } SuperPage;
 
 ASSERT_COMPILE(sizeof(SuperPage) <= KPageSize);

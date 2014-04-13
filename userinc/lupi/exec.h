@@ -5,5 +5,7 @@
 #define KExecPrintString	2
 #define KExecPutch			3
 #define KExecGetch			4
+#define KExecCreateProcess	5
+#define KExecGetUptime		6
 
 #endif

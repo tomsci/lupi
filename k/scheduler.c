@@ -67,3 +67,8 @@ NORETURN NAKED reschedule(Thread* current) {
 	WFI(r0);
 	asm("B .doReschedule");
 }
+
+// This runs in IRQ context remember
+void tick() {
+	TheSuperPage->uptime++;
+}
