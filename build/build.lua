@@ -183,6 +183,7 @@ function build_kernel()
 			"k/lock.c",
 			"k/pageAllocator.c",
 			"k/process.c",
+			"k/scheduler.c",
 			"k/svc.c",
 		}
 	end

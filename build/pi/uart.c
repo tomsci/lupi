@@ -62,10 +62,13 @@ void putbyte(byte c) {
     PUT32(AUX_MU_IO_REG, c);
 }
 
+bool byteReady() {
+	return (GET32(AUX_MU_LSR_REG) & 0x01);
+}
+
 byte getch() {
-	while (1)
-	{
-		if (GET32(AUX_MU_LSR_REG) & 0x01) break;
+	while (!byteReady()) {
+		// Spin
 	}
 	return (byte)GET32(AUX_MU_IO_REG);
 }

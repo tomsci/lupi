@@ -48,6 +48,8 @@ static bool process_init(Process* p, const char* processName) {
 bool thread_init(Process* p, int index) {
 	Thread* t = &p->threads[index];
 	t->index = index;
+	t->state = EReady;
+	t->nextSchedulable = t; // TODO sort this out
 	uintptr stackBase = userStackAddress(t);
 	bool ok = mmu_mapPagesInProcess(Al, p, stackBase, USER_STACK_SIZE >> KPageShift);
 	if (!ok) return false;
@@ -56,14 +58,13 @@ bool thread_init(Process* p, int index) {
 	return true;
 }
 
-static void NAKED do_process_start(uint32 sp) {
 #ifndef KLUA
+static void NAKED do_process_start(uint32 sp) {
 	ModeSwitch(KPsrModeUsr|KPsrFiqDisable);
 	// We are in user mode now! So no calling printk(), or doing priviledged stuff
 	asm("MOV sp, r0");
 	asm("LDR pc, =newProcessEntryPoint");
 	// And we're off. Shouldn't ever return
-#endif
 	hang(); //TODO
 }
 
@@ -88,6 +89,7 @@ void process_start(Process* p) {
 	uint32 sp = t->savedRegisters[13];
 	do_process_start(sp);
 }
+#endif
 
 bool process_grow_heap(Process* p, int incr) {
 	//printk("+process_grow_heap %d heapLimit=%p\n", incr, (void*)p->heapLimit);

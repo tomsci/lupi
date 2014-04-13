@@ -40,17 +40,18 @@ typedef struct Process Process;
 typedef struct Thread Thread;
 
 typedef struct Thread {
-	Thread* prevSchedulable;
+	//Thread* prevSchedulable;
 	Thread* nextSchedulable;
 	uint8 index;
 	uint8 state;
 	uint8 pad[6];
 	uint32 savedRegisters[16];
+	uint32 spsr;
 } Thread;
 
 enum ThreadState {
 	EReady = 0,
-	EBlockedMutex = 1,
+	EBlocked = 1,
 	// ???
 };
 
@@ -83,6 +84,7 @@ typedef struct SuperPage {
 	Process* currentProcess;
 	Thread* currentThread;
 	int numValidProcessPages;
+	Thread* blockedUartReceiveIrqHandler;
 } SuperPage;
 
 ASSERT_COMPILE(sizeof(SuperPage) <= KPageSize);
@@ -106,5 +108,8 @@ static inline Process* processForThread(Thread* t) {
 Process* process_new(const char* name);
 void process_start(Process* p);
 bool process_grow_heap(Process* p, int incr);
+
+NORETURN reschedule(Thread* t);
+void saveUserModeRegistersForCurrentThread(void* savedRegisters);
 
 #endif // LUPI_K_H

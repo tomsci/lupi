@@ -68,6 +68,15 @@ void handleIrq() {
 			uint32 iir = GET32(AUX_MU_IIR_REG);
 			if (iir & AUX_MU_IIR_ReceiveInterrupt) {
 				//TODO printk("Got char %c!\n", GET32(AUX_MU_IO_REG));
+				Thread* t = TheSuperPage->blockedUartReceiveIrqHandler;
+				if (t) {
+					t->savedRegisters[0] = GET32(AUX_MU_IO_REG);
+					t->state = EReady;
+					TheSuperPage->blockedUartReceiveIrqHandler = NULL;
+					// The returning WFI in reschedule() should take care of the rest
+				} else {
+					printk("Dropping char %c on the floor\n", GET32(AUX_MU_IO_REG));
+				}
 				PUT32(AUX_MU_IIR_REG, AUX_MU_ClearReceiveFIFO);
 			}
 		}

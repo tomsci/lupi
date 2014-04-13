@@ -127,66 +127,6 @@ NOINLINE NAKED void PUT32(uint32 addr, uint32 val) {
     asm("bx lr");
 }
 
-void NAKED hang() {
-	asm("MOV r0, #0");
-	WFI(r0); // Stops us spinning like crazy
-	asm("B hang");
-}
-
-void NAKED undefinedInstruction() {
-	uint32 addr;
-	asm("MOV %0, r14" : "=r" (addr));
-	addr -= 4; // r14_und is the instruction after
-	printk("Undefined instruction at 0x%X\n", addr);
-	hang();
-}
-
-static inline uint32 getFAR() {
-	uint32 ret;
-	asm("MRC p15, 0, %0, c6, c0, 0" : "=r" (ret));
-	return ret;
-}
-
-static inline uint32 getDFSR() {
-	uint32 ret;
-	asm("MRC p15, 0, %0, c5, c0, 0" : "=r" (ret));
-	return ret;
-}
-
-static inline uint32 getIFSR() {
-	uint32 ret;
-	asm("MRC p15, 0, %0, c5, c0, 1" : "=r" (ret));
-	return ret;
-}
-
-void NAKED prefetchAbort() {
-	uint32 addr;
-	asm("MOV %0, r14" : "=r" (addr));
-	addr -= 4; // r14_abt is the instruction after
-	printk("Prefetch abort at 0x%X ifsr=%X far=%X\n", addr, getIFSR(), getFAR());
-	hang();
-}
-
-void NAKED svc() {
-	// For now, save onto supervisor mode stack.
-	// In due course, should be put in TheSuperPage->currentThread->savedRegisters
-	asm("PUSH {r4-r12, r14}");
-	// r0, r1, r2 already have the correct data in them for handleSvc()
-	asm("BL handleSvc");
-
-	asm("POP {r4-r12, r14}");
-	asm("MOVS pc, r14");
-}
-
-void NAKED dataAbort() {
-	uint32 addr;
-	asm("MOV %0, r14" : "=r" (addr));
-	addr -= 8; // r14_abt is 8 bytes after (PC always 2 ahead for mem access)
-	printk("Data abort at 0x%X dfsr=%X far=%X\n", addr, getDFSR(), getFAR());
-
-	hang();
-}
-
 void NAKED fiq() {
 	printk("FIQ???\n");
 	asm("SUBS pc, r14, #4");

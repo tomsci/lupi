@@ -13,7 +13,6 @@
 
 #define KPeripheralPhys		0x20000000
 #define KPeripheralSize		0x00300000
-//#define KSuperPagePhys	0x00004000
 
 #define KPhysicalRamBase	0x00000000
 #define KPhysicalRamSize	0x20000000 // 512MB - we're assuming model B atm

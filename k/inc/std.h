@@ -23,12 +23,14 @@ typedef _Bool bool;
 #define NULL ((void*)0)
 
 #define asm __asm
+#define ASM_JFDI __asm __volatile
 #define WORD(x) asm(".word %a0" : : "i" (x))
 #define LABEL_WORD(label, x) asm(#label ":"); WORD(x)
 
 #define ATTRIBUTE_PRINTF(str, check)	__attribute__((format(printf, str, check)))
 #define NAKED							__attribute__((naked))
 #define NOINLINE						__attribute__((noinline))
+#define NORETURN						void __attribute__((noreturn))
 
 #define ASSERT_COMPILE(x) extern int __compiler_assert(int[(x)?1:-1])
 
