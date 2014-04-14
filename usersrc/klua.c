@@ -8,6 +8,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <k.h>
+#include <lupi/membuf.h>
 
 void putbyte(byte b);
 byte getch();
@@ -193,6 +194,13 @@ static int panicFn(lua_State* L) {
 
 lua_State* newLuaStateForModule(const char* moduleName, lua_State* L);
 
+static int lua_newMemBuf(lua_State* L) {
+	uint32 ptr = lua_tointeger(L, 1);
+	int len = lua_tointeger(L, 2);
+	mbuf_new(L, (void*)ptr, len);
+	return 1;
+}
+
 // A variant of interactiveLuaPrompt that lets us write the actual intepreter loop as a lua module
 void runLuaIntepreterModule() {
 #ifdef USE_HOST_MALLOC_FOR_LUA
@@ -212,6 +220,18 @@ void runLuaIntepreterModule() {
 	lua_setglobal(L, "getch");
 	lua_pushstring(L, "klua> ");
 	lua_setfield(L, -2, "prompt");
+
+	// klua debugger support
+	lua_getglobal(L, "print");
+	lua_setglobal(L, "p");
+
+	lua_getfield(L, -1, "require");
+	lua_pushstring(L, "membuf");
+	lua_call(L, 1, 0);
+
+	lua_pushcfunction(L, lua_newMemBuf);
+	lua_setglobal(L, "mem");
+
 	lua_getfield(L, -1, "main");
 	lua_call(L, 0, 0);
 	// Shouldn't return

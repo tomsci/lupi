@@ -245,6 +245,7 @@ int sprintf(char * restrict outstr, const char * restrict fmt, ...) {
 				*str++ = '0';
 				*str++ = 'x';
 				str += uintToHex((uint)(uintptr)va_arg(args, void*), str, width, filler, true);
+				break;
 			case 'X':
 				str += uintToHex(va_arg(args, uint), str, width, filler, true);
 				break;

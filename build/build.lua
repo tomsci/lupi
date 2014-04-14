@@ -227,6 +227,7 @@ function build_kernel()
 		if not config.fullyHosted then
 			table.insert(sources, { path = "usersrc/crt.c", user = true })
 			table.insert(sources, { path = "usersrc/uklua.c", user = true })
+			table.insert(sources, { path = "usersrc/membuf.c", user = true })
 		end
 		if config.klua then
 			table.insert(includes, "-DKLUA")
@@ -372,6 +373,7 @@ luaSources = {
 luaModules = {
 	"modules/test.lua",
 	"modules/interpreter.lua",
+	"modules/membuf.lua",
 }
 
 mallocSource = {

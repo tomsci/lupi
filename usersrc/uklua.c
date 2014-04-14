@@ -2,6 +2,7 @@
 #include <lua.h>
 #include <lualib.h>
 #include <lauxlib.h>
+#include <lupi/membuf.h>
 
 const char* getLuaModule(const char* moduleName, int* modSize);
 
@@ -33,6 +34,13 @@ static int requireFn(lua_State* L) {
 	return 1; // The copy of module we moved to the bottom
 }
 
+static bool lcmp(lua_State* L, int idx, const char* val) {
+	lua_pushstring(L, val);
+	bool result = lua_compare(L, idx, -1, LUA_OPEQ);
+	lua_pop(L, 1);
+	return result;
+}
+
 static int loaderFn(lua_State* L) {
 	// Custom loader that gives every module a separate _ENV, and makes sure that
 	// package.loaded[modName] will always be set to that _ENV unless the module returns a table.
@@ -45,6 +53,8 @@ static int loaderFn(lua_State* L) {
 	// Arg 2 is whatever the searcher returned (which we don't bother with)
 	// upvalue 1 is the module fn itself
 
+	bool isMbuf = lcmp(L, 1, "membuf");
+
 	lua_newtable(L); // The _ENV
 	lua_pushvalue(L, lua_upvalueindex(1));
 	lua_getfield(L, LUA_REGISTRYINDEX, "LupiGlobalMetatable");
@@ -54,8 +64,12 @@ static int loaderFn(lua_State* L) {
 	lua_setupvalue(L, -2, 1); // Pops _ENV
 
 	lua_pushvalue(L, -2); // Another _ENV
-	lua_pushcclosure(L, requireFn, 1); // upvalue 1 for requireFn is _ENV
-	lua_setfield(L, -3, "require");
+	if (isMbuf) {
+		initMbufModule(L);
+	}
+
+	lua_pushcclosure(L, requireFn, 1); // upvalue 1 for requireFn is _ENV (pops _ENV)
+	lua_setfield(L, -3, "require"); // pops the closure
 
 	lua_call(L, 0, 0);
 	// TODO check what call returns rather than always returning the _ENV
