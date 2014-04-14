@@ -180,7 +180,7 @@ function build_kernel()
 		sources = {
 			"k/boot.c",
 			"k/debug.c",
-			"k/lock.c",
+			--"k/lock.c",
 			"k/pageAllocator.c",
 			"k/process.c",
 			"k/scheduler.c",
