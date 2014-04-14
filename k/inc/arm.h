@@ -5,6 +5,7 @@
 #define KPsrIrqDisable 0x80 // I
 #define KPsrFiqDisable 0x40 // F
 
+#define KPsrModeMask	0x1F
 #define KPsrModeUsr		0x10
 #define KPsrModeSvc		0x13
 #define KPsrModeAbort	0x17

@@ -2,10 +2,6 @@
 
 --# Note that for getByte and getInt, indexes are *ZERO-BASED* because we're talking memory, not Lua data structures.
 
-print "Loading membuf.lua..."
-print(MemBuf)
-assert(MemBuf)
-
 local function min(x,y)
 	return x < y and x or y
 end

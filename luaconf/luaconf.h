@@ -224,7 +224,7 @@
 (fprintf(stderr, (s), (p)), fflush(stderr))
 
 //BEGIN TOMSCI
-#elif defined(KLUA)
+#elif defined(LUACONF_USE_PRINTK)
 
 void printk(const char* fmt, ...) ATTRIBUTE_PRINTF(1, 2);
 #define luai_writestring(s,l) printk("%s", s)

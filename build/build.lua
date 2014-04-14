@@ -26,6 +26,7 @@ local function loadConfig(c)
 		config.ld = config.toolchainPrefix .. "ld"
 		config.objcopy = config.toolchainPrefix .. "objcopy"
 		config.objdump = config.toolchainPrefix .. "objdump"
+		config.readelf = config.toolchainPrefix .. "readelf"
 	end
 	config.name = c
 	if config.lua == nil then
@@ -229,11 +230,17 @@ function build_kernel()
 			table.insert(sources, { path = "usersrc/uklua.c", user = true })
 			table.insert(sources, { path = "usersrc/membuf.c", user = true })
 		end
-		if config.klua then
-			table.insert(includes, "-DKLUA")
-			table.insert(userIncludes, "-DKLUA")
-		elseif config.ulua then
+		if config.ulua then
 			table.insert(sources, mallocSource)
+			if config.klua then
+				--# ulua and klua can both be true when we're using klua as a kernel debugger
+				--# In this config we're primarily ulua (don't define KLUA in the kernel) but
+				--# klua.c still gets compiled
+				table.insert(includes, "-DKLUA_DEBUGGER")
+			end
+		elseif config.klua then
+			table.insert(includes, "-DKLUA")
+			table.insert(userIncludes, "-DLUACONF_USE_PRINTK")
 		end
 	end
 	if config.ulua then
@@ -267,8 +274,12 @@ function build_kernel()
 	end
 
 	if config.klua then
+		table.insert(sources, { path = "usersrc/kluaHeap.c", user = true })
 		--# klua.c is a special case as it sits between kernel and user code, and needs to access bits of both. It is primarily user (has user includes) but also has access to the platform -include file
-		local includes = { "-DKLUA" }
+		local includes = { }
+		if config.ulua then
+			table.insert(includes, "-DULUA_PRESENT")
+		end
 		if config.include then
 			table.insert(includes, "-include "..qrp("build/"..config.name.."/"..config.include))
 		end
@@ -327,6 +338,10 @@ function build_kernel()
 		local cmd = string.format("%s %s -O binary %s", config.objcopy, qrp(elf), qrp(img))
 		local ok = exec(cmd)
 		if not ok then error("Objcopy failed!") end
+
+		cmd = string.format("%s -a %s > %s", config.readelf, qrp(elf), qrp(outDir.."kernel.txt"))
+		ok = exec(cmd)
+		if not ok then error("Readelf failed!") end
 
 		if listing then
 			cmd = string.format("%s -d --section .text --section .rodata --source -w %s > %s", config.objdump, qrp(elf), qrp(outDir .. "kernel.s"))

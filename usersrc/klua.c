@@ -17,24 +17,7 @@ byte getch();
 //#define USE_HOST_MALLOC_FOR_LUA
 #endif
 
-#ifndef USE_HOST_MALLOC_FOR_LUA
-
-// Dumbest allocator in the world. Doesn't reclaim memory, just returns sucessively growing
-// pointers. We shall see if it's good enough....
-
-typedef struct Heap {
-	int nallocs;
-	int nfrees;
-	uintptr top;
-	long alloced;
-} Heap;
-
-#define GetHeap() ((Heap*)KLuaHeapBase)
-#define align(ptr) ((((uintptr)(ptr)) + 0x7) & ~0x7)
-
-#endif // USE_HOST_MALLOC_FOR_LUA
-
-#ifndef HOSTED
+#if !defined(HOSTED) && !defined(ULUA_PRESENT)
 
 void hang() __attribute__((noreturn));
 
@@ -58,50 +41,16 @@ void* malloc(size_t len) {
 	return realloc(NULL, len);
 }
 
-#endif // HOSTED
+#endif // HOSTED && !ULUA_PRESENT
 
 #ifndef USE_HOST_MALLOC_FOR_LUA
-void heapReset() {
-	Heap* h = GetHeap();
-	h->nallocs = 0;
-	h->nfrees = 0;
-	h->top = align(h+1);
-	h->alloced = 0;
-	//printk("Heap reset top = %p\n", (void*)h->top);
-}
 
-void* lua_alloc_fn(void *ud, void *ptr, size_t osize, size_t nsize) {
-	//printk("lua_alloc_fn from %p\n", __builtin_return_address(0));
-	Heap* h = (Heap*)ud;
-	if (nsize == 0) {
-		// free
-		//printk("Freeing %p len %lu\n", ptr, osize);
-		return NULL;
-	}
+void klua_heapReset();
+void* klua_alloc_fn(void *ud, void *ptr, size_t osize, size_t nsize);
 
-	if (ptr && nsize <= osize) {
-		return ptr;
-	}
-
-	void* result = (void*)h->top;
-	h->top = align(h->top + nsize);
-	// Don't bother checking - let the MMU fault us
-	/*
-	if (h->top > KLuaHeapBase + 1*1024*1024) {
-		printk("No mem! nallocs=%d\n", h->nallocs);
-		abort();
-	}
-	*/
-	h->nallocs++;
-	h->alloced += nsize;
-	if (ptr) {
-		// Remember to copy in the reallocd mem!
-		memcpy(result, ptr, osize);
-	}
-	//printk("realloc returning %p for len=%d\n", (void*)result, (int)nsize);
-	return result;
-}
 #endif // USE_HOST_MALLOC_FOR_LUA
+
+#ifndef ULUA_PRESENT
 
 void goDoLuaStuff() {
 	//printk("%s\n", lua_ident);
@@ -111,8 +60,8 @@ void goDoLuaStuff() {
 #ifdef USE_HOST_MALLOC_FOR_LUA
 	lua_State* L = luaL_newstate();
 #else
-	heapReset();
-	lua_State* L = lua_newstate(lua_alloc_fn, GetHeap());
+	klua_heapReset(KLuaHeapBase);
+	lua_State* L = lua_newstate(klua_alloc_fn, (void*)KLuaHeapBase);
 #endif
 	luaL_openlibs(L);
 	const char* prog = "print('hello from lua!')\n";
@@ -134,11 +83,11 @@ void interactiveLuaPrompt() {
 #ifdef USE_HOST_MALLOC_FOR_LUA
 	lua_State* L = luaL_newstate();
 #else
-	heapReset();
-	lua_State* L = lua_newstate(lua_alloc_fn, GetHeap());
+	klua_heapReset(KLuaHeapBase);
+	lua_State* L = lua_newstate(klua_alloc_fn, (void*)KLuaHeapBase);
 #endif
 	luaL_openlibs(L);
-	printk("lua> ");
+	printk("klua> ");
 
 	char line[256];
 	int lpos = 0;
@@ -159,7 +108,7 @@ void interactiveLuaPrompt() {
 				}
 			}
 			lpos = 0;
-			printk("lua> ");
+			printk("klua> ");
 		} else if (ch == 8) {
 			// Backspace
 			if (lpos > 0) {
@@ -174,6 +123,8 @@ void interactiveLuaPrompt() {
 		}
 	}
 }
+
+#endif // ULUA_PRESENT
 
 static int putch_lua(lua_State* L) {
 	int ch = lua_tointeger(L, 1);
@@ -202,12 +153,12 @@ static int lua_newMemBuf(lua_State* L) {
 }
 
 // A variant of interactiveLuaPrompt that lets us write the actual intepreter loop as a lua module
-void runLuaIntepreterModule() {
+void runLuaIntepreterModule(uintptr heapBase) {
 #ifdef USE_HOST_MALLOC_FOR_LUA
 	lua_State* L = luaL_newstate();
 #else
-	heapReset();
-	lua_State* L = lua_newstate(lua_alloc_fn, GetHeap());
+	klua_heapReset(heapBase);
+	lua_State* L = lua_newstate(klua_alloc_fn, (void*)heapBase);
 #endif
 	L = newLuaStateForModule("interpreter", L);
 	// the interpreter module is now at top of L stack

@@ -21,6 +21,7 @@
 		DB61BB6B18D46DF5006F9F69 /* k */ = {isa = PBXFileReference; lastKnownFileType = folder; path = k; sourceTree = "<group>"; };
 		DB61BB6C18D46E1D006F9F69 /* build */ = {isa = PBXFileReference; lastKnownFileType = folder; path = build; sourceTree = "<group>"; };
 		DB67DBED18EB644D00158EEF /* modules */ = {isa = PBXFileReference; lastKnownFileType = folder; path = modules; sourceTree = "<group>"; };
+		DB88581C18FC0982002E325E /* kernel.txt */ = {isa = PBXFileReference; lastKnownFileType = text; name = kernel.txt; path = bin/pi/kernel.txt; sourceTree = "<group>"; };
 		DBBF9E0F18E4860800863C6E /* .gitignore */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
 		DBE8D28918E4CF9500B517A2 /* kernel.s */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.asm; name = kernel.s; path = bin/pi/kernel.s; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -52,6 +53,7 @@
 				DB4772D718D63AF300F037B5 /* userinc */,
 				DB10490918DF02F200EB92A2 /* usersrc */,
 				DBBF9E0F18E4860800863C6E /* .gitignore */,
+				DB88581C18FC0982002E325E /* kernel.txt */,
 				DBE8D28918E4CF9500B517A2 /* kernel.s */,
 			);
 			sourceTree = "<group>";

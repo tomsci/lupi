@@ -10,7 +10,7 @@ void irq_init();
 void irq_enable();
 //void goDoLuaStuff();
 //void interactiveLuaPrompt();
-void runLuaIntepreterModule();
+void runLuaIntepreterModule(uintptr heapPtr);
 const char* getLuaModule(const char* moduleName, int* modSize);
 
 void Boot() {
@@ -61,7 +61,7 @@ void Boot() {
 	mmu_mapSectionContiguous(Al, KLuaHeapBase, KPageKluaHeap);
 	mmu_finishedUpdatingPageTables();
 	//interactiveLuaPrompt();
-	runLuaIntepreterModule();
+	runLuaIntepreterModule(KLuaHeapBase);
 #else
 
 	// Start first process (so exciting!)
@@ -116,22 +116,20 @@ void NAKED hang() {
 	asm("B hang");
 }
 
-void dumpRegisters(uint32* regs, uint32 pc) {
-	uint32 bnked[2];
-	uint32* bankedStart = bnked;
-	// The compiler will 'optimise' out the STM into a single "str %0, [sp]" unless
-	// I include the volatile. The fact there's the small matter of the '^' which it is
-	// IGNORING when making that decision... aaargh!
-	ASM_JFDI("STM %0, {r13, r14}^" : : "r" (bankedStart));
-	printk("r0:  %X r1:  %X r2:  %X r3:  %X\n", regs[0],  regs[1],  regs[2],  regs[3]);
-	printk("r4:  %X r5:  %X r6:  %X r7:  %X\n", regs[4],  regs[5],  regs[6],  regs[7]);
-	printk("r8:  %X r9:  %X r10: %X r11: %X\n", regs[8],  regs[9],  regs[10], regs[11]);
-	printk("r12: %X r13: %X r14: %X r15: %X\n", regs[12], bnked[0], bnked[1], pc);
-	uint32 spsr;
-	asm("MRS %0, spsr" : "=r" (spsr));
-	printk("CPSR was %X\n", spsr);
+void iThinkYouOughtToKnowImFeelingVeryDepressed() {
+#ifdef KLUA_DEBUGGER
+	if (!TheSuperPage->marvin) {
+		if (!mmu_mapSectionContiguous(Al, KLuaDebuggerHeap, KPageKluaHeap)) {
+			printk("Failed to allocate memory for klua debugger heap, sorry.\n");
+			hang();
+		}
+		TheSuperPage->marvin = true;
+	}
+	runLuaIntepreterModule(KLuaDebuggerHeap);
+#else
+	hang();
+#endif
 }
-
 
 void NAKED undefinedInstruction() {
 	asm("PUSH {r0-r12}");
@@ -140,9 +138,9 @@ void NAKED undefinedInstruction() {
 	uint32 addr;
 	asm("MOV %0, r14" : "=r" (addr));
 	addr -= 4; // r14_und is the instruction after
-	printk("Undefined instruction at 0x%X\n", addr);
+	printk("Undefined instruction at %X\n", addr);
 	dumpRegisters(regs, addr);
-	hang();
+	iThinkYouOughtToKnowImFeelingVeryDepressed();
 }
 
 static inline uint32 getFAR() {
@@ -170,9 +168,9 @@ void NAKED prefetchAbort() {
 	uint32 addr;
 	asm("MOV %0, r14" : "=r" (addr));
 	addr -= 4; // r14_abt is the instruction after
-	printk("Prefetch abort at 0x%X ifsr=%X\n", addr, getIFSR());
+	printk("Prefetch abort at %X ifsr=%X\n", addr, getIFSR());
 	dumpRegisters(regs, addr);
-	hang();
+	iThinkYouOughtToKnowImFeelingVeryDepressed();
 }
 
 void NAKED svc() {
@@ -198,7 +196,7 @@ void NAKED dataAbort() {
 	addr -= 8; // r14_abt is 8 bytes after (PC always 2 ahead for mem access)
 	printk("Data abort at %X dfsr=%X far=%X\n", addr, getDFSR(), getFAR());
 	dumpRegisters(regs, addr);
-	hang();
+	iThinkYouOughtToKnowImFeelingVeryDepressed();
 }
 
 #endif // HOSTED

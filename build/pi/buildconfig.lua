@@ -19,6 +19,6 @@ config = {
 
 	extraStdInc = "build/pi/stdinc",
 
-	--klua = true,
+	klua = true,
 	ulua = true,
 }

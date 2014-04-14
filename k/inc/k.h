@@ -29,7 +29,8 @@ void zeroPage(void* addr);
 void zeroPages(void* addr, int num);
 void printk(const char* fmt, ...) ATTRIBUTE_PRINTF(1, 2);
 void hexdump(const char* addr, int len);
-void worddump(const char* addr, int len);
+void worddump(const void* addr, int len);
+void dumpRegisters(uint32* regs, uint32 pc);
 void hang();
 
 #define ASSERT(cond) if (unlikely(!(cond))) { printk("assert %s at line %d\n", #cond, __LINE__); hang(); }
@@ -86,6 +87,7 @@ typedef struct SuperPage {
 	int numValidProcessPages;
 	Thread* blockedUartReceiveIrqHandler;
 	uint64 uptime; // in ms
+	bool marvin;
 } SuperPage;
 
 ASSERT_COMPILE(sizeof(SuperPage) <= KPageSize);
@@ -94,7 +96,7 @@ ASSERT_COMPILE(sizeof(SuperPage) <= KPageSize);
 #define Al ((PageAllocator*)KPageAllocatorAddr)
 
 #define GetProcess(idx) ((Process*)(KProcessesSection + ((idx) << KPageShift)))
-#define indexForProcess(p) ((((uintptr)(p)) >> KPageShift) & 0xFF)
+#define indexForProcess(p) ((int)((((uintptr)(p)) >> KPageShift) & 0xFF))
 
 static inline Thread* firstThreadForProcess(Process* p) {
 	return &p->threads[0];
