@@ -29,4 +29,9 @@ void runUserTests() {
 	char buf[32];
 	sprintf(buf, s, "awesome");
 	assert(strcmp(buf, "This is a awesome test!") == 0);
+
+	char u[] = "x = %p %08X %x";
+	const int n = 0x0123AB67;
+	sprintf(buf, u, n, n, n);
+	assert(strcmp(buf, "x = 0x123AB67 0123AB67 123ab67") == 0);
 }
