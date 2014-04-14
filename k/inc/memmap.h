@@ -84,12 +84,12 @@ User memory map:
 Unmapped						00000000-00007000
 BSS								00007000-00008000
 Heap							00008000-heapLimit
-Thread stacks					03E00000-40000000
+Thread stacks					0FE00000-10000000
 */
 
 #define KUserBss				0x00007000u
 // Heap assumed to be immediately following BSS in process_init()
 #define KUserHeapBase			0x00008000u
-#define KUserStacksBase			0x03E00000u
+#define KUserStacksBase			0x0FE00000u
 
 #endif

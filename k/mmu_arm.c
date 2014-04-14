@@ -11,8 +11,9 @@
  * PTR = "Second-level translation descriptor"
  */
 
-#define TTBCR_N 2 // Max user address space = 1GB, 1024 PDEs
-#define KMaxUserAddress 0x40000000
+//#define TTBCR_N 2 // Max user address space = 1GB, 1024 PDEs
+#define TTBCR_N 3 // Max address space = 256MB which is actually all I allowed in the PT setup, doh. TODO fix that...
+#define KMaxUserAddress 0x10000000
 
 
 //static uint32* getPageDirectoryForProcess(uint processIdx) {
