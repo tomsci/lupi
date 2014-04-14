@@ -22,8 +22,9 @@ void Boot() {
 
 	// Set up data structures that weren't part of mmu_init()
 
-	int numPagesRam = KPhysicalRamSize >> KPageShift;
-	int paSizePages = PAGE_ROUND(pageAllocator_size(numPagesRam)) >> KPageShift;
+	const int numPagesRam = KPhysicalRamSize >> KPageShift;
+	const uint paSizePages = PAGE_ROUND(pageAllocator_size(numPagesRam)) >> KPageShift;
+	ASSERT_COMPILE(paSizePages<<KPageShift <= KPageAllocatorMaxSize);
 	mmu_mapSect0Data(KPageAllocatorAddr, KPhysPageAllocator, paSizePages);
 	mmu_finishedUpdatingPageTables(); // So the pageAllocator's mem is visible
 
