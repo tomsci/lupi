@@ -44,6 +44,11 @@ static int getUptime(lua_State* L) {
 	return 1;
 }
 
+static int crash(lua_State* L) {
+	*(int*)(0xBAD) = 0xDEADBAD;
+	return 0;
+}
+
 lua_State* newLuaStateForModule(const char* moduleName, lua_State* L);
 
 void newProcessEntryPoint() {
@@ -59,6 +64,7 @@ void newProcessEntryPoint() {
 	static const luaL_Reg globals[] = {
 		{ "putch", putch_lua },
 		{ "getch", getch_lua },
+		{ "crash", crash },
 		{ NULL, NULL }
 	};
 	static const luaL_Reg lupi_funcs[] = {
