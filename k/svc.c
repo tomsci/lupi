@@ -52,7 +52,6 @@ int64 handleSvc(int cmd, uintptr arg1, uintptr* arg2, void* savedRegisters) {
 				// We should never get here because when the calling thread gets rescheduled,
 				// it goes straight back into user mode (because that's how we roll - no
 				// preemption in user mode except for things that explicitly yield to user mode)
-				printk("ohcrap\n");
 				ASSERT(false);
 			} else {
 				return 0;

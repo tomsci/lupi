@@ -280,6 +280,7 @@ function build_kernel()
 		local includes = { }
 		if config.ulua then
 			table.insert(includes, "-DULUA_PRESENT")
+			table.insert(includes, "-DKLUA_DEBUGGER")
 		end
 		if config.include then
 			table.insert(includes, "-include "..qrp("build/"..config.name.."/"..config.include))

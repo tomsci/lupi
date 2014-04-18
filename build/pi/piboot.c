@@ -127,6 +127,12 @@ NOINLINE NAKED void PUT32(uint32 addr, uint32 val) {
     asm("bx lr");
 }
 
+NOINLINE NAKED byte GET8(uintptr ptr) {
+	asm("LDRB r0, [r0]");
+	asm("BX lr");
+	return 0; // aargh stupid compiler
+}
+
 void NAKED fiq() {
 	printk("FIQ???\n");
 	asm("SUBS pc, r14, #4");
