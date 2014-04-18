@@ -1,4 +1,4 @@
-#include <std.h>
+#include <k.h>
 
 extern void dummy ( unsigned int );
 
@@ -62,11 +62,75 @@ void putbyte(byte c) {
     PUT32(AUX_MU_IO_REG, c);
 }
 
+#define UART_BUF_SIZE (sizeof(TheSuperPage->uartBuf) - 2)
+
+/// Ring buffer impl. Takes a byte buffer up to 257 bytes in size.
+// Uses 2 of those bytes for metadata (so maximum number of bytes you can buffer is 255)
+bool ring_empty(byte* ring, int size) {
+	byte* got = &ring[size];
+	byte* read = &ring[size+1];
+	return *got == *read;
+}
+
+bool ring_full(byte* ring, int size) {
+	byte* got = &ring[size];
+	return *got == 0xFF;
+}
+
+void ring_push(byte* ring, int size, byte b) {
+	// Must have checked for !ring_full()
+	byte* got = &ring[size];
+	byte* read = &ring[size+1];
+
+	ring[*got] = b;
+	*got = *got + 1;
+	if (*got == size) *got = 0;
+	if (*got == *read) *got = 0xFF; // We're now full
+}
+
+byte ring_pop(byte* ring, int size) {
+	// Must have checked for !ring_empty()
+	byte* got = &ring[size];
+	byte* read = &ring[size+1];
+
+	byte result = ring[*read];
+	if (*got == 0xFF) *got = *read; // We're no longer full, got a free space at *read
+	*read = *read + 1;
+	if (*read == size) *read = 0;
+	return result;
+}
+
+void uart_got_char(byte b) {
+	SuperPage* s = TheSuperPage;
+	Thread* t = s->blockedUartReceiveIrqHandler;
+	if (t) {
+		t->savedRegisters[0] = b;
+		thread_setState(t, EReady);
+		s->blockedUartReceiveIrqHandler = NULL;
+		// The returning WFI in reschedule() should take care of the rest
+	} else if (!ring_full(s->uartBuf, UART_BUF_SIZE)) {
+		ring_push(s->uartBuf, UART_BUF_SIZE, b);
+	} else {
+		//printk("Dropping char %c on the floor\n", b);
+		s->uartDroppedChars++;
+	}
+}
+
 bool byteReady() {
-	return (GET32(AUX_MU_LSR_REG) & 0x01);
+	SuperPage* s = TheSuperPage;
+	return !ring_empty(s->uartBuf, UART_BUF_SIZE) || (GET32(AUX_MU_LSR_REG) & 0x01);
 }
 
 byte getch() {
+	SuperPage* s = TheSuperPage;
+	if (s->uartDroppedChars) {
+		printk("|Warning: %d dropped chars|", s->uartDroppedChars);
+		s->uartDroppedChars = 0;
+	}
+	if (!ring_empty(s->uartBuf, UART_BUF_SIZE)) {
+		return ring_pop(s->uartBuf, UART_BUF_SIZE);
+	}
+
 	while (!byteReady()) {
 		// Spin
 	}

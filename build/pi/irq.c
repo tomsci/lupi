@@ -19,6 +19,7 @@
 uint32 GET32(uint32 addr);
 void PUT32(uint32 addr, uint32 val);
 bool tick(void* savedRegs);
+void uart_got_char(byte b);
 
 #define KTimerControlReset 0x00F90020 // Prescale = 0xF9=249, InterruptEnable=1
 #define KTimerControl23BitCounter (1<<1)
@@ -82,15 +83,8 @@ bool handleIrq(void* savedRegs) {
 			if (iir & AUX_MU_IIR_ReceiveInterrupt) {
 				//printk("CNT=%d\n", GET32(ARM_TIMER_CNT));
 				//TODO printk("Got char %c!\n", GET32(AUX_MU_IO_REG));
-				Thread* t = TheSuperPage->blockedUartReceiveIrqHandler;
-				if (t) {
-					t->savedRegisters[0] = GET32(AUX_MU_IO_REG);
-					thread_setState(t, EReady);
-					TheSuperPage->blockedUartReceiveIrqHandler = NULL;
-					// The returning WFI in reschedule() should take care of the rest
-				} else {
-					printk("Dropping char %c on the floor\n", GET32(AUX_MU_IO_REG));
-				}
+				byte b = GET32(AUX_MU_IO_REG);
+				uart_got_char(b);
 				PUT32(AUX_MU_IIR_REG, AUX_MU_ClearReceiveFIFO);
 			}
 		}

@@ -95,8 +95,9 @@ typedef struct SuperPage {
 	bool marvin;
 	bool trapAbort;
 	bool exception; // only used in kdebugger mode
-
+	byte uartDroppedChars;
 	uint32 crashRegisters[17];
+	byte uartBuf[66];
 } SuperPage;
 
 ASSERT_COMPILE(sizeof(SuperPage) <= KPageSize);
