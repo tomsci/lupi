@@ -4,8 +4,10 @@
 #include <lualib.h>
 #include <lauxlib.h>
 #include <lupi/exec.h>
+#include <lupi/int64.h>
 
 #define MemBufMetatable "LupiMemBufMetatable"
+
 #define MAX_BUFSIZE 1024*1024
 
 typedef struct MemBuf {
@@ -15,6 +17,10 @@ typedef struct MemBuf {
 
 static MemBuf* checkBuf(lua_State* L) {
 	return (MemBuf*)luaL_checkudata(L, 1, MemBufMetatable);
+}
+
+static void pushMemBuf(lua_State* L) {
+	luaL_newmetatable(L, MemBufMetatable);
 }
 
 static void boundsCheck(lua_State* L, MemBuf* buf, int offset, int typeSize) {
@@ -31,8 +37,18 @@ static int getInt(lua_State* L) {
 	int offset = luaL_checkint(L, 2);
 	boundsCheck(L, buf, offset, sizeof(int));
 
-	int* val = (int*)((char*)buf->ptr + offset);
-	lua_pushinteger(L, *val);
+	pushMemBuf(L);
+	lua_getfield(L, -1, "_accessfn");
+	void* accessFn = lua_touserdata(L, -1);
+	lua_pop(L, 2);
+	uintptr ptr = (uintptr)buf->ptr + offset;
+	int val;
+	if (accessFn) {
+		val = ((mbuf_getvalue)accessFn)(L, ptr, sizeof(int));
+	} else {
+		val = *(int*)ptr;
+	}
+	lua_pushinteger(L, val);
 	return 1;
 }
 
@@ -41,8 +57,38 @@ static int getByte(lua_State* L) {
 	int offset = luaL_checkint(L, 2);
 	boundsCheck(L, buf, offset, sizeof(byte));
 
-	byte* val = (byte*)((byte*)buf->ptr + offset);
-	lua_pushinteger(L, *val);
+	pushMemBuf(L);
+	lua_getfield(L, -1, "_accessfn");
+	void* accessFn = lua_touserdata(L, -1);
+	lua_pop(L, 2);
+	uintptr ptr = (uintptr)buf->ptr + offset;
+	byte val;
+	if (accessFn) {
+		val = ((mbuf_getvalue)accessFn)(L, ptr, 1);
+	} else {
+		val = *(byte*)ptr;
+	}
+	lua_pushinteger(L, val);
+	return 1;
+}
+
+static int getInt64(lua_State* L) {
+	MemBuf* buf = checkBuf(L);
+	int offset = luaL_checkint(L, 2);
+	boundsCheck(L, buf, offset, sizeof(int64));
+
+	pushMemBuf(L);
+	lua_getfield(L, -1, "_accessfn");
+	void* accessFn = lua_touserdata(L, -1);
+	lua_pop(L, 2);
+	uintptr ptr = (uintptr)buf->ptr + offset;
+	int64 val;
+	if (accessFn) {
+		val = ((mbuf_getvalue)accessFn)(L, ptr, 8);
+	} else {
+		val = *(int64*)ptr;
+	}
+	int64_new(L, val);
 	return 1;
 }
 
@@ -64,13 +110,14 @@ static int sub(lua_State* L) {
 	int len = luaL_checkint(L, 3);
 	boundsCheck(L, buf, offset, 1);
 	boundsCheck(L, buf, offset+len-1, 1);
-	mbuf_new(L, (char*)buf->ptr + offset, len);
+	const char* type = luaL_optstring(L, 4, NULL);
+	mbuf_new(L, (char*)buf->ptr + offset, len, type);
 	return 1;
 }
 
-static int tostring(lua_State* L) {
-	MemBuf* buf = checkBuf(L);
-	lua_pushfstring(L, "MemBuf(%p, %d)", buf->ptr, buf->len);
+static int getType(lua_State* L) {
+	checkBuf(L);
+	lua_getuservalue(L, -1);
 	return 1;
 }
 
@@ -78,25 +125,78 @@ void initMbufModule(lua_State* L) {
 	// module env at top of L stack
 	luaL_newmetatable(L, MemBufMetatable);
 	luaL_Reg fns[] = {
-		{ "address", address },
+		{ "getAddress", address },
 		{ "getInt", getInt },
+		{ "getInt64", getInt64 },
 		{ "getByte", getByte },
-		{ "length", length },
+		{ "getLength", length },
 		{ "sub", sub },
-		{ "__tostring", tostring },
+		{ "getType", getType },
 		{ NULL, NULL }
 	};
 	luaL_setfuncs(L, fns, 0);
-	lua_pushvalue(L, -1); // Dup MemBufMetatable
-	lua_setfield(L, -2, "__index");
 	lua_setfield(L, -2, "MemBuf");
 }
 
-MemBuf* mbuf_new(lua_State* L, void* ptr, int len) {
+//#define CALL(L, nargs, nret) if (lua_pcall(L, nargs, nret, 0) != 0) { lua_getglobal(L, "print"); lua_insert(L, -2); lua_call(L, 1, 0); }
+#define CALL(L, nargs, nret) lua_call(L, nargs, nret)
+
+MemBuf* mbuf_new(lua_State* L, void* ptr, int len, const char* type) {
 	MemBuf* buf = (MemBuf*)lua_newuserdata(L, sizeof(MemBuf));
 	buf->ptr = ptr;
 	buf->len = len;
-	luaL_newmetatable(L, MemBufMetatable); // Will already exist, this API name is a bit misleading
-	lua_setmetatable(L, -2);
+	int bufIdx = lua_gettop(L);
+	pushMemBuf(L);
+	lua_pushvalue(L, -1); // dup MemBufMetatable
+	if (type) {
+		lua_getfield(L, -1, "_types");
+		lua_getfield(L, -1, type);
+		lua_setuservalue(L, bufIdx);
+		lua_pop(L, 1); // _types
+	}
+	lua_setmetatable(L, bufIdx); // pops one of the MemBufMetatables
+	lua_getfield(L, -1, "_newObject");
+	lua_pushvalue(L, bufIdx);
+	CALL(L, 1, 0);
+	lua_pop(L, 1); // The last MemBufMetatable
+	// Returns with the new buf on the Lua stack
 	return buf;
+}
+
+void mbuf_declare_type(lua_State* L, const char* typeName, int size) {
+	pushMemBuf(L);
+	lua_getfield(L, -1, "_declareType");
+	lua_pushstring(L, typeName);
+	lua_pushinteger(L, size);
+	CALL(L, 2, 0);
+	lua_pop(L, 1);
+}
+
+void mbuf_declare_member(lua_State* L, const char* typeName, const char* memberName, int offset, int size, const char* memberType) {
+	pushMemBuf(L);
+	lua_getfield(L, -1, "_declareMember");
+	lua_pushstring(L, typeName);
+	lua_pushstring(L, memberName);
+	lua_pushinteger(L, offset);
+	lua_pushinteger(L, size);
+	lua_pushstring(L, memberType);
+	CALL(L, 5, 0);
+	lua_pop(L, 1);
+}
+
+void mbuf_set_accessor(lua_State* L, mbuf_getvalue accessptr) {
+	pushMemBuf(L);
+	lua_pushlightuserdata(L, (void*)accessptr);
+	lua_setfield(L, -2, "_accessfn");
+	lua_pop(L, 1); // MT
+}
+
+void mbuf_declare_enum(lua_State* L, const char* typeName, int value, const char* name) {
+	pushMemBuf(L);
+	lua_getfield(L, -1, "_declareValue");
+	lua_pushstring(L, typeName);
+	lua_pushinteger(L, value);
+	lua_pushstring(L, name);
+	CALL(L, 3, 0);
+	lua_pop(L, 1);
 }
