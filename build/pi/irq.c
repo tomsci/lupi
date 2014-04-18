@@ -18,7 +18,7 @@
 
 uint32 GET32(uint32 addr);
 void PUT32(uint32 addr, uint32 val);
-void tick();
+bool tick(void* savedRegs);
 
 #define KTimerControlReset 0x00F90020 // Prescale = 0xF9=249, InterruptEnable=1
 #define KTimerControl23BitCounter (1<<1)
@@ -64,12 +64,13 @@ void NAKED irq_enable() {
 	asm("bx lr");
 }
 
-void handleIrq() {
+bool handleIrq(void* savedRegs) {
 	//printk("IRQ!\n");
+	bool threadTimeExpired = false;
 	uint32 irqBasicPending = GET32(IRQ_BASIC);
 	if (irqBasicPending & 1) {
 		// Timer IRQ
-		tick();
+		threadTimeExpired = tick(savedRegs);
 		PUT32(ARM_TIMER_CLI,0);
 	}
 	if (irqBasicPending & (1 << 8)) {
@@ -84,7 +85,7 @@ void handleIrq() {
 				Thread* t = TheSuperPage->blockedUartReceiveIrqHandler;
 				if (t) {
 					t->savedRegisters[0] = GET32(AUX_MU_IO_REG);
-					t->state = EReady;
+					thread_setState(t, EReady);
 					TheSuperPage->blockedUartReceiveIrqHandler = NULL;
 					// The returning WFI in reschedule() should take care of the rest
 				} else {
@@ -98,11 +99,16 @@ void handleIrq() {
 		// IRQ Pending Reg 2
 		// TODO
 	}
+	return threadTimeExpired;
 }
 
 void NAKED irq() {
-	asm("push {r0-r12, lr}");
-	handleIrq();
-	asm("pop  {r0-r12, lr}");
+	asm("PUSH {r0-r12, r14}");
+	asm("MOV r0, sp"); // Full descending stack means sp now points to the regs we saved
+	asm("BL handleIrq");
+	asm("CMP r0, #0"); // Has thread timeslice expired?
+	asm("BNE reschedule_irq"); // If so, tick() will have saved thread state, so just reschedule()
+	// Otherwise, return to thread
+	asm("POP  {r0-r12, r14}");
 	asm("SUBS pc, r14, #4");
 }

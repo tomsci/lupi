@@ -30,15 +30,35 @@ int64 handleSvc(int cmd, uintptr arg1, uintptr* arg2, void* savedRegisters) {
 			if (byteReady()) {
 				return getch();
 			}
-			t->state = EBlocked;
-			saveUserModeRegistersForCurrentThread(savedRegisters);
+			thread_setState(t, EBlocked);
+			saveUserModeRegistersForCurrentThread(savedRegisters, true);
 			TheSuperPage->blockedUartReceiveIrqHandler = t;
-			reschedule(t);
+			reschedule();
 			// reschedule never returns - the IRQ handler is responsible for populating
 			// t->savedRegisters[0] with the char value and unblocking us, then the IRQ
 			// handler will return to after the WFI() in reschedule(), at which point
 			// this thread is ready so will get jumped back to user mode with the result
 			// of the SVC call all nicely filled in in r0.
+		}
+		case KExecCreateProcess: {
+#ifndef KLUA
+			// TODO sanitise again!
+			const char* name = (const char*)arg1;
+			Process* p = process_new(name);
+			if (p) {
+				saveUserModeRegistersForCurrentThread(savedRegisters, true);
+				t->savedRegisters[0] = p->pid;
+				process_start(p); // effectively causes a reschedule
+				// We should never get here because when the calling thread gets rescheduled,
+				// it goes straight back into user mode (because that's how we roll - no
+				// preemption in user mode except for things that explicitly yield to user mode)
+				printk("ohcrap\n");
+				ASSERT(false);
+			} else {
+				return 0;
+			}
+			break;
+#endif
 		}
 		case KExecGetUptime:
 			return TheSuperPage->uptime;

@@ -390,6 +390,7 @@ luaModules = {
 	"modules/test.lua",
 	"modules/interpreter.lua",
 	"modules/membuf.lua",
+	"modules/spin.lua",
 	"modules/int64.lua",
 }
 

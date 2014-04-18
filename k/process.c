@@ -19,6 +19,7 @@ static bool process_init(Process* p, const char* processName) {
 	p->pid = TheSuperPage->nextPid++;
 	uint32* pde = (uint32*)PDE_FOR_PROCESS(p);
 	uint32* kernPtForTheUserPts = (uint32*)KERN_PT_FOR_PROCESS_PTS(p);
+	bool ok;
 	if (!p->pdePhysicalAddress) {
 		p->pdePhysicalAddress = mmu_mapPageInSection(Al, (uint32*)KProcessesPdeSection_pt, (uintptr)pde, KPageUserPde);
 		uintptr userPtsStart = (uintptr)PT_FOR_PROCESS(p, 0);
@@ -32,7 +33,8 @@ static bool process_init(Process* p, const char* processName) {
 
 	// Setup initial thread
 	p->numThreads = 1;
-	thread_init(p, 0);
+	ok = thread_init(p, 0);
+	if (!ok) return false;
 
 	char* pname = p->name;
 	char ch;
@@ -41,19 +43,21 @@ static bool process_init(Process* p, const char* processName) {
 		*pname++ = ch;
 	} while (ch);
 
-	return true;
+	return ok;
 }
 
 bool thread_init(Process* p, int index) {
 	Thread* t = &p->threads[index];
+	t->prev = NULL;
+	t->next = NULL;
 	t->index = index;
-	t->state = EReady;
-	t->nextSchedulable = t; // TODO sort this out
+	t->timeslice = THREAD_TIMESLICE;
 	uintptr stackBase = userStackForThread(t);
 	bool ok = mmu_mapPagesInProcess(Al, p, stackBase, USER_STACK_SIZE >> KPageShift);
 	if (!ok) return false;
 
 	t->savedRegisters[13] = stackBase + USER_STACK_SIZE;
+	thread_setState(t, EReady);
 	return true;
 }
 

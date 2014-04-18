@@ -199,6 +199,7 @@ int klua_dump_reader(const char* name, lua_Reader reader, void* readData, lua_Wr
 	return ret;
 }
 */
+
 extern uint32 GET32(uint32 ptr);
 
 static NOINLINE NAKED byte GET8(uintptr ptr) {
@@ -261,6 +262,7 @@ void WeveCrashedSetupDebuggingStuff(lua_State* L) {
 	MBUF_MEMBER(SuperPage, currentThread);
 	MBUF_MEMBER(SuperPage, numValidProcessPages);
 	MBUF_MEMBER(SuperPage, blockedUartReceiveIrqHandler);
+	MBUF_MEMBER(SuperPage, readyList);
 	MBUF_MEMBER(SuperPage, uptime);
 	MBUF_MEMBER(SuperPage, marvin);
 	MBUF_MEMBER(SuperPage, trapAbort);
@@ -278,8 +280,11 @@ void WeveCrashedSetupDebuggingStuff(lua_State* L) {
 	MBUF_ENUM(ThreadState, EDead);
 
 	MBUF_TYPE(Thread);
+	MBUF_MEMBER(Thread, prev);
+	MBUF_MEMBER(Thread, next);
 	MBUF_MEMBER(Thread, index);
 	MBUF_MEMBER_TYPE(Thread, state, "ThreadState");
+	MBUF_MEMBER(Thread, timeslice);
 	MBUF_MEMBER_TYPE(Thread, savedRegisters, "regset");
 
 	MBUF_TYPE(Process);

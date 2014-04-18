@@ -2,33 +2,40 @@
 #include <mmu.h>
 #include <arm.h>
 
-void saveUserModeRegistersForCurrentThread(void* savedRegisters) {
+void saveUserModeRegistersForCurrentThread(void* savedRegisters, bool svc) {
 	Thread* t = TheSuperPage->currentThread;
-	// savedRegisters[0..8] contains r4-r12
-	memcpy(&t->savedRegisters[4], savedRegisters, 9 * sizeof(uint32));
-	// savedRegisters[9] has LR_svc, which is what PC_usr needs to be restored to
-	t->savedRegisters[15] = ((uint32*)savedRegisters)[9];
-	uint32* dest = &t->savedRegisters[13];
-	ASM_JFDI("STM %0, {r13-r14}^" : : "r" (dest)); // Saves the user (banked) r13 and r14
+	if (svc) {
+		// savedRegisters[0..8] contains r4-r12 and savedRegisters[9] has LR_svc
+		memcpy(&t->savedRegisters[4], savedRegisters, 9 * sizeof(uint32));
+		// LR_svc in savedRegisters[9] is what PC_usr needs to be restored to
+		t->savedRegisters[15] = ((uint32*)savedRegisters)[9];
+	} else {
+		// savedRegisters[0..12] contains r0-r12 and savedRegisters[13] has LR_irq
+		memcpy(&t->savedRegisters[0], savedRegisters, 13 * sizeof(uint32));
+		// LR_irq in savedRegisters[13] is 4 more than what PC_usr needs to be restored to
+		t->savedRegisters[15] = ((uint32*)savedRegisters)[13] - 4;
+	}
+	uint32* splr = &t->savedRegisters[13];
+	ASM_JFDI("STM %0, {r13-r14}^" : : "r" (splr)); // Saves the user (banked) r13 and r14
 	uint32 userPsr;
 	asm("MRS %0, spsr" : "=r" (userPsr));
 	t->savedRegisters[16] = userPsr;
 
-	//worddump((char*)&t->savedRegisters[0], 16*4);
+	//printk("Saved registers thread %d-%d ts=%d\n", indexForProcess(processForThread(t)), t->index, t->timeslice);
+	//worddump((char*)&t->savedRegisters[0], sizeof(t->savedRegisters));
 }
 
-Thread* findNextReadyThread(Thread* current) {
-	// Find next ready thread
-	Thread* t = current == NULL ? firstThreadForProcess(GetProcess(0)) : current->nextSchedulable;
-	for (; t != current; t = t->nextSchedulable) {
+Thread* findNextReadyThread() {
+	Thread* head = TheSuperPage->readyList;
+	if (!head) return NULL;
+	Thread* t = head;
+	//printk("t=%p t->next=%p\n", t, t?t->next:0);
+	do {
 		if (t->state == EReady) {
 			return t;
 		}
-	}
-	if (current->state == EReady) {
-		// Given all the other threads a chance, current can run again
-		return current;
-	}
+		t = t->next;
+	} while (t != head);
 	return NULL;
 }
 
@@ -50,11 +57,14 @@ NORETURN scheduleThread(Thread* t) {
 	if (p != TheSuperPage->currentProcess) {
 		switch_process(p);
 	}
+	t->timeslice = THREAD_TIMESLICE;
 	TheSuperPage->currentThread = t;
-	doScheduleThread(t->savedRegisters, t->spsr);
+	//printk("Scheduling thread %d-%d ts=%d\n", indexForProcess(p), t->index, t->timeslice);
+	//worddump(t->savedRegisters, sizeof(t->savedRegisters));
+	doScheduleThread(t->savedRegisters, t->savedRegisters[16]);
 }
 
-NORETURN NAKED reschedule(Thread* current) {
+NORETURN NAKED reschedule() {
 	asm(".doReschedule:");
 	asm("BL findNextReadyThread");
 	asm("CMP r0, #0");
@@ -62,13 +72,84 @@ NORETURN NAKED reschedule(Thread* current) {
 
 	// If we get here, no more threads to run, need to just WFI
 	// But in order to do that we need to safely reenable interrupts
+	asm("LDR r1, .TheCurrentThreadAddr");
+	asm("STR r0, [r1]"); // currentThread = NULL
 	DSB(r0);
 	ModeSwitch(KPsrModeSvc | KPsrFiqDisable); // Reenable interrupts
 	WFI(r0);
+	ModeSwitch(KPsrModeSvc | KPsrFiqDisable | KPsrIrqDisable); // Disable interrupts again, just to be safe
 	asm("B .doReschedule");
+	LABEL_WORD(.TheCurrentThreadAddr, &TheSuperPage->currentThread);
+}
+
+NORETURN NAKED reschedule_irq() {
+	// Reset IRQ stack and call reschedule in SVC mode (so nothing else messes stack up again)
+	asm("LDR r13, .irqStack");
+	asm("MOV r1, #0"); DSB(r1); // Needed?
+	ModeSwitch(KPsrModeSvc | KPsrFiqDisable | KPsrIrqDisable);
+	asm("B reschedule");
+	LABEL_WORD(.irqStack, KIrqStackBase + KPageSize);
+}
+
+static void dequeue(Thread* t) {
+	//printk("dequeue t=%p t->next=%p\n", t, t?t->next:0);
+	t->prev->next = t->next;
+	t->next->prev = t->prev;
+	if (TheSuperPage->readyList == t) {
+		if (t == t->next) {
+			TheSuperPage->readyList = NULL;
+		} else {
+			TheSuperPage->readyList = t->next;
+		}
+	}
+	// Not strictly necessary but good for debugging (in particular the assert in enqueueBefore)
+	t->prev = NULL;
+	t->next = NULL;
+}
+
+static void enqueueBefore(Thread* t, Thread* before) {
+	ASSERT(t->prev == NULL && t->next == NULL);
+	if (before == NULL) {
+		// Must be nothing in the list
+		t->next = t;
+		t->prev = t;
+	} else {
+		t->next = before;
+		t->prev = before->prev;
+		before->prev->next = t;
+		before->prev = t;
+	}
 }
 
 // This runs in IRQ context remember
-void tick() {
-	TheSuperPage->uptime++;
+bool tick(void* savedRegs) {
+	SuperPage* s = TheSuperPage;
+	s->uptime++;
+	Thread* t = s->currentThread;
+	if (t && t->state == EReady) {
+		ASSERT(t->timeslice > 0); // Otherwise it shouldn't have been running
+		t->timeslice--;
+		if (t->timeslice == 0) {
+			// Thread is out of time!
+			saveUserModeRegistersForCurrentThread(savedRegs, false);
+			// Move to end of ready list
+			dequeue(t);
+			enqueueBefore(t, s->readyList ? s->readyList->prev : NULL);
+			if (!s->readyList) s->readyList = t;
+			return true;
+		}
+	}
+	return false;
+}
+
+void thread_setState(Thread* t, ThreadState s) {
+	//printk("thread_setState thread %d-%d s=%d t->next=%p\n", indexForProcess(processForThread(t)), t->index, s, t->next);
+	if (s == EReady) {
+		// Move to head of ready list
+		enqueueBefore(t, TheSuperPage->readyList);
+		TheSuperPage->readyList = t;
+	} else {
+		dequeue(t);
+	}
+	t->state = s;
 }

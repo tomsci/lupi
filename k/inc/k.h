@@ -22,6 +22,7 @@ Hmm, the "one page per process" limit turns out to be somewhat limiting...
 
 #define MAX_PROCESS_NAME 32
 
+#define THREAD_TIMESLICE 25 // milliseconds
 
 void zeroPage(void* addr);
 void zeroPages(void* addr, int num);
@@ -42,11 +43,12 @@ typedef struct Process Process;
 typedef struct Thread Thread;
 
 typedef struct Thread {
-	//Thread* prevSchedulable;
-	Thread* nextSchedulable;
+	Thread* prev;
+	Thread* next;
 	uint8 index;
 	uint8 state;
-	uint8 pad[6];
+	uint8 timeslice;
+	uint8 pad[5];
 	uint32 savedRegisters[17];
 } Thread;
 
@@ -88,6 +90,7 @@ typedef struct SuperPage {
 	Thread* currentThread;
 	int numValidProcessPages;
 	Thread* blockedUartReceiveIrqHandler;
+	Thread* readyList;
 	uint64 uptime; // in ms
 	bool marvin;
 	bool trapAbort;
@@ -118,8 +121,9 @@ static inline Process* processForThread(Thread* t) {
 Process* process_new(const char* name);
 void process_start(Process* p);
 bool process_grow_heap(Process* p, int incr);
+void thread_setState(Thread* t, enum ThreadState s);
 
-NORETURN reschedule(Thread* t);
-void saveUserModeRegistersForCurrentThread(void* savedRegisters);
+NORETURN reschedule();
+void saveUserModeRegistersForCurrentThread(void* savedRegisters, bool svc);
 
 #endif // LUPI_K_H
