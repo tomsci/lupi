@@ -12,7 +12,7 @@ void saveUserModeRegistersForCurrentThread(void* savedRegisters) {
 	ASM_JFDI("STM %0, {r13-r14}^" : : "r" (dest)); // Saves the user (banked) r13 and r14
 	uint32 userPsr;
 	asm("MRS %0, spsr" : "=r" (userPsr));
-	t->spsr = userPsr;
+	t->savedRegisters[16] = userPsr;
 
 	//worddump((char*)&t->savedRegisters[0], 16*4);
 }

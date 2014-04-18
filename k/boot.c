@@ -3,8 +3,6 @@
 #include <pageAllocator.h>
 #include <arm.h>
 
-#ifndef HOSTED
-
 void uart_init();
 void irq_init();
 void irq_enable();
@@ -116,8 +114,21 @@ void NAKED hang() {
 	asm("B hang");
 }
 
-void iThinkYouOughtToKnowImFeelingVeryDepressed() {
 #ifdef KLUA_DEBUGGER
+static void NAKED switchToSystemMode() {
+	// for the klua debugger, use abort mode stack, but run in system mode.
+	// This allows us access to all memory, but also means we can still do SVCs without
+	// corrupting registers. This is required because Lua is still in user config so expects
+	// to be able to do an SVC to print, for example, and System is the only mode that allows
+	// this combination
+	asm("MOV r0, r13"); // Save abort mode stack pointer
+	asm("MOV r1, r14");
+	ModeSwitch(KPsrModeSystem | KPsrIrqDisable | KPsrFiqDisable);
+	asm("MOV r13, r0");
+	asm("BX r1");
+}
+
+void iThinkYouOughtToKnowImFeelingVeryDepressed() {
 	if (!TheSuperPage->marvin) {
 		if (!mmu_mapSectionContiguous(Al, KLuaDebuggerHeap, KPageKluaHeap)) {
 			printk("Failed to allocate memory for klua debugger heap, sorry.\n");
@@ -125,11 +136,23 @@ void iThinkYouOughtToKnowImFeelingVeryDepressed() {
 		}
 		TheSuperPage->marvin = true;
 	}
-	runLuaIntepreterModule(KLuaDebuggerHeap);
-#else
-	hang();
-#endif
+	if (TheSuperPage->trapAbort) {
+		TheSuperPage->exception = true;
+		TheSuperPage->trapAbort = false;
+		return;
+	} else {
+		switchToSystemMode();
+		runLuaIntepreterModule(KLuaDebuggerHeap);
+	}
 }
+
+#else
+
+void iThinkYouOughtToKnowImFeelingVeryDepressed() {
+	hang();
+}
+
+#endif
 
 void NAKED undefinedInstruction() {
 	asm("PUSH {r0-r12}");
@@ -139,7 +162,7 @@ void NAKED undefinedInstruction() {
 	asm("MOV %0, r14" : "=r" (addr));
 	addr -= 4; // r14_und is the instruction after
 	printk("Undefined instruction at %X\n", addr);
-	dumpRegisters(regs, addr);
+	dumpRegisters(regs, addr, 0);
 	iThinkYouOughtToKnowImFeelingVeryDepressed();
 }
 
@@ -169,7 +192,7 @@ void NAKED prefetchAbort() {
 	asm("MOV %0, r14" : "=r" (addr));
 	addr -= 4; // r14_abt is the instruction after
 	printk("Prefetch abort at %X ifsr=%X\n", addr, getIFSR());
-	dumpRegisters(regs, addr);
+	dumpRegisters(regs, addr, 0);
 	iThinkYouOughtToKnowImFeelingVeryDepressed();
 }
 
@@ -195,8 +218,28 @@ void NAKED dataAbort() {
 	asm("MOV %0, r14" : "=r" (addr));
 	addr -= 8; // r14_abt is 8 bytes after (PC always 2 ahead for mem access)
 	printk("Data abort at %X dfsr=%X far=%X\n", addr, getDFSR(), getFAR());
-	dumpRegisters(regs, addr);
+	dumpRegisters(regs, addr, getFAR());
 	iThinkYouOughtToKnowImFeelingVeryDepressed();
+	// We might want to return from this if we were already aborted - note we return to
+	// r14-4 not r14-8, ie we skip over the instruction that caused the exception
+	asm("subs pc, r14, #4");
 }
 
-#endif // HOSTED
+void NAKED kabort() {
+	asm("MOV r0, %0" : : "i" (KSuperPageAddress));
+	asm("ADD r0, r0, %0" : : "i" (offsetof(SuperPage, crashRegisters)));
+	// It's not worth even showing r0-r3 because most of the time they'll be completely irrelevant
+	// and possibly misleading
+	asm("LDR r1, .notSavedValue");
+	asm("STR r1, [r0, #0]"); // r0
+	asm("STR r1, [r0, #4]"); // r1
+	asm("STR r1, [r0, #8]"); // r2
+	asm("STR r1, [r0, #12]"); // r3
+	asm("ADD r0, r0, #16");
+	asm("STM r0, {r4-r13}");
+	asm("MRS r2, cpsr");
+	asm("STR r2, [r0, #48]"); // &crashRegisters[16] - &crashRegisters[4] = 48
+
+	asm("B iThinkYouOughtToKnowImFeelingVeryDepressed");
+	LABEL_WORD(.notSavedValue, KRegisterNotSaved);
+}

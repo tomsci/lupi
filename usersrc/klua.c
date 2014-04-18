@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <k.h>
 #include <lupi/membuf.h>
+#include <lupi/int64.h>
 
 void putbyte(byte b);
 byte getch();
@@ -144,11 +145,12 @@ static int panicFn(lua_State* L) {
 }
 
 lua_State* newLuaStateForModule(const char* moduleName, lua_State* L);
+void WeveCrashedSetupDebuggingStuff(lua_State* L);
 
 static int lua_newMemBuf(lua_State* L) {
 	uint32 ptr = lua_tointeger(L, 1);
 	int len = lua_tointeger(L, 2);
-	mbuf_new(L, (void*)ptr, len);
+	mbuf_new(L, (void*)ptr, len, NULL);
 	return 1;
 }
 
@@ -161,6 +163,7 @@ void runLuaIntepreterModule(uintptr heapBase) {
 	lua_State* L = lua_newstate(klua_alloc_fn, (void*)heapBase);
 #endif
 	L = newLuaStateForModule("interpreter", L);
+	const int interpreterIdx = lua_gettop(L);
 	// the interpreter module is now at top of L stack
 	if (!L) abort();
 
@@ -170,19 +173,15 @@ void runLuaIntepreterModule(uintptr heapBase) {
 	lua_pushcfunction(L, getch_lua);
 	lua_setglobal(L, "getch");
 	lua_pushstring(L, "klua> ");
-	lua_setfield(L, -2, "prompt");
+	lua_setfield(L, interpreterIdx, "prompt");
 
 	// klua debugger support
-	lua_getglobal(L, "print");
-	lua_setglobal(L, "p");
+	if (TheSuperPage->marvin) {
+		// We've crashed, set up debugging stuff
+		WeveCrashedSetupDebuggingStuff(L);
+	}
 
-	lua_getfield(L, -1, "require");
-	lua_pushstring(L, "membuf");
-	lua_call(L, 1, 0);
-
-	lua_pushcfunction(L, lua_newMemBuf);
-	lua_setglobal(L, "mem");
-
+	lua_settop(L, interpreterIdx);
 	lua_getfield(L, -1, "main");
 	lua_call(L, 0, 0);
 	// Shouldn't return
@@ -200,3 +199,99 @@ int klua_dump_reader(const char* name, lua_Reader reader, void* readData, lua_Wr
 	return ret;
 }
 */
+extern uint32 GET32(uint32 ptr);
+
+static NOINLINE NAKED byte GET8(uintptr ptr) {
+	asm("LDRB r0, [r0]");
+	asm("BX lr");
+	return 0; // aargh stupid compiler
+}
+
+static int memBufGetMem(lua_State* L, uintptr ptr, int size) {
+	TheSuperPage->trapAbort = true;
+	int result;
+	if (size == 1) {
+		result = GET8(ptr);
+	} else {
+		result = GET32(ptr);
+	}
+	TheSuperPage->trapAbort = false;
+	if (TheSuperPage->exception) {
+		TheSuperPage->exception = false;
+		return luaL_error(L, "Abort at %p", (void*)ptr);
+	}
+	return result;
+}
+
+void WeveCrashedSetupDebuggingStuff(lua_State* L) {
+	lua_getglobal(L, "print");
+	lua_setglobal(L, "p");
+
+	lua_getfield(L, -1, "require");
+	lua_pushstring(L, "membuf");
+	lua_call(L, 1, 0);
+
+	lua_pushcfunction(L, lua_newMemBuf);
+	lua_setglobal(L, "mem");
+
+	mbuf_set_accessor(L, memBufGetMem); // Handles aborts
+
+	mbuf_declare_type(L, "regset", sizeof(uint32)*17);
+	mbuf_declare_member(L, "regset", "r0", 0, 4, NULL);
+	mbuf_declare_member(L, "regset", "r1", 4, 4, NULL);
+	mbuf_declare_member(L, "regset", "r2", 8, 4, NULL);
+	mbuf_declare_member(L, "regset", "r3", 12, 4, NULL);
+	mbuf_declare_member(L, "regset", "r4", 16, 4, NULL);
+	mbuf_declare_member(L, "regset", "r5", 20, 4, NULL);
+	mbuf_declare_member(L, "regset", "r6", 24, 4, NULL);
+	mbuf_declare_member(L, "regset", "r7", 28, 4, NULL);
+	mbuf_declare_member(L, "regset", "r8", 32, 4, NULL);
+	mbuf_declare_member(L, "regset", "r9", 36, 4, NULL);
+	mbuf_declare_member(L, "regset", "r10", 40, 4, NULL);
+	mbuf_declare_member(L, "regset", "r11", 44, 4, NULL);
+	mbuf_declare_member(L, "regset", "r12", 48, 4, NULL);
+	mbuf_declare_member(L, "regset", "r13", 52, 4, NULL);
+	mbuf_declare_member(L, "regset", "r14", 56, 4, NULL);
+	mbuf_declare_member(L, "regset", "r15", 60, 4, NULL);
+	mbuf_declare_member(L, "regset", "cpsr", 64, 4, NULL);
+
+	MBUF_TYPE(SuperPage);
+	MBUF_MEMBER(SuperPage, nextPid);
+	MBUF_MEMBER(SuperPage, currentProcess);
+	MBUF_MEMBER(SuperPage, currentThread);
+	MBUF_MEMBER(SuperPage, numValidProcessPages);
+	MBUF_MEMBER(SuperPage, blockedUartReceiveIrqHandler);
+	MBUF_MEMBER(SuperPage, uptime);
+	MBUF_MEMBER(SuperPage, marvin);
+	MBUF_MEMBER(SuperPage, trapAbort);
+	MBUF_MEMBER(SuperPage, exception);
+	MBUF_MEMBER_TYPE(SuperPage, crashRegisters, "regset");
+
+	MBUF_NEW(SuperPage, TheSuperPage);
+	lua_pushvalue(L, -1);
+	lua_setglobal(L, "TheSuperPage");
+	lua_setglobal(L, "sp");
+
+	MBUF_TYPE(ThreadState);
+	MBUF_ENUM(ThreadState, EReady);
+	MBUF_ENUM(ThreadState, EBlocked);
+	MBUF_ENUM(ThreadState, EDead);
+
+	MBUF_TYPE(Thread);
+	MBUF_MEMBER(Thread, index);
+	MBUF_MEMBER_TYPE(Thread, state, "ThreadState");
+	MBUF_MEMBER_TYPE(Thread, savedRegisters, "regset");
+
+	MBUF_TYPE(Process);
+	MBUF_MEMBER(Process, pid);
+	MBUF_MEMBER(Process, pdePhysicalAddress);
+	MBUF_MEMBER(Process, heapLimit);
+	MBUF_MEMBER_TYPE(Process, name, "char[]");
+	MBUF_MEMBER(Process, numThreads);
+	mbuf_declare_member(L, "Process", "firstThread", offsetof(Process, threads), sizeof(Thread), "Thread");
+
+	for (int i = 0; i < MAX_PROCESSES; i++) {
+		MBUF_NEW(Process, GetProcess(i));
+		lua_pop(L, 1);
+	}
+}

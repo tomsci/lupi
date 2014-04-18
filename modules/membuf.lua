@@ -16,6 +16,8 @@ local function safech(ch)
 	end
 end
 
+local lvl = 0 -- Used while printing
+
 function MemBuf:hex(length)
 	if length == nil then length = self:getLength() end
 
@@ -120,6 +122,14 @@ function MemBuf:_descriptionForMember(m)
 	elseif t == "number" then
 		if m.size == 1 then
 			str = string.format("%x", val)
+		elseif m.size == MemBuf._PTR_SIZE then
+			-- See if it's a pointer to an object we know about
+			local ptr = MemBuf._objects[val]
+			if ptr then
+				str = string.format("%08X (%s*)", val, ptr:getType()._type)
+			else
+				str = string.format("%08x", val)
+			end
 		else
 			str = string.format("%08x", val)
 		end
@@ -143,18 +153,31 @@ end
 function MemBuf:__tostring()
 	local bufType = self:getType()
 	if bufType then
-		local result = { string.format("(%s*)%08X:", bufType._type, self:getAddress()) }
-		for _, m in ipairs(bufType) do
-			local s = string.format("%08X: %s",
-				self:getAddress() + m.offset,
-				self:_descriptionForMember(m)
-			)
-			table.insert(result, s)
+		--# Do we have any members?
+		if bufType[1] == nil then
+			--# If not, assume we've got some values declared, eg we're representing an enum
+			local val = self:_valueForMember({ offset = 0, size = self:getLength() })
+			local result = bufType._values and bufType._values[val]
+			if result then
+				return string.format("%s (%s)", tostring(val), result)
+			end
+		else
+			local result = { string.format("%08X %s:", self:getAddress(), bufType._type) }
+			lvl = lvl + 1
+			for _, m in ipairs(bufType) do
+				local s = string.format("%08X:%s%s",
+					self:getAddress() + m.offset,
+					string.rep("| ", lvl),
+					self:_descriptionForMember(m)
+				)
+				table.insert(result, s)
+			end
+			lvl = lvl - 1
+			return table.concat(result, "\n")
 		end
-		return table.concat(result, "\n")
-	else
-		return string.format("MemBuf(%08X, %d)", self:getAddress(), self:getLength())
 	end
+
+	return string.format("MemBuf(%08X, %d)", self:getAddress(), self:getLength())
 end
 
 function MemBuf.__index(mbuf, key)

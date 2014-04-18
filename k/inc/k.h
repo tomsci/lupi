@@ -3,7 +3,7 @@
 
 #include <std.h>
 
-#define LUPI_VERSION_STRING "LuPi 0.15"
+#define LUPI_VERSION_STRING "LuPi 0.16"
 
 typedef unsigned long PhysAddr;
 
@@ -22,18 +22,19 @@ Hmm, the "one page per process" limit turns out to be somewhat limiting...
 
 #define MAX_PROCESS_NAME 32
 
-// I'll be generous
-#define USER_STACK_SIZE (16*1024)
 
 void zeroPage(void* addr);
 void zeroPages(void* addr, int num);
 void printk(const char* fmt, ...) ATTRIBUTE_PRINTF(1, 2);
 void hexdump(const char* addr, int len);
 void worddump(const void* addr, int len);
-void dumpRegisters(uint32* regs, uint32 pc);
-void hang();
+void dumpRegisters(uint32* regs, uint32 pc, uint32 dataAbortFar);
+NORETURN kabort();
+NORETURN hang();
 
-#define ASSERT(cond) if (unlikely(!(cond))) { printk("assert %s at line %d\n", #cond, __LINE__); hang(); }
+#define KRegisterNotSaved 0xA11FADE5
+
+#define ASSERT(cond) if (unlikely(!(cond))) { printk("assert %s at line %d\n", #cond, __LINE__); kabort(); }
 
 #define IS_POW2(val) ((val & (val-1)) == 0)
 
@@ -46,15 +47,16 @@ typedef struct Thread {
 	uint8 index;
 	uint8 state;
 	uint8 pad[6];
-	uint32 savedRegisters[16];
-	uint32 spsr;
+	uint32 savedRegisters[17];
 } Thread;
 
-enum ThreadState {
+typedef enum ThreadState {
 	EReady = 0,
 	EBlocked = 1,
+	EDead = 2,
+	//EBlockedMutex = 1,
 	// ???
-};
+} ThreadState;
 
 
 /*
@@ -88,6 +90,10 @@ typedef struct SuperPage {
 	Thread* blockedUartReceiveIrqHandler;
 	uint64 uptime; // in ms
 	bool marvin;
+	bool trapAbort;
+	bool exception; // only used in kdebugger mode
+
+	uint32 crashRegisters[17];
 } SuperPage;
 
 ASSERT_COMPILE(sizeof(SuperPage) <= KPageSize);
@@ -97,6 +103,7 @@ ASSERT_COMPILE(sizeof(SuperPage) <= KPageSize);
 
 #define GetProcess(idx) ((Process*)(KProcessesSection + ((idx) << KPageShift)))
 #define indexForProcess(p) ((int)((((uintptr)(p)) >> KPageShift) & 0xFF))
+#define userStackForThread(t) userStackBase(t->index)
 
 static inline Thread* firstThreadForProcess(Process* p) {
 	return &p->threads[0];

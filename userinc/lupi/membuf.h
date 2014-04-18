@@ -11,7 +11,7 @@ void initMbufModule(lua_State* L);
 #define MEMBER_SIZEOF(type, member) sizeof(((type*)0x1000)->member)
 
 /* MBUF_MEMBER_TYPE() and mbuf_declare_member() with non-NULL name should only be used for
- * members which are embedded in the object. Pointers get figured out automatically.
+ * members which are embedded in the object (or are enums). Pointers get figured out automatically.
  */
 #define MBUF_TYPE(t) mbuf_declare_type(L, #t, sizeof(t))
 #define MBUF_MEMBER(t, m) mbuf_declare_member(L, #t, #m, offsetof(t, m), MEMBER_SIZEOF(t, m), NULL)

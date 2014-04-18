@@ -5,7 +5,6 @@
 #include <arm.h>
 
 #define KNumPreallocatedUserPages 0
-#define userStackAddress(t) (KUserStacksBase + t->index * (USER_STACK_SIZE + KPageSize))
 
 // These will refer to the *user* addresses of these variables, in the BSS.
 // Therefore, can only be referenced when process_switch()ed to the
@@ -50,7 +49,7 @@ bool thread_init(Process* p, int index) {
 	t->index = index;
 	t->state = EReady;
 	t->nextSchedulable = t; // TODO sort this out
-	uintptr stackBase = userStackAddress(t);
+	uintptr stackBase = userStackForThread(t);
 	bool ok = mmu_mapPagesInProcess(Al, p, stackBase, USER_STACK_SIZE >> KPageShift);
 	if (!ok) return false;
 
@@ -74,7 +73,7 @@ void process_start(Process* p) {
 	TheSuperPage->currentThread = t;
 	// Now we've switched process and mapped the BSS, we first need to zero all initial memory
 	zeroPages((void*)KUserBss, 1 + KNumPreallocatedUserPages);
-	zeroPages((void*)userStackAddress(t), USER_STACK_SIZE >> KPageShift);
+	zeroPages((void*)userStackForThread(t), USER_STACK_SIZE >> KPageShift);
 
 	// And we can set up the user_* variables
 	user_ProcessPid = p->pid;
@@ -137,6 +136,7 @@ Process* process_new(const char* name) {
 		if (phys) {
 			mmu_finishedUpdatingPageTables();
 			p = newp;
+			p->pdePhysicalAddress = 0;
 			s->numValidProcessPages++;
 		}
 	}

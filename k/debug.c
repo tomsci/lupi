@@ -182,12 +182,27 @@ void worddump(const void* aAddr, int len) {
 
 #ifdef ARM
 
-void dumpRegisters(uint32* regs, uint32 pc) {
+static uintptr stackBaseForMode(uint32 mode) {
+	switch (mode) {
+		case KPsrModeUsr: return userStackForThread(TheSuperPage->currentThread);
+		case KPsrModeSvc: return KKernelStackBase;
+		case KPsrModeAbort: return KAbortStackBase;
+		case KPsrModeUnd: return KAbortStackBase;
+		case KPsrModeIrq: return KIrqStackBase;
+		case KPsrModeSystem:
+			// We only ever use this mode when kernel debugging where we're using the abort stack
+			return KAbortStackBase;
+		default:
+			return 0;
+	}
+}
+
+void dumpRegisters(uint32* regs, uint32 pc, uint32 dataAbortFar) {
 	uint32 spsr, r13, r14;
 	asm("MRS %0, spsr" : "=r" (spsr));
-	uint32 crashMode = spsr & KPsrModeMask;
+	const uint32 crashMode = spsr & KPsrModeMask;
 	if (crashMode == KPsrModeUsr) {
-		uint32 bnked[2] = {0,0};
+		uint32 bnked[2] = {0x13131313,0x14141414};
 		uint32* bankedStart = bnked;
 		// The compiler will 'optimise' out the STM into a single "str %0, [sp]" unless
 		// I include the volatile. The fact there's the small matter of the '^' which it is
@@ -196,22 +211,36 @@ void dumpRegisters(uint32* regs, uint32 pc) {
 		r13 = bnked[0];
 		r14 = bnked[1];
 	} else {
-		// Mode is svc or irq presumably
+		// Mode is something priviledged - switch back to it briefly to get r13 and 14
 		uint32 currentMode;
 		asm("MRS %0, cpsr" : "=r" (currentMode));
 		int zero = 0;
-		crashMode = crashMode | KPsrIrqDisable | KPsrFiqDisable; // Keep interrupts off
-		asm("MSR cpsr_c, %0" : : "r" (crashMode)); // ModeSwitch(crashMode)
+		uint32 tempMode = crashMode | KPsrIrqDisable | KPsrFiqDisable; // Keep interrupts off
+		asm("MSR cpsr_c, %0" : : "r" (tempMode)); // ModeSwitch(tempMode)
 		DSB_inline(zero);
 		asm("MOV %0, r13" : "=r" (r13));
 		asm("MOV %0, r14" : "=r" (r14));
 		asm("MSR cpsr_c, %0" : : "r" (currentMode)); // ModeSwitch(currentMode)
 	}
+
 	printk("r0:  %X r1:  %X r2:  %X r3:  %X\n", regs[0],  regs[1],  regs[2],  regs[3]);
 	printk("r4:  %X r5:  %X r6:  %X r7:  %X\n", regs[4],  regs[5],  regs[6],  regs[7]);
 	printk("r8:  %X r9:  %X r10: %X r11: %X\n", regs[8],  regs[9],  regs[10], regs[11]);
 	printk("r12: %X r13: %X r14: %X r15: %X\n", regs[12], r13,      r14,      pc);
 	printk("CPSR was %X\n", spsr);
+	uintptr stackBase = stackBaseForMode(crashMode);
+	if (r13 < stackBase && dataAbortFar && dataAbortFar < stackBase) {
+		printk("BLOWN STACK!\n");
+	}
+	if (!TheSuperPage->marvin) {
+		// First time we hit this, populate crashRegisters
+		uint32* cr = TheSuperPage->crashRegisters;
+		memcpy(cr, regs, 12*sizeof(uint32));
+		cr[13] = r13;
+		cr[14] = r14;
+		cr[15] = pc;
+		cr[16] = spsr;
+	}
 }
 
 #endif

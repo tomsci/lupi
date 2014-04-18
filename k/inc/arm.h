@@ -11,6 +11,7 @@
 #define KPsrModeAbort	0x17
 #define KPsrModeUnd		0x1B
 #define KPsrModeIrq		0x12
+#define KPsrModeSystem	0x1F
 
 #define ModeSwitch(cpsr) asm("MSR cpsr_c, %0" : : "i" (cpsr))
 

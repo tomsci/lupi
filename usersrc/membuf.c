@@ -135,6 +135,8 @@ void initMbufModule(lua_State* L) {
 		{ NULL, NULL }
 	};
 	luaL_setfuncs(L, fns, 0);
+	lua_pushinteger(L, sizeof(void*));
+	lua_setfield(L, -2, "_PTR_SIZE");
 	lua_setfield(L, -2, "MemBuf");
 }
 
