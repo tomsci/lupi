@@ -3,6 +3,7 @@
 #include <lualib.h>
 #include <lauxlib.h>
 #include <lupi/membuf.h>
+#include <lupi/int64.h>
 
 const char* getLuaModule(const char* moduleName, int* modSize);
 
@@ -54,6 +55,7 @@ static int loaderFn(lua_State* L) {
 	// upvalue 1 is the module fn itself
 
 	bool isMbuf = lcmp(L, 1, "membuf");
+	bool isInt64 = lcmp(L, 1, "int64");
 
 	lua_newtable(L); // The _ENV
 	lua_pushvalue(L, lua_upvalueindex(1));
@@ -66,6 +68,8 @@ static int loaderFn(lua_State* L) {
 	lua_pushvalue(L, -2); // Another _ENV
 	if (isMbuf) {
 		initMbufModule(L);
+	} else if (isInt64) {
+		initInt64Module(L);
 	}
 
 	lua_pushcclosure(L, requireFn, 1); // upvalue 1 for requireFn is _ENV (pops _ENV)

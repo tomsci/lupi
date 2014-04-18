@@ -229,6 +229,7 @@ function build_kernel()
 			table.insert(sources, { path = "usersrc/crt.c", user = true })
 			table.insert(sources, { path = "usersrc/uklua.c", user = true })
 			table.insert(sources, { path = "usersrc/membuf.c", user = true })
+			table.insert(sources, { path = "usersrc/int64.c", user = true })
 		end
 		if config.ulua then
 			table.insert(sources, mallocSource)
@@ -389,6 +390,7 @@ luaModules = {
 	"modules/test.lua",
 	"modules/interpreter.lua",
 	"modules/membuf.lua",
+	"modules/int64.lua",
 }
 
 mallocSource = {
