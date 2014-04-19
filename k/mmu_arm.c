@@ -44,19 +44,18 @@
 
 #define KPdeSectionKernelData	(0x00000412 | PDE_SECTION_NS_BIT) // nG=0, S=0, APX=b001, XN=1, P=C=B=0
 #define KPdeSectionJfdi			0x00000402 // NS=0, nG=0, S=0, APX=b001, XN=0, P=C=B=0
-//#define KPdeSectionPeripheral	0x00002412 // NS=0, nG=0, S=0, APX=b001, TEX=b010, XN=1, P=C=B=0
-#define KPdeSectionPeripheral	KPdeSectionKernelData
+#define KPdeSectionPeripheral	(0x00000412 | PDE_SECTION_NS_BIT) // nG=0, S=0, APX=b001, XN=1, P=C=B=0
 #define KPdePageTable			(0x00000001 | PDE_PAGETABLE_NS_BIT) // NS=0, P=0
 
 // See p357
 // 11 10  9  8 | 7 6 5 4 | 3 2 1 0
 // ------------|---------|---------
 // nG  S APX --TEX-- -AP | C B 1 XN
-#define KPteKernelCode			0x00000222 // C=B=0, XN=0, APX=b110, S=0, TEX=0, nG=0
+#define KPteKernelCode			0x0000022A // C=1, B=0, XN=0, APX=b110, S=0, TEX=0, nG=0
 #define KPteKernelData			0x00000013 // C=B=0, XN=1, APX=b001, S=0, TEX=0, nG=0
-//#define KPtePeripheralMem		0x00000093 // C=B=0, XN=1, APX=b001, S=0, TEX=b010, nG=0
-#define KPteUserData			0x00000833 // C=B=0, XN=1, APX=b011, S=0, TEX=0, nG=1
-#define KPteRoUserData			0x00000823 // C=B=0, XN=1, APX=b010, S=0, TEX=0, nG=1
+//#define KPteUserData			0x00000833 // C=B=0, XN=1, APX=b011, S=0, TEX=0, nG=1
+#define KPteUserData			0x0000083F // C=B=1, XN=1, APX=b011, S=0, TEX=0, nG=1
+//#define KPteRoUserData		0x00000823 // C=B=0, XN=1, APX=b010, S=0, TEX=0, nG=1
 
 
 // Control register bits, see p176
@@ -292,6 +291,7 @@ bool mmu_mapPagesInProcess(PageAllocator* pa, Process* p, uintptr virtualAddress
 	return true;
 }
 
+#if 0
 bool mmu_mapKernelPageInProcess(Process* p, uintptr physicalAddress, uintptr virtualAddress, bool readWrite) {
 	int sectionIdx = virtualAddress >> KSectionShift;
 	uint32* const pt = PT_FOR_PROCESS(p, sectionIdx);
@@ -311,7 +311,7 @@ bool mmu_mapKernelPageInProcess(Process* p, uintptr physicalAddress, uintptr vir
 	*pte = physicalAddress | (readWrite ? KPteUserData : KPteRoUserData);
 	return true;
 }
-
+#endif
 
 void mmu_unmapPagesInProcess(PageAllocator* pa, Process* p, uintptr virtualAddress, int numPages) {
 	ASSERT(numPages >= 0);
