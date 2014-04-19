@@ -95,6 +95,15 @@ void NAKED mmu_setControlRegister(uint32 controlRegister, uintptr returnAddr) {
 		*p = 0; \
 	}
 
+void NAKED mmu_setInstructionCache(bool enable) {
+	asm("MRC p15, 0, r1, c1, c0, 0");
+	asm("CMP r0, #0");
+	asm("BICEQ r1, %0" : : "i" (CR_I));
+	asm("ORRNE r1, %0" : : "i" (CR_I));
+	asm("MCR p15, 0, r1, c1, c0, 0");
+	asm("BX lr");
+}
+
 /*
 Enter and exit with MMU disabled
 Sets up the minimal set of page tables at KPhysicalPdeBase

@@ -12,6 +12,7 @@ void runLuaIntepreterModule(uintptr heapPtr);
 const char* getLuaModule(const char* moduleName, int* modSize);
 
 void Boot() {
+	mmu_setInstructionCache(true);
 	uart_init();
 	printk("\n\n" LUPI_VERSION_STRING "\n");
 
