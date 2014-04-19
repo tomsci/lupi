@@ -26,7 +26,7 @@ typedef struct PageAllocator PageAllocator;
 
 void mmu_init();
 void mmu_enable(uintptr returnAddr);
-void mmu_setInstructionCache(bool enable);
+void mmu_setCache(bool icache, bool dcache);
 void mmu_mapSect0Data(uintptr virtualAddress, uintptr physicalAddress, int size);
 
 /*
