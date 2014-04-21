@@ -31,3 +31,7 @@ int NAKED exec_createProcess(const char* name) {
 uint64 NAKED exec_getUptime() {
 	EXEC1(KExecGetUptime);
 }
+
+void NAKED exec_threadExit(int reason) {
+	EXEC1(KExecThreadExit);
+}

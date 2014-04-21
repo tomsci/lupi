@@ -300,6 +300,7 @@ static void WeveCrashedSetupDebuggingStuff(lua_State* L) {
 	MBUF_MEMBER(Thread, index);
 	MBUF_MEMBER_TYPE(Thread, state, "ThreadState");
 	MBUF_MEMBER(Thread, timeslice);
+	MBUF_MEMBER(Thread, exitReason);
 	MBUF_MEMBER_TYPE(Thread, savedRegisters, "regset");
 
 	MBUF_TYPE(Process);

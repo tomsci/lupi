@@ -48,7 +48,9 @@ typedef struct Thread {
 	uint8 index;
 	uint8 state;
 	uint8 timeslice;
-	uint8 pad[5];
+	//uint8 pad[5];
+	uint8 pad[1];
+	int exitReason;
 	uint32 savedRegisters[17];
 } Thread;
 
@@ -123,6 +125,7 @@ Process* process_new(const char* name);
 void process_start(Process* p);
 bool process_grow_heap(Process* p, int incr);
 void thread_setState(Thread* t, enum ThreadState s);
+void thread_exit(Thread* t, int reason);
 
 NORETURN reschedule();
 void saveUserModeRegistersForCurrentThread(void* savedRegisters, bool svc);

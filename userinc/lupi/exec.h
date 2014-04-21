@@ -7,5 +7,6 @@
 #define KExecGetch			4
 #define KExecCreateProcess	5
 #define KExecGetUptime		6
+#define KExecThreadExit		7
 
 #endif

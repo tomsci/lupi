@@ -85,4 +85,6 @@ void mmu_finishedUpdatingPageTables();
  */
 void switch_process(Process* p);
 
+void mmu_processExited(PageAllocator* pa, Process* p);
+
 #endif

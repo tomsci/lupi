@@ -34,8 +34,12 @@ static int getProcessName(lua_State* L) {
 
 static int createProcess(lua_State* L) {
 	const char* name = lua_tostring(L, 1);
-	/*int err =*/ exec_createProcess(name);
-	return 0; // TODO some error handling
+	int pid = exec_createProcess(name);
+	if (pid < 0) {
+		return luaL_error(L, "Error %d creating process", pid);
+	}
+	lua_pushinteger(L, pid);
+	return 1;
 }
 
 static int getUptime(lua_State* L) {
@@ -51,7 +55,7 @@ static int crash(lua_State* L) {
 
 lua_State* newLuaStateForModule(const char* moduleName, lua_State* L);
 
-void newProcessEntryPoint() {
+int newProcessEntryPoint() {
 
 	//uint32 superPage = *(uint32*)0xF802E000; // This should fail with far=F802E000
 	//*(int*)(0xBAD) = superPage; // This definitely does
@@ -82,6 +86,6 @@ void newProcessEntryPoint() {
 	lua_pop(L, 1);
 
 	lua_getfield(L, -1, "main");
-	lua_call(L, 0, 0);
-	abort(); // Shouldn't reach here
+	lua_call(L, 0, 1);
+	return lua_tointeger(L, -1);
 }

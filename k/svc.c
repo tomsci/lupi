@@ -39,9 +39,10 @@ int64 handleSvc(int cmd, uintptr arg1, uintptr* arg2, void* savedRegisters) {
 			// handler will return to after the WFI() in reschedule(), at which point
 			// this thread is ready so will get jumped back to user mode with the result
 			// of the SVC call all nicely filled in in r0.
+			kabort();
 		}
-		case KExecCreateProcess: {
 #ifndef KLUA
+		case KExecCreateProcess: {
 			// TODO sanitise again!
 			const char* name = (const char*)arg1;
 			Process* p = process_new(name);
@@ -57,8 +58,12 @@ int64 handleSvc(int cmd, uintptr arg1, uintptr* arg2, void* savedRegisters) {
 				return 0;
 			}
 			break;
-#endif
 		}
+		case KExecThreadExit:
+			thread_exit(TheSuperPage->currentThread, (int)arg1);
+			reschedule(); // Never returns
+			break;
+#endif
 		case KExecGetUptime:
 			return TheSuperPage->uptime;
 		default:

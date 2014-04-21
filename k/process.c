@@ -66,9 +66,11 @@ static void NAKED do_process_start(uint32 sp) {
 	ModeSwitch(KPsrModeUsr|KPsrFiqDisable);
 	// We are in user mode now! So no calling printk(), or doing priviledged stuff
 	asm("MOV sp, r0");
-	asm("LDR pc, =newProcessEntryPoint");
-	// And we're off. Shouldn't ever return
-	hang(); //TODO
+	asm("LDR r1, =newProcessEntryPoint");
+	asm("BLX r1");
+	// And we're off. We might return here if the module's main returns (with return code in r0)
+	asm("B exec_threadExit");
+	// Definitely don't return from here
 }
 
 void process_start(Process* p) {
@@ -150,4 +152,32 @@ Process* process_new(const char* name) {
 		if (!ok) p = NULL;
 	}
 	return p;
+}
+
+static void process_exit(Process* p, int reason) {
+	// Cleans up caches and frees all memory associated with process
+	mmu_processExited(Al, p);
+
+	if (TheSuperPage->currentProcess == p) {
+		TheSuperPage->currentProcess = NULL;
+	}
+	p->pid = 0;
+	//printk("Process %s exited with %d", p->name, reason);
+}
+
+void thread_exit(Thread* t, int reason) {
+	t->exitReason = reason;
+	thread_setState(t, EDead);
+	Process* p = processForThread(t);
+	// Check if the process still has any alive threads - if not call process_exit()
+	bool dead = true;
+	for (int i = 0; i < p->numThreads; i++) {
+		if (p->threads[i].state != EDead) {
+			dead = false;
+			break;
+		}
+	}
+	if (dead) {
+		process_exit(p, reason);
+	}
 }
