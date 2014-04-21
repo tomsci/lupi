@@ -9,7 +9,7 @@
 #define BCM2835
 
 #define NON_SECURE // Ie we do drop to NS mode
-
+#define ENABLE_DCACHE
 
 #define KPeripheralPhys		0x20000000
 #define KPeripheralSize		0x00300000

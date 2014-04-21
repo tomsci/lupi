@@ -51,12 +51,15 @@
 // 11 10  9  8 | 7 6 5 4 | 3 2 1 0
 // ------------|---------|---------
 // nG  S APX --TEX-- -AP | C B 1 XN
+#ifdef ENABLE_DCACHE
 #define KPteKernelCode			0x0000022A // C=1, B=0, XN=0, APX=b110, S=0, TEX=0, nG=0
 #define KPteKernelData			0x00000013 // C=B=0, XN=1, APX=b001, S=0, TEX=0, nG=0
-//#define KPteUserData			0x00000833 // C=B=0, XN=1, APX=b011, S=0, TEX=0, nG=1
 #define KPteUserData			0x0000083F // C=B=1, XN=1, APX=b011, S=0, TEX=0, nG=1
-//#define KPteRoUserData		0x00000823 // C=B=0, XN=1, APX=b010, S=0, TEX=0, nG=1
-
+#else
+#define KPteKernelCode			0x00000222 // C=B=0, XN=0, APX=b110, S=0, TEX=0, nG=0
+#define KPteKernelData			0x00000013 // C=B=0, XN=1, APX=b001, S=0, TEX=0, nG=0
+#define KPteUserData			0x00000833 // C=B=0, XN=1, APX=b011, S=0, TEX=0, nG=1
+#endif
 
 // Control register bits, see p176
 #define CR_XP (1<<23) // Extended page tables
@@ -64,6 +67,9 @@
 #define CR_C  (1<<2)  // Enable Data cache
 #define CR_A  (1<<1)  // Enable strict alignment checks
 #define CR_M  (1)     // Enable MMU
+
+static void invalidateTLBEntry(uintptr virtualAddress, Process* p);
+
 
 uint32 makeCrForMmuEnable() {
 	uint32 cr;
@@ -81,11 +87,11 @@ void NAKED mmu_setControlRegister(uint32 controlRegister, uintptr returnAddr) {
 	asm("MOV r2, #0"); // r2 = 0
 
 	DSB(r2);
+	InvalidateTLB(r2); // Invalidate TLB
 	asm("MCR p15, 0, r0, c1, c0, 0"); // Boom!
 
 	asm("BX r1");
 	ISB(r2); // Prevent prefetch from when MMU was disabled from going beyond this point. Probably.
-	//TODO returnAddr will need to reenable instruction cache (and maybe data cache)
 }
 
 // Macro for when we're too early to call zeroPage()
@@ -95,6 +101,14 @@ void NAKED mmu_setControlRegister(uint32 controlRegister, uintptr returnAddr) {
 	}
 
 void NAKED mmu_setCache(bool icache, bool dcache) {
+	/* Doesn't work...
+	if (icache) {
+		asm("MOV r3, #0");
+		InvalidateTLB(r3);
+		FlushBTAC(r3);
+	}
+	*/
+
 	asm("MRC p15, 0, r2, c1, c0, 0");
 	asm("CMP r0, #0");
 	asm("BICEQ r2, %0" : : "i" (CR_I));
@@ -103,6 +117,17 @@ void NAKED mmu_setCache(bool icache, bool dcache) {
 	asm("BICEQ r2, %0" : : "i" (CR_C));
 	asm("ORRNE r2, %0" : : "i" (CR_C));
 	asm("MCR p15, 0, r2, c1, c0, 0");
+
+	/* Also doesn't work...
+	// Finally, invalidate all caches. How much of this is needed, I have no idea
+	if (icache) {
+		InvalidateTLB(r3);
+		FlushBTAC(r3);
+		ISB(r3);
+		// Why doesn't this work??
+		InvalidateIcache(r3);
+	}
+	*/
 	asm("BX lr");
 }
 
@@ -226,19 +251,17 @@ uintptr mmu_mapPageInSection(PageAllocator* pa, uint32* pt, uintptr virtualAddre
 	return newPagePhysical;
 }
 
+void mmu_unmapPageInSection(PageAllocator* pa, uint32* pt, uintptr virtualAddress) {
+	uint32 phys = pt[PTE_IDX(virtualAddress)] & ~(KPageSize-1);
+	pageAllocator_free(pa, phys);
+	pt[PTE_IDX(virtualAddress)] = 0;
+}
+
 void NAKED mmu_finishedUpdatingPageTables() {
 	asm("MOV r0, #0");
 	DSB(r0);
 	asm("BX lr");
 }
-
-/*
-void mmu_freePagesForProcess(Process* p) {
-	// First, indicate to our allocator that all the pages mapped to user mem are now available
-
-	// Then, free up the pages used by the page tables
-}
-*/
 
 bool mmu_createUserSection(PageAllocator* pa, Process* p, int sectionIdx) {
 	// We need a new page for the user PT for this section.
@@ -255,6 +278,19 @@ bool mmu_createUserSection(PageAllocator* pa, Process* p, int sectionIdx) {
 	//printk("-mmu_createUserSection %d\n", sectionIdx);
 	return true;
 }
+
+// Note doesn't invalidate the user process TLB
+void mmu_freeUserSection(PageAllocator* pa, Process* p, int sectionIdx) {
+	uint32* pde = (uint32*)PDE_FOR_PROCESS(p);
+	if (pde[sectionIdx]) {
+		uintptr pageTableVirtualAddress = (uintptr)PT_FOR_PROCESS(p, sectionIdx);
+		uint32* kernPt = KERN_PT_FOR_PROCESS_PTS(p);
+		mmu_unmapPageInSection(pa, kernPt, pageTableVirtualAddress);
+		pde[sectionIdx] = 0;
+		invalidateTLBEntry(pageTableVirtualAddress, NULL);
+	}
+}
+
 
 bool mmu_mapPagesInProcess(PageAllocator* pa, Process* p, uintptr virtualAddress, int numPages) {
 	//printk("mmu_mapPagesInProcess va=%p n=%d\n", (void*)virtualAddress, numPages);
@@ -314,6 +350,7 @@ bool mmu_mapKernelPageInProcess(Process* p, uintptr physicalAddress, uintptr vir
 #endif
 
 void mmu_unmapPagesInProcess(PageAllocator* pa, Process* p, uintptr virtualAddress, int numPages) {
+	//printk("mmu_unmapPagesInProcess %X\n", (uint)virtualAddress);
 	ASSERT(numPages >= 0);
 	ASSERT(virtualAddress <= KMaxUserAddress - numPages * KPageSize);
 	int sectionIdx = virtualAddress >> KSectionShift;
@@ -325,9 +362,18 @@ void mmu_unmapPagesInProcess(PageAllocator* pa, Process* p, uintptr virtualAddre
 	while (pte != endPte) {
 		uintptr physicalAddress = *pte & ~(KPageSize - 1);
 		pageAllocator_free(pa, physicalAddress);
+		invalidateTLBEntry(virtualAddress, p);
+		*pte = 0;
 		pte++;
+		virtualAddress += KPageSize;
 	}
 	//TODO invalidate caches, TLB
+}
+
+// Process == NULL means it's a kernel address
+static void invalidateTLBEntry(uintptr virtualAddress, Process* p) {
+	if (p) virtualAddress |= indexForProcess(p);
+	asm("MCR p15, 0, %0, c8, c7, 1" : : "r" (virtualAddress)); // Invalidate TLB by MVA p218
 }
 
 void switch_process(Process* p) {
@@ -344,3 +390,21 @@ void switch_process(Process* p) {
 	TheSuperPage->currentProcess = p;
 	// I think we're done - setting context ID does all the flushing required
 }
+
+void mmu_processExited(PageAllocator* pa, Process* p) {
+	// First, reclaim all memory allocated to the process. Since we know processes can only
+	// allocate memory using sbrk, we can avoid having to do eg a full page table walk
+	mmu_unmapPagesInProcess(pa, p, KUserBss, 1 + ((p->heapLimit - KUserHeapBase) >> KPageShift));
+	// And clean up the page tables themselves
+	for (int sectionIdx = 0; sectionIdx < (KMaxUserAddress >> KSectionShift); sectionIdx++) {
+		mmu_freeUserSection(pa, p, sectionIdx);
+	}
+	// We'll leave the PDE allocated
+
+	int asid = indexForProcess(p);
+	asm("MCR p15, 0, %0, c8, c7, 2" : : "r" (asid)); // Invalidate TLB by ASID p218
+}
+
+
+
+

@@ -82,7 +82,7 @@ bool handleIrq(void* savedRegs) {
 			uint32 iir = GET32(AUX_MU_IIR_REG);
 			if (iir & AUX_MU_IIR_ReceiveInterrupt) {
 				//printk("CNT=%d\n", GET32(ARM_TIMER_CNT));
-				//TODO printk("Got char %c!\n", GET32(AUX_MU_IO_REG));
+				//printk("Got char %c!\n", GET32(AUX_MU_IO_REG));
 				byte b = GET32(AUX_MU_IO_REG);
 				uart_got_char(b);
 				PUT32(AUX_MU_IIR_REG, AUX_MU_ClearReceiveFIFO);

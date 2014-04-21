@@ -30,7 +30,11 @@
 // c7 c5 - p211
 #define ISB(reg)				asm("MCR p15, 0, " #reg ", c7, c5, 4") // AKA prefetch flush, IMB()
 #define ISB_inline(var)			asm("MCR p15, 0, %0, c7, c5, 4" : : "r" (var))
-#define InvalidateIcache(reg)	asm("MCR p15, 0, " #reg ", c7, c5, 0")
+#define InvalidateIcache(reg)	asm("MCR p15, 0, " #reg ", c7, c5, 0") // Also flushes BTAC
+#define FlushBTAC(reg)			asm("MCR p15, 0, " #reg ", c7, c5, 6")
+
+#define InvalidateTLB(reg)		asm("MCR p15, 0, " #reg ", c8, c5, 0");
+
 
 #define WFI(reg)				asm("MCR p15, 0, " #reg ", c7, c4, 0")
 
