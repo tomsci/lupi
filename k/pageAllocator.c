@@ -71,7 +71,7 @@ static int pageAllocator_findNextFreePage(PageAllocator* allocator, int num, int
 // If num > 1 then pages will be physically contiguous
 uintptr pageAllocator_allocAligned(PageAllocator* allocator, uint8 type, int num, int alignment) {
 	if (alignment == 0) alignment = KPageSize;
-	ASSERT(IS_POW2(alignment));
+	ASSERT(IS_POW2(alignment), alignment);
 
 	int idx = pageAllocator_findNextFreePage(allocator, num, alignment);
 	if (idx == -1) return 0;

@@ -30,12 +30,15 @@ void printk(const char* fmt, ...) ATTRIBUTE_PRINTF(1, 2);
 void hexdump(const char* addr, int len);
 void worddump(const void* addr, int len);
 void dumpRegisters(uint32* regs, uint32 pc, uint32 dataAbortFar);
-NORETURN kabort();
+NORETURN kabort4(uint32 r0, uint32 r1, uint32 r2, uint32 r3);
 NORETURN hang();
 
 #define KRegisterNotSaved 0xA11FADE5
+#define kabort() kabort4(KRegisterNotSaved, KRegisterNotSaved, KRegisterNotSaved, KRegisterNotSaved)
+#define argn(i, nargs, args) (i < nargs ? args[i] : KRegisterNotSaved)
+#define kabortn(n, args) kabort4(argn(0, n, args), argn(1, n, args), argn(2, n, args), argn(3, n, args))
 
-#define ASSERT(cond) if (unlikely(!(cond))) { printk("assert %s at line %d\n", #cond, __LINE__); kabort(); }
+#define ASSERT(cond, args...) if (unlikely(!(cond))) { printk("assert %s at line %d\n", #cond, __LINE__); uint32 argsArray[] = {args}; kabortn(sizeof(argsArray)/sizeof(uint32), argsArray); }
 
 #define IS_POW2(val) ((val & (val-1)) == 0)
 

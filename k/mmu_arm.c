@@ -294,9 +294,9 @@ void mmu_freeUserSection(PageAllocator* pa, Process* p, int sectionIdx) {
 
 bool mmu_mapPagesInProcess(PageAllocator* pa, Process* p, uintptr virtualAddress, int numPages) {
 	//printk("mmu_mapPagesInProcess va=%p n=%d\n", (void*)virtualAddress, numPages);
-	ASSERT(numPages > 0);
+	ASSERT(numPages > 0, numPages);
 	// User processes can only map up to 1GB due to how we've configured TTBCR
-	ASSERT(virtualAddress <= KMaxUserAddress - numPages * KPageSize);
+	ASSERT(virtualAddress <= KMaxUserAddress - numPages * KPageSize, virtualAddress, numPages);
 	int sectionIdx = virtualAddress >> KSectionShift;
 	const uintptr endAddr = virtualAddress + (numPages << KPageShift);
 	int numSections = ((endAddr-1) >> KSectionShift) - sectionIdx + 1;
@@ -334,7 +334,7 @@ bool mmu_mapKernelPageInProcess(Process* p, uintptr physicalAddress, uintptr vir
 	uint32* pte = pt + PTE_IDX(virtualAddress);
 
 	uint32* pde = (uint32*)PDE_FOR_PROCESS(p);
-	ASSERT(pde[sectionIdx]); // Section must already be mapped
+	ASSERT(pde[sectionIdx], virtualAddress); // Section must already be mapped
 	/*
 	// Make sure section exists
 	if (!pde[sectionIdx]) {
@@ -352,7 +352,7 @@ bool mmu_mapKernelPageInProcess(Process* p, uintptr physicalAddress, uintptr vir
 void mmu_unmapPagesInProcess(PageAllocator* pa, Process* p, uintptr virtualAddress, int numPages) {
 	//printk("mmu_unmapPagesInProcess %X\n", (uint)virtualAddress);
 	ASSERT(numPages >= 0);
-	ASSERT(virtualAddress <= KMaxUserAddress - numPages * KPageSize);
+	ASSERT(virtualAddress <= KMaxUserAddress - numPages * KPageSize, virtualAddress, numPages);
 	int sectionIdx = virtualAddress >> KSectionShift;
 	uint32* pde = (uint32*)PDE_FOR_PROCESS(p);
 	ASSERT(pde[sectionIdx]); // PT must be created

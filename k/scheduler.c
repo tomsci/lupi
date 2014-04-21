@@ -108,7 +108,7 @@ static void dequeue(Thread* t) {
 }
 
 static void enqueueBefore(Thread* t, Thread* before) {
-	ASSERT(t->prev == NULL && t->next == NULL);
+	ASSERT(t->prev == NULL && t->next == NULL, (uint32)t);
 	if (before == NULL) {
 		// Must be nothing in the list
 		t->next = t;

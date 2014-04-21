@@ -228,20 +228,19 @@ void NAKED dataAbort() {
 	asm("subs pc, r14, #4");
 }
 
-void NAKED kabort() {
-	asm("MOV r0, %0" : : "i" (KSuperPageAddress));
-	asm("ADD r0, r0, %0" : : "i" (offsetof(SuperPage, crashRegisters)));
-	// It's not worth even showing r0-r3 because most of the time they'll be completely irrelevant
-	// and possibly misleading
-	asm("LDR r1, .notSavedValue");
-	asm("STR r1, [r0, #0]"); // r0
-	asm("STR r1, [r0, #4]"); // r1
-	asm("STR r1, [r0, #8]"); // r2
-	asm("STR r1, [r0, #12]"); // r3
-	asm("ADD r0, r0, #16");
-	asm("STM r0, {r4-r13}");
+void NAKED kabort4(uint32 r0, uint32 r1, uint32 r2, uint32 r3) {
+	asm("PUSH {r4}");
+	asm("MOV r4, %0" : : "i" (KSuperPageAddress));
+	asm("ADD r4, r4, %0" : : "i" (offsetof(SuperPage, crashRegisters)));
+
+	asm("STMIA r4!, {r0-r3}");
+	asm("STR r13, [r4], #4"); // Saves r4 itself which was pushed onto stack
+	asm("STMIA r4!, {r5-r14}");
+
+	asm("LDR r0, .notSavedValue");
+	asm("STR r0, [r4], #4"); // r15 not stored
 	asm("MRS r2, cpsr");
-	asm("STR r2, [r0, #48]"); // &crashRegisters[16] - &crashRegisters[4] = 48
+	asm("STR r2, [r4], #4");
 
 	asm("B iThinkYouOughtToKnowImFeelingVeryDepressed");
 	LABEL_WORD(.notSavedValue, KRegisterNotSaved);
