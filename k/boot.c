@@ -13,7 +13,7 @@ const char* getLuaModule(const char* moduleName, int* modSize);
 
 void Boot() {
 #ifdef ENABLE_DCACHE
-	mmu_setCache(true, true);
+	mmu_setCache(false, true);
 #endif
 	uart_init();
 	printk("\n\n" LUPI_VERSION_STRING "\n");
