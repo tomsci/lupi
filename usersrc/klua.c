@@ -145,7 +145,7 @@ static int panicFn(lua_State* L) {
 }
 
 lua_State* newLuaStateForModule(const char* moduleName, lua_State* L);
-void WeveCrashedSetupDebuggingStuff(lua_State* L);
+static void WeveCrashedSetupDebuggingStuff(lua_State* L);
 
 static int lua_newMemBuf(lua_State* L) {
 	uint32 ptr = lua_tointeger(L, 1);
@@ -223,9 +223,21 @@ static int memBufGetMem(lua_State* L, uintptr ptr, int size) {
 	return result;
 }
 
-#endif
+#endif // HOSTED
 
-void WeveCrashedSetupDebuggingStuff(lua_State* L) {
+#ifdef KLUA_DEBUGGER
+
+static int GetProcess_lua(lua_State* L) {
+	int idx = luaL_checkint(L, 1);
+	if (idx >= TheSuperPage->numValidProcessPages) {
+		return luaL_error(L, "process index %d out of range", idx);
+	}
+	Process* p = GetProcess(idx);
+	mbuf_get_object(L, (uintptr)p, sizeof(Process));
+	return 1;
+}
+
+static void WeveCrashedSetupDebuggingStuff(lua_State* L) {
 	lua_getglobal(L, "print");
 	lua_setglobal(L, "p");
 
@@ -302,4 +314,8 @@ void WeveCrashedSetupDebuggingStuff(lua_State* L) {
 		MBUF_NEW(Process, GetProcess(i));
 		lua_pop(L, 1);
 	}
+	lua_pushcfunction(L, GetProcess_lua);
+	lua_setglobal(L, "GetProcess");
 }
+
+#endif // KLUA_DEBUGGER

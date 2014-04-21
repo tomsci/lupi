@@ -202,3 +202,12 @@ void mbuf_declare_enum(lua_State* L, const char* typeName, int value, const char
 	CALL(L, 3, 0);
 	lua_pop(L, 1);
 }
+
+void mbuf_get_object(lua_State* L, uintptr ptr, int size) {
+	pushMemBuf(L);
+	lua_getfield(L, -1, "_objects");
+	lua_pushinteger(L, ptr);
+	lua_gettable(L, -2);
+	lua_insert(L, -3);
+	lua_pop(L, 2);
+}

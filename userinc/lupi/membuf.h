@@ -27,4 +27,6 @@ MemBuf* mbuf_new(lua_State* L, void* ptr, int len, const char* type);
 typedef int (*mbuf_getvalue)(lua_State* L, uintptr ptr, int size);
 void mbuf_set_accessor(lua_State* L, mbuf_getvalue accessptr);
 
+void mbuf_get_object(lua_State* L, uintptr ptr, int size);
+
 #endif
