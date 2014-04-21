@@ -45,8 +45,9 @@ int64 handleSvc(int cmd, uintptr arg1, uintptr* arg2, void* savedRegisters) {
 		case KExecCreateProcess: {
 			// TODO sanitise again!
 			const char* name = (const char*)arg1;
-			Process* p = process_new(name);
-			if (p) {
+			Process* p = NULL;
+			int err = process_new(name, &p);
+			if (err == 0) {
 				saveUserModeRegistersForCurrentThread(savedRegisters, true);
 				t->savedRegisters[0] = p->pid;
 				process_start(p); // effectively causes a reschedule
@@ -55,7 +56,7 @@ int64 handleSvc(int cmd, uintptr arg1, uintptr* arg2, void* savedRegisters) {
 				// preemption in user mode except for things that explicitly yield to user mode)
 				ASSERT(false);
 			} else {
-				return 0;
+				return err;
 			}
 			break;
 		}

@@ -73,8 +73,9 @@ void Boot() {
 	firstProcess->pid = 0;
 	firstProcess->pdePhysicalAddress = 0;
 
-	Process* p = process_new("interpreter");
-	ASSERT(p == firstProcess);
+	Process* p;
+	int err = process_new("interpreter", &p);
+	ASSERT(p == firstProcess && err == 0, err, (uint32)p);
 	process_start(firstProcess);
 #endif // KLUA
 }

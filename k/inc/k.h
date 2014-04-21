@@ -124,7 +124,7 @@ static inline Process* processForThread(Thread* t) {
 	
 }
 
-Process* process_new(const char* name);
+int process_new(const char* name, Process** resultProcess);
 void process_start(Process* p);
 bool process_grow_heap(Process* p, int incr);
 void thread_setState(Thread* t, enum ThreadState s);

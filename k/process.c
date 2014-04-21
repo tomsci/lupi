@@ -3,6 +3,7 @@
 #include <memmap.h>
 #include <mmu.h>
 #include <arm.h>
+#include <err.h>
 
 #define KNumPreallocatedUserPages 0
 
@@ -12,9 +13,16 @@
 extern uint32 user_ProcessPid;
 extern char user_ProcessName[];
 
-bool thread_init(Process* p, int index);
+static bool thread_init(Process* p, int index);
+const char* getLuaModule(const char* moduleName, int* modSize);
 
-static bool process_init(Process* p, const char* processName) {
+static int process_init(Process* p, const char* processName) {
+	// Do an early check that processName is valid - easier on callers if we fail now rather than
+	// once we've actually started executing the process
+	int dontCare;
+	const char* module = getLuaModule(processName, &dontCare);
+	if (!module) return KErrNotFound;
+
 	// Assume the Process page itself is already mapped, but nothing else necessarily is
 	p->pid = TheSuperPage->nextPid++;
 	uint32* pde = (uint32*)PDE_FOR_PROCESS(p);
@@ -43,10 +51,10 @@ static bool process_init(Process* p, const char* processName) {
 		*pname++ = ch;
 	} while (ch);
 
-	return ok;
+	return ok ? 0 : KErrNoMemory;
 }
 
-bool thread_init(Process* p, int index) {
+static bool thread_init(Process* p, int index) {
 	Thread* t = &p->threads[index];
 	t->prev = NULL;
 	t->next = NULL;
@@ -124,10 +132,12 @@ bool process_grow_heap(Process* p, int incr) {
 	}
 }
 
-Process* process_new(const char* name) {
+int process_new(const char* name, Process** resultProcess) {
+	*resultProcess = NULL;
 	// First see if there is a spare Process* we can use
 	SuperPage* s = TheSuperPage;
 	Process* p = 0;
+	int err = KErrNoMemory;
 	for (int i = 0; i < s->numValidProcessPages; i++) {
 		Process* candidate = GetProcess(i);
 		if (candidate->pid == 0) {
@@ -145,13 +155,19 @@ Process* process_new(const char* name) {
 			p->pdePhysicalAddress = 0;
 			s->numValidProcessPages++;
 		}
+	} else if (!p) {
+		return KErrProcessLimit;
 	}
 
 	if (p) {
-		bool ok = process_init(p, name);
-		if (!ok) p = NULL;
+		err = process_init(p, name);
+		if (err) p = NULL;
 	}
-	return p;
+	if (p) {
+		err = 0;
+		*resultProcess = p;
+	}
+	return err;
 }
 
 static void process_exit(Process* p, int reason) {
