@@ -8,6 +8,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <k.h>
+#include <pageAllocator.h>
 #include <lupi/membuf.h>
 #include <lupi/int64.h>
 
@@ -237,6 +238,26 @@ static int GetProcess_lua(lua_State* L) {
 	return 1;
 }
 
+static int pageStats(lua_State* L) {
+	int count[9];
+	for (int i = 0; i < sizeof(count)/sizeof(int); i++) count[i] = 0;
+	PageAllocator* al = Al;
+	const int n = al->numPages;
+	for (int i = 0; i < n; i++) {
+		count[al->pageInfo[i]]++;
+	}
+	printk("Free pages:      %d (%dkB)\n", count[KPageFree], count[KPageFree] << 2);
+	printk("Section 0 pages: %d (%dkB)\n", count[KPageSect0], count[KPageSect0] << 2);
+	printk("Allocator:       %d (%dkB)\n", count[KPageAllocator], count[KPageAllocator] << 2);
+	printk("Process pages:   %d (%dkB)\n", count[KPageProcess], count[KPageProcess] << 2);
+	printk("User PDEs:       %d (%dkB)\n", count[KPageUserPde], count[KPageUserPde] << 2);
+	printk("User PTs:        %d (%dkB)\n", count[KPageUserPt], count[KPageUserPt] << 2);
+	printk("User mem:        %d (%dkB)\n", count[KPageUser], count[KPageUser] << 2);
+	printk("klua heap:       %d (%dkB)\n", count[KPageKluaHeap], count[KPageKluaHeap] << 2);
+	printk("KernPtForProcPts:%d (%dkB)\n", count[KPageKernPtForProcPts], count[KPageKernPtForProcPts] << 2);
+	return 0;
+}
+
 static void WeveCrashedSetupDebuggingStuff(lua_State* L) {
 	lua_getglobal(L, "print");
 	lua_setglobal(L, "p");
@@ -317,6 +338,8 @@ static void WeveCrashedSetupDebuggingStuff(lua_State* L) {
 	}
 	lua_pushcfunction(L, GetProcess_lua);
 	lua_setglobal(L, "GetProcess");
+	lua_pushcfunction(L, pageStats);
+	lua_setglobal(L, "pageStats");
 }
 
 #endif // KLUA_DEBUGGER
