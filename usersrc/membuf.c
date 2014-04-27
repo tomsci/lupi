@@ -6,7 +6,7 @@
 #include <lupi/exec.h>
 #include <lupi/int64.h>
 
-#define MemBufMetatable "LupiMemBufMetatable"
+#define MemBufMetatable "LupiMemBufMt"
 
 #define MAX_BUFSIZE 1024*1024
 
@@ -20,7 +20,7 @@ static MemBuf* checkBuf(lua_State* L) {
 }
 
 static void pushMemBuf(lua_State* L) {
-	luaL_newmetatable(L, MemBufMetatable);
+	luaL_getmetatable(L, MemBufMetatable);
 }
 
 static void boundsCheck(lua_State* L, MemBuf* buf, int offset, int typeSize) {

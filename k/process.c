@@ -4,6 +4,7 @@
 #include <mmu.h>
 #include <arm.h>
 #include <err.h>
+#include <exec.h>
 
 #define KNumPreallocatedUserPages 0
 
@@ -60,6 +61,7 @@ static bool thread_init(Process* p, int index) {
 	t->next = NULL;
 	t->index = index;
 	t->timeslice = THREAD_TIMESLICE;
+	t->completedRequests = 0;
 	uintptr stackBase = userStackForThread(t);
 	bool ok = mmu_mapPagesInProcess(Al, p, stackBase, USER_STACK_SIZE >> KPageShift);
 	if (!ok) return false;
@@ -195,5 +197,41 @@ void thread_exit(Thread* t, int reason) {
 	}
 	if (dead) {
 		process_exit(p, reason);
+	}
+}
+
+NOINLINE NAKED uint32 do_user_read(uintptr ptr) {
+	asm("LDRT r1, [r0]");
+	asm("MOV r0, r1");
+	asm("BX lr");
+}
+
+static NOINLINE NAKED void do_user_write(uintptr ptr, uint32 data) {
+	asm("STRT r1, [r0]");
+	asm("BX lr");
+}
+
+void thread_requestComplete(KAsyncRequest* request, int result) {
+	Thread* t = request->thread;
+	Process* oldP = NULL;
+	Process* requestProcess = processForThread(t);
+	if (requestProcess != TheSuperPage->currentProcess) {
+		// Have to switch so we can write to it
+		oldP = TheSuperPage->currentProcess;
+		switch_process(requestProcess);
+	}
+	do_user_write(request->userPtr, result); // AsyncRequest->result = result
+	do_user_write(request->userPtr + 4, KAsyncFlagPending | KAsyncFlagCompleted | KAsyncFlagIntResult);
+	if (oldP) {
+		switch_process(oldP);
+	}
+	t->completedRequests++;
+	request->thread = NULL;
+	request->userPtr = 0;
+	if (t->state == EWaitForRequest) {
+		t->savedRegisters[0] = t->completedRequests;
+		t->completedRequests = 0;
+		thread_setState(t, EReady);
+		// Next reschedule will run it
 	}
 }

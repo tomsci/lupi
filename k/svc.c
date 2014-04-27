@@ -53,7 +53,7 @@ int64 handleSvc(int cmd, uintptr arg1, uintptr* arg2, void* savedRegisters) {
 				process_start(p); // effectively causes a reschedule
 				// We should never get here because when the calling thread gets rescheduled,
 				// it goes straight back into user mode (because that's how we roll - no
-				// preemption in user mode except for things that explicitly yield to user mode)
+				// preemption in svc mode except for things that explicitly yield to user mode)
 				ASSERT(false);
 			} else {
 				return err;
@@ -61,9 +61,34 @@ int64 handleSvc(int cmd, uintptr arg1, uintptr* arg2, void* savedRegisters) {
 			break;
 		}
 		case KExecThreadExit:
-			thread_exit(TheSuperPage->currentThread, (int)arg1);
+			thread_exit(t, (int)arg1);
 			reschedule(); // Never returns
 			break;
+		case KExecGetch_Async: {
+			if (byteReady()) {
+				KAsyncRequest req = { .thread = t, .userPtr = arg1 };
+				thread_requestComplete(&req, getch());
+			} else {
+				SuperPage* s = TheSuperPage;
+				s->uartRequest.thread = t;
+				s->uartRequest.userPtr = arg1;
+			}
+			break;
+		}
+		case KExecWaitForAnyRequest: {
+			uint8* reqs = &t->completedRequests;
+			if (*reqs) {
+				// There are some completed requests, return immediately
+				int result = *reqs;
+				*reqs = 0;
+				return result;
+			} else {
+				thread_setState(t, EWaitForRequest);
+				saveUserModeRegistersForCurrentThread(savedRegisters, true);
+				reschedule();
+			}
+			break;
+		}
 #endif
 		case KExecGetUptime:
 			return TheSuperPage->uptime;

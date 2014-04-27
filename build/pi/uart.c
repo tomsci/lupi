@@ -108,6 +108,8 @@ void uart_got_char(byte b) {
 		thread_setState(t, EReady);
 		s->blockedUartReceiveIrqHandler = NULL;
 		// The returning WFI in reschedule() should take care of the rest
+	} else if (s->uartRequest.thread) {
+		thread_requestComplete(&s->uartRequest, b);
 	} else if (!ring_full(s->uartBuf, UART_BUF_SIZE)) {
 		ring_push(s->uartBuf, UART_BUF_SIZE, b);
 	} else {

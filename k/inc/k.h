@@ -51,8 +51,7 @@ typedef struct Thread {
 	uint8 index;
 	uint8 state;
 	uint8 timeslice;
-	//uint8 pad[5];
-	uint8 pad[1];
+	uint8 completedRequests;
 	int exitReason;
 	uint32 savedRegisters[17];
 } Thread;
@@ -61,7 +60,7 @@ typedef enum ThreadState {
 	EReady = 0,
 	EBlocked = 1,
 	EDead = 2,
-	//EBlockedMutex = 1,
+	EWaitForRequest = 3,
 	// ???
 } ThreadState;
 
@@ -89,6 +88,11 @@ way we can fit it all in one page.
 */
 ASSERT_COMPILE(sizeof(Process) <= KPageSize);
 
+typedef struct KAsyncRequest {
+	Thread* thread;
+	uintptr userPtr;
+} KAsyncRequest;
+
 typedef struct SuperPage {
 	uint32 nextPid;
 	Process* currentProcess;
@@ -101,6 +105,7 @@ typedef struct SuperPage {
 	bool trapAbort;
 	bool exception; // only used in kdebugger mode
 	byte uartDroppedChars;
+	KAsyncRequest uartRequest;
 	uint32 crashRegisters[17];
 	byte uartBuf[66];
 } SuperPage;
@@ -129,6 +134,7 @@ void process_start(Process* p);
 bool process_grow_heap(Process* p, int incr);
 void thread_setState(Thread* t, enum ThreadState s);
 void thread_exit(Thread* t, int reason);
+void thread_requestComplete(KAsyncRequest* request, int result);
 
 NORETURN reschedule();
 void saveUserModeRegistersForCurrentThread(void* savedRegisters, bool svc);

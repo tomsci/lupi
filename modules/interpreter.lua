@@ -1,3 +1,5 @@
+require "runloop"
+
 prompt = "lua> "
 
 -- Not accessible to interpreter - too much possibility to break stuff
@@ -113,8 +115,6 @@ local function setLineToHistory(idx)
 		historyIdx = #history + 1
 	else
 		for i = 1, #str do
-			--line[i] = str:sub(i, 1)
-			--putch(str:byte(i))
 			handleChar(str:byte(i))
 		end
 		historyIdx = idx
@@ -143,40 +143,50 @@ local function handleEscape()
 	end
 end
 
-local function doMain()
-	line = {}
-	cursor = 1
-	printPrompt()
-	while true do
-		local ch = getch()
-		if string.char(ch) == "\r" then
-			print("")
-			local lineString = table.concat(line)
-			local fn, err = load(lineString, "<stdin>", nil, _ENV)
-			didLine(lineString) -- even if it didn't compile, it still goes in the history'
-			if fn then
-				local ok, err = pcall(fn)
-				if not ok then
-					print("Error: "..err)
-				end
-			else
+local function gotChar(ch)
+	if string.char(ch) == "\r" then
+		print("")
+		local lineString = table.concat(line)
+		local fn, err = load(lineString, "<stdin>", nil, _ENV)
+		didLine(lineString) -- even if it didn't compile, it still goes in the history
+		if fn then
+			local ok, err = pcall(fn)
+			if not ok then
 				print("Error: "..err)
 			end
-			printPrompt()
-		elseif ch == 8 then
-			backspace()
-		elseif ch == 27 then
-			handleEscape()
 		else
-			handleChar(ch)
+			print("Error: "..err)
 		end
+		printPrompt()
+	elseif ch == 8 then
+		backspace()
+	elseif ch == 27 then
+		handleEscape()
+	else
+		handleChar(ch)
 	end
 end
 
 function main()
-	while true do
-		local ok, err = pcall(doMain)
-		if not ok then print(err) end
+	line = {}
+	cursor = 1
+	printPrompt()
+
+	if getch_async ~= nil then
+		local rl = runloop.new()
+		local chreq = rl:newAsyncRequest({
+			completionFn = function(req, ch)
+				gotChar(ch)
+			end,
+			requestFn = getch_async,
+		})
+		rl:queue(chreq)
+		rl:run()
+	else
+		--# Run blocking (klua doesn't support async)
+		while true do
+			gotChar(getch())
+		end
 	end
 end
 

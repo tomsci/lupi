@@ -1,6 +1,8 @@
 #include <stddef.h>
 #include <lupi/exec.h>
 
+typedef struct AsyncRequest AsyncRequest;
+
 #define EXEC1(code) \
 	asm("MOV r1, r0"); \
 	asm("MOV r0, %0" : : "i" (code)); \
@@ -24,6 +26,10 @@ uint NAKED exec_getch() {
 	EXEC1(KExecGetch);
 }
 
+void NAKED exec_getch_async(AsyncRequest* request) {
+	EXEC1(KExecGetch_Async);
+}
+
 int NAKED exec_createProcess(const char* name) {
 	EXEC1(KExecCreateProcess);
 }
@@ -34,4 +40,9 @@ uint64 NAKED exec_getUptime() {
 
 void NAKED exec_threadExit(int reason) {
 	EXEC1(KExecThreadExit);
+}
+
+// returns number of completed requests
+int NAKED exec_waitForAnyRequest() {
+	EXEC1(KExecWaitForAnyRequest);
 }

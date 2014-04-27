@@ -247,6 +247,7 @@ function build_kernel()
 	if config.ulua then
 		table.insert(sources, { path = "usersrc/ulua.c", user = true })
 		table.insert(sources, { path = "usersrc/uexec.c", user = true })
+		table.insert(sources, { path = "usersrc/runloop.c", user = true })
 	end
 
 	if config.include then
@@ -393,6 +394,7 @@ luaModules = {
 	"modules/membuf.lua",
 	"modules/spin.lua",
 	"modules/int64.lua",
+	"modules/runloop.lua",
 }
 
 mallocSource = {

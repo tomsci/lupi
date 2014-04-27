@@ -4,10 +4,13 @@
 #include <lauxlib.h>
 
 #include <lupi/exec.h>
+#include <lupi/runloop.h>
+
 void exec_putch(uint ch);
 int exec_getch();
 int exec_createProcess(const char* name);
 int exec_getUptime();
+void exec_getch_async(AsyncRequest* request);
 
 uint32 user_ProcessPid;
 char user_ProcessName[32];
@@ -25,6 +28,13 @@ static int putch_lua(lua_State* L) {
 static int getch_lua(lua_State* L) {
 	lua_pushinteger(L, exec_getch());
 	return 1;
+}
+
+static int getch_async(lua_State* L) {
+	AsyncRequest* req = checkRequestPending(L, 1);
+	req->flags |= KAsyncFlagAccepted;
+	exec_getch_async(req);
+	return 0;
 }
 
 static int getProcessName(lua_State* L) {
@@ -68,6 +78,7 @@ int newProcessEntryPoint() {
 	static const luaL_Reg globals[] = {
 		{ "putch", putch_lua },
 		{ "getch", getch_lua },
+		{ "getch_async", getch_async },
 		{ "crash", crash },
 		{ NULL, NULL }
 	};
