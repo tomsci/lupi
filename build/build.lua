@@ -331,7 +331,7 @@ function build_kernel()
 			table.insert(args, "/Users/tomsci/Documents/gcc-arm/gcc-arm-none-eabi-4_8-2013q4/lib/gcc/arm-none-eabi/4.8.3/armv6-m/libgcc.a")
 		end
 		--table.insert(args, "-Ttext 0x8000 -Tbss 0x28000")
-		-- The only BSS we have is in malloc.c, userside, so we can set to a user address
+		-- The only BSS we have is userside, so we can set to a user address
 		table.insert(args, "-Ttext 0xF8008000 -Tbss 0x00007000")
 		local cmd = string.format("%s %s -o %s", config.ld, join(args), qrp(elf))
 		local ok = exec(cmd)
@@ -342,9 +342,11 @@ function build_kernel()
 		local ok = exec(cmd)
 		if not ok then error("Objcopy failed!") end
 
-		cmd = string.format("%s -a %s > %s", config.readelf, qrp(elf), qrp(outDir.."kernel.txt"))
+		local readElfOutput = outDir.."kernel.txt"
+		cmd = string.format("%s -a %s > %s", config.readelf, qrp(elf), qrp(readElfOutput))
 		ok = exec(cmd)
 		if not ok then error("Readelf failed!") end
+		checkElfSize(readElfOutput, 0xF8008000, 0x00040000)
 
 		if listing then
 			cmd = string.format("%s -d --section .text --section .rodata --source -w %s > %s", config.objdump, qrp(elf), qrp(outDir .. "kernel.s"))
@@ -501,6 +503,23 @@ function generateLuaModulesSource()
 	return results
 end
 
+function checkElfSize(readElfOutput, codeBase, maxCodeSize)
+	local f = assert(io.open(readElfOutput))
+	local found
+	for line in f:lines() do
+		--# Looking for the .rodata section
+		--#   [ 3] .rodata           PROGBITS        f8024e90 024e90 006f70
+		local addr, size = line:match("^  %[%s*%d+%] %.rodata%s+PROGBITS%s+(%w+) %w+ (%w+)")
+		if addr then
+			found = true
+			local endPos = tonumber(addr, 16) + tonumber(size, 16)
+			assert(endPos <= codeBase + maxCodeSize, string.format("Kernel code size is too big! %X > %X", endPos - codeBase, maxCodeSize))
+			break
+		end
+	end
+	assert(found, "Couldn't find .rodata segment!")
+	f:close()
+end
 
 function run()
 	local platforms = {}
