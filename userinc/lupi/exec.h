@@ -10,6 +10,7 @@
 #define KExecThreadExit		7
 #define KExecWaitForAnyRequest	8
 #define KExecGetch_Async	9
+#define KExecAbort			10
 
 
 #define KAsyncFlagPending   1 // Is added to the RunLoop pendingRequests

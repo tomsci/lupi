@@ -11,12 +11,13 @@ int exec_getch();
 int exec_createProcess(const char* name);
 int exec_getUptime();
 void exec_getch_async(AsyncRequest* request);
+void exec_abort();
 
 uint32 user_ProcessPid;
 char user_ProcessName[32];
 
 void abort() {
-	for(;;) {} //TODO
+	exec_abort();
 }
 
 static int putch_lua(lua_State* L) {

@@ -36,6 +36,7 @@ NORETURN hang();
 #define KRegisterNotSaved 0xA11FADE5
 #define kabort() kabort4(KRegisterNotSaved, KRegisterNotSaved, KRegisterNotSaved, KRegisterNotSaved)
 #define argn(i, nargs, args) (i < nargs ? args[i] : KRegisterNotSaved)
+#define kabort1(arg) kabort4(arg, KRegisterNotSaved, KRegisterNotSaved, KRegisterNotSaved)
 #define kabortn(n, args) kabort4(argn(0, n, args), argn(1, n, args), argn(2, n, args), argn(3, n, args))
 
 #define ASSERT(cond, args...) if (unlikely(!(cond))) { printk("assert %s at line %d\n", #cond, __LINE__); uint32 argsArray[] = {args}; kabortn(sizeof(argsArray)/sizeof(uint32), argsArray); }

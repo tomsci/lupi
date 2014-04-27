@@ -243,6 +243,11 @@ void NAKED kabort4(uint32 r0, uint32 r1, uint32 r2, uint32 r3) {
 	asm("MRS r2, cpsr");
 	asm("STR r2, [r4], #4");
 
+	// marvin expects us to be in abort mode
+	ModeSwitch(KPsrModeAbort | KPsrIrqDisable | KPsrFiqDisable);
+	asm("LDR r13, .abortStackBase");
+
 	asm("B iThinkYouOughtToKnowImFeelingVeryDepressed");
 	LABEL_WORD(.notSavedValue, KRegisterNotSaved);
+	LABEL_WORD(.abortStackBase, KAbortStackBase + KPageSize);
 }

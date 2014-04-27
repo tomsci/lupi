@@ -64,6 +64,10 @@ int64 handleSvc(int cmd, uintptr arg1, uintptr* arg2, void* savedRegisters) {
 			thread_exit(t, (int)arg1);
 			reschedule(); // Never returns
 			break;
+		case KExecAbort:
+			saveUserModeRegistersForCurrentThread(savedRegisters, true);
+			kabort1(0xABBADEAD); // doesn't return
+			break;
 		case KExecGetch_Async: {
 			if (byteReady()) {
 				KAsyncRequest req = { .thread = t, .userPtr = arg1 };

@@ -46,3 +46,7 @@ void NAKED exec_threadExit(int reason) {
 int NAKED exec_waitForAnyRequest() {
 	EXEC1(KExecWaitForAnyRequest);
 }
+
+void NAKED exec_abort() {
+	EXEC1(KExecAbort);
+}
