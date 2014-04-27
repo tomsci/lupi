@@ -190,8 +190,9 @@ static uintptr stackBaseForMode(uint32 mode) {
 		case KPsrModeUnd: return KAbortStackBase;
 		case KPsrModeIrq: return KIrqStackBase;
 		case KPsrModeSystem:
-			// We only ever use this mode when kernel debugging where we're using the abort stack
-			return KAbortStackBase;
+			// We only ever use this mode when kernel debugging where we're using the top of the
+			// debugger heap section
+			return KLuaDebuggerStackBase;
 		default:
 			return 0;
 	}

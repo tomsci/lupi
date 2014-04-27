@@ -76,7 +76,10 @@ User PTs						90000000-A0000000	(256MB)
 
 #define KProcessPtBase			0x90000000u
 
-#define KLuaDebuggerHeap		0x42000000u
+#define KLuaDebuggerSection		0x42000000u
+#define KLuaDebuggerStackBase	0x42000000u
+#define KLuaDebuggerStackSize	0x00002000u
+#define KLuaDebuggerHeap		0x42002000u
 
 /*
 User memory map:

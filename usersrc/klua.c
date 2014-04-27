@@ -209,6 +209,7 @@ extern uint32 GET32(uint32 ptr);
 extern byte GET8(uint32 ptr);
 
 static int memBufGetMem(lua_State* L, uintptr ptr, int size) {
+	//printk("Setting trapAbort...\n");
 	TheSuperPage->trapAbort = true;
 	int result;
 	if (size == 1) {
@@ -217,9 +218,10 @@ static int memBufGetMem(lua_State* L, uintptr ptr, int size) {
 		result = GET32(ptr);
 	}
 	TheSuperPage->trapAbort = false;
+	//printk("Exited trapAbort exception = %d\n", (int)TheSuperPage->exception);
 	if (TheSuperPage->exception) {
 		TheSuperPage->exception = false;
-		return luaL_error(L, "Abort at %p", (void*)ptr);
+		return luaL_error(L, "Abort accessing memory at address %p", (void*)ptr);
 	}
 	return result;
 }

@@ -119,13 +119,12 @@ void NAKED hang() {
 }
 
 #ifdef KLUA_DEBUGGER
-static void NAKED switchToSystemMode() {
-	// for the klua debugger, use abort mode stack, but run in system mode.
+static void NAKED switchToKluaDebuggerMode(uintptr sp) {
+	// for the klua debugger, use a custom stack and run in system mode.
 	// This allows us access to all memory, but also means we can still do SVCs without
 	// corrupting registers. This is required because Lua is still in user config so expects
 	// to be able to do an SVC to print, for example, and System is the only mode that allows
 	// this combination
-	asm("MOV r0, r13"); // Save abort mode stack pointer
 	asm("MOV r1, r14");
 	ModeSwitch(KPsrModeSystem | KPsrIrqDisable | KPsrFiqDisable);
 	asm("MOV r13, r0");
@@ -134,7 +133,7 @@ static void NAKED switchToSystemMode() {
 
 void iThinkYouOughtToKnowImFeelingVeryDepressed() {
 	if (!TheSuperPage->marvin) {
-		if (!mmu_mapSectionContiguous(Al, KLuaDebuggerHeap, KPageKluaHeap)) {
+		if (!mmu_mapSectionContiguous(Al, KLuaDebuggerSection, KPageKluaHeap)) {
 			printk("Failed to allocate memory for klua debugger heap, sorry.\n");
 			hang();
 		}
@@ -143,9 +142,11 @@ void iThinkYouOughtToKnowImFeelingVeryDepressed() {
 	if (TheSuperPage->trapAbort) {
 		TheSuperPage->exception = true;
 		TheSuperPage->trapAbort = false;
+		//printk("Returning from abort\n");
 		return;
 	} else {
-		switchToSystemMode();
+		// We use a custom 8KB stack at the start of the debugger heap section
+		switchToKluaDebuggerMode(KLuaDebuggerStackBase + KLuaDebuggerStackSize);
 		runLuaIntepreterModule(KLuaDebuggerHeap);
 	}
 }
@@ -215,7 +216,7 @@ void NAKED svc() {
 }
 
 void NAKED dataAbort() {
-	asm("PUSH {r0-r12}");
+	asm("PUSH {r0-r12, r14}");
 	uint32* regs;
 	asm("MOV %0, sp" : "=r" (regs));
 	uint32 addr;
@@ -226,7 +227,8 @@ void NAKED dataAbort() {
 	iThinkYouOughtToKnowImFeelingVeryDepressed();
 	// We might want to return from this if we were already aborted - note we return to
 	// r14-4 not r14-8, ie we skip over the instruction that caused the exception
-	asm("subs pc, r14, #4");
+	asm("POP {r0-r12, r14}");
+	asm("SUBS pc, r14, #4");
 }
 
 void NAKED kabort4(uint32 r0, uint32 r1, uint32 r2, uint32 r3) {
