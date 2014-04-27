@@ -69,6 +69,10 @@ function MemBuf._declareType(type, size)
 	MemBuf._types[type] = { _type=type, _size=size }
 end
 
+function getType(name)
+	return MemBuf._types[name]
+end
+
 function MemBuf._declareMember(type, memberName, offset, size, memberType)
 	local t = MemBuf._types[type]
 	--# The "type" table t serves two purposes. In its integer keys it stores the members in order.

@@ -10,10 +10,12 @@
 #define KPageUser 6
 #define KPageKluaHeap 7
 #define KPageKernPtForProcPts 8
+#define KPageNumberOfTypes 9
 
 typedef struct PageAllocator {
 	int numPages;
 	int firstFreePage;
+	// Don't add anything here without also updating funciton pageStats()
 	uint8 pageInfo[1]; // Extends beyond struct, up to numPages
 } PageAllocator;
 

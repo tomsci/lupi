@@ -1,15 +1,10 @@
 #include <k.h>
 #include <pageAllocator.h>
 
-//TODO shouldn't have to redefine this...
-#define zeroPages(ptr, n) \
-	for (uint32 *p = (uint32*)(ptr), *end = (uint32*)(((uint8*)ptr) + (n << KPageShift)); p != end; p++) {\
-		*p = 0; \
-	}
-
 void pageAllocator_init(PageAllocator* allocator, int numPages) {
 	// We're assuming the page allocator starts on a page boundary, here
-	zeroPages(allocator, (pageAllocator_size(numPages) >> KPageShift));
+	int allocatorPages = (pageAllocator_size(numPages) + KPageSize - 1) >> KPageShift;
+	zeroPages(allocator, allocatorPages);
 	allocator->numPages = numPages;
 }
 

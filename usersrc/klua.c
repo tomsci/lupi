@@ -230,6 +230,8 @@ static int memBufGetMem(lua_State* L, uintptr ptr, int size) {
 
 #ifdef KLUA_DEBUGGER
 
+#define EXPORT_INT(L, val) lua_pushunsigned(L, val); lua_setglobal(L, #val)
+
 static int GetProcess_lua(lua_State* L) {
 	int idx = luaL_checkint(L, 1);
 	if (idx >= TheSuperPage->numValidProcessPages) {
@@ -240,30 +242,29 @@ static int GetProcess_lua(lua_State* L) {
 	return 1;
 }
 
-static int pageStats(lua_State* L) {
-	int count[9];
-	for (int i = 0; i < sizeof(count)/sizeof(int); i++) count[i] = 0;
+static int pageStats_getCounts(lua_State* L) {
+	int count[KPageNumberOfTypes];
+	for (int i = 0; i < KPageNumberOfTypes; i++) count[i] = 0;
 	PageAllocator* al = Al;
 	const int n = al->numPages;
 	for (int i = 0; i < n; i++) {
-		count[al->pageInfo[i]]++;
+		int type = al->pageInfo[i];
+		if (type < KPageNumberOfTypes) {
+			count[type]++;
+		} else {
+			printk("Unknown page type %d for page %d!\n", type, i);
+		}
 	}
-	printk("Free pages:      %d (%dkB)\n", count[KPageFree], count[KPageFree] << 2);
-	printk("Section 0 pages: %d (%dkB)\n", count[KPageSect0], count[KPageSect0] << 2);
-	printk("Allocator:       %d (%dkB)\n", count[KPageAllocator], count[KPageAllocator] << 2);
-	printk("Process pages:   %d (%dkB)\n", count[KPageProcess], count[KPageProcess] << 2);
-	printk("User PDEs:       %d (%dkB)\n", count[KPageUserPde], count[KPageUserPde] << 2);
-	printk("User PTs:        %d (%dkB)\n", count[KPageUserPt], count[KPageUserPt] << 2);
-	printk("User mem:        %d (%dkB)\n", count[KPageUser], count[KPageUser] << 2);
-	printk("klua heap:       %d (%dkB)\n", count[KPageKluaHeap], count[KPageKluaHeap] << 2);
-	printk("KernPtForProcPts:%d (%dkB)\n", count[KPageKernPtForProcPts], count[KPageKernPtForProcPts] << 2);
-	return 0;
+
+	lua_newtable(L);
+	for (int i = 0; i < KPageNumberOfTypes; i++) {
+		lua_pushinteger(L, count[i]);
+		lua_rawseti(L, -2, i);
+	}
+	return 1;
 }
 
 static void WeveCrashedSetupDebuggingStuff(lua_State* L) {
-	lua_getglobal(L, "print");
-	lua_setglobal(L, "p");
-
 	lua_getfield(L, -1, "require");
 	lua_pushstring(L, "membuf");
 	lua_call(L, 1, 0);
@@ -316,9 +317,7 @@ static void WeveCrashedSetupDebuggingStuff(lua_State* L) {
 	MBUF_MEMBER_TYPE(SuperPage, crashRegisters, "regset");
 
 	MBUF_NEW(SuperPage, TheSuperPage);
-	lua_pushvalue(L, -1);
 	lua_setglobal(L, "TheSuperPage");
-	lua_setglobal(L, "sp");
 
 	MBUF_TYPE(ThreadState);
 	MBUF_ENUM(ThreadState, EReady);
@@ -347,10 +346,44 @@ static void WeveCrashedSetupDebuggingStuff(lua_State* L) {
 		MBUF_NEW(Process, GetProcess(i));
 		lua_pop(L, 1);
 	}
+
+	MBUF_TYPE(PageAllocator);
+	MBUF_MEMBER(PageAllocator, numPages);
+	MBUF_MEMBER(PageAllocator, firstFreePage);
+	MBUF_NEW(PageAllocator, Al);
+	lua_setglobal(L, "Al");
+
+	mbuf_declare_type(L, "PageType", 1);
+	MBUF_ENUM(PageType, KPageFree);
+	MBUF_ENUM(PageType, KPageSect0);
+	MBUF_ENUM(PageType, KPageAllocator);
+	MBUF_ENUM(PageType, KPageProcess);
+	MBUF_ENUM(PageType, KPageUserPde);
+	MBUF_ENUM(PageType, KPageUserPt);
+	MBUF_ENUM(PageType, KPageUser);
+	MBUF_ENUM(PageType, KPageKluaHeap);
+	MBUF_ENUM(PageType, KPageKernPtForProcPts);
+
 	lua_pushcfunction(L, GetProcess_lua);
 	lua_setglobal(L, "GetProcess");
-	lua_pushcfunction(L, pageStats);
-	lua_setglobal(L, "pageStats");
+	lua_pushcfunction(L, pageStats_getCounts);
+	lua_setglobal(L, "pageStats_getCounts");
+
+	EXPORT_INT(L, USER_STACK_SIZE);
+	EXPORT_INT(L, KPageSize);
+	EXPORT_INT(L, MAX_PROCESSES);
+	EXPORT_INT(L, MAX_THREADS);
+	EXPORT_INT(L, MAX_PROCESS_NAME);
+	EXPORT_INT(L, THREAD_TIMESLICE);
+	EXPORT_INT(L, KKernelStackBase);
+	EXPORT_INT(L, KKernelStackSize);
+	EXPORT_INT(L, KUserStacksBase);
+	EXPORT_INT(L, KPageAllocatorAddr);
+
+	lua_getfield(L, -1, "require");
+	lua_pushstring(L, "kluadebugger");
+	lua_call(L, 1, 0);
+
 }
 
 #endif // KLUA_DEBUGGER

@@ -217,6 +217,9 @@ function build_kernel()
 			table.insert(sources, { path = src, user = true })
 		end
 		if includeModules then
+			if config.ulua and config.klua then
+				table.insert(luaModules, "modules/kluadebugger.lua")
+			end
 			for _, src in ipairs(generateLuaModulesSource()) do
 				table.insert(sources, { path = src, user = true })
 			end
