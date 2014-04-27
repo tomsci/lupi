@@ -98,6 +98,9 @@ int newProcessEntryPoint() {
 	lua_pop(L, 1);
 
 	lua_getfield(L, -1, "main");
+	if (!lua_isfunction(L, -1)) {
+		luaL_error(L, "Module %s does not have a main function!", moduleName);
+	}
 	lua_call(L, 0, 1);
 	return lua_tointeger(L, -1);
 }

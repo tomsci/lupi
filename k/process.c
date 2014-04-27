@@ -43,7 +43,7 @@ static int process_init(Process* p, const char* processName) {
 	// Setup initial thread
 	p->numThreads = 1;
 	ok = thread_init(p, 0);
-	if (!ok) return false;
+	if (!ok) return KErrNoMemory;
 
 	char* pname = p->name;
 	char ch;
@@ -52,7 +52,7 @@ static int process_init(Process* p, const char* processName) {
 		*pname++ = ch;
 	} while (ch);
 
-	return ok ? 0 : KErrNoMemory;
+	return 0;
 }
 
 static bool thread_init(Process* p, int index) {

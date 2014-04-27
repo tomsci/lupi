@@ -423,7 +423,7 @@ function generateLuaModulesSource()
 	local modMap = {}
 	local sizeMap = {}
 	for i, module in ipairs(luaModules) do
-		local cname = "KLuaModule_"..module:gsub("%A", "_")
+		local cname = "KLuaModule_"..module:gsub("%W", "_")
 		local modName = module:gsub("^modules/(.*).lua", "%1")
 		modMap[modName] = cname
 		local str

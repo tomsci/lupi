@@ -166,7 +166,7 @@ void runLuaIntepreterModule(uintptr heapBase) {
 	L = newLuaStateForModule("interpreter", L);
 	const int interpreterIdx = lua_gettop(L);
 	// the interpreter module is now at top of L stack
-	if (!L) abort();
+	ASSERT(L != NULL);
 
 	lua_atpanic(L, panicFn);
 	lua_pushcfunction(L, putch_lua);
@@ -188,7 +188,7 @@ void runLuaIntepreterModule(uintptr heapBase) {
 	lua_getfield(L, -1, "main");
 	lua_call(L, 0, 0);
 	// Shouldn't return
-	abort();
+	ASSERT(false, 0xC10000A, __LINE__);
 }
 
 /*
@@ -273,6 +273,8 @@ static void WeveCrashedSetupDebuggingStuff(lua_State* L) {
 	mbuf_set_accessor(L, memBufGetMem); // Handles aborts
 #endif
 
+	// Things embedded in structs (as opposed to being pointers) must be declared before the
+	// thingd they are embedded in.
 	mbuf_declare_type(L, "regset", sizeof(uint32)*17);
 	mbuf_declare_member(L, "regset", "r0", 0, 4, NULL);
 	mbuf_declare_member(L, "regset", "r1", 4, 4, NULL);
@@ -292,6 +294,10 @@ static void WeveCrashedSetupDebuggingStuff(lua_State* L) {
 	mbuf_declare_member(L, "regset", "r15", 60, 4, NULL);
 	mbuf_declare_member(L, "regset", "cpsr", 64, 4, NULL);
 
+	MBUF_TYPE(KAsyncRequest);
+	MBUF_MEMBER(KAsyncRequest, thread);
+	MBUF_MEMBER(KAsyncRequest, userPtr);
+
 	MBUF_TYPE(SuperPage);
 	MBUF_MEMBER(SuperPage, nextPid);
 	MBUF_MEMBER(SuperPage, currentProcess);
@@ -303,6 +309,8 @@ static void WeveCrashedSetupDebuggingStuff(lua_State* L) {
 	MBUF_MEMBER(SuperPage, marvin);
 	MBUF_MEMBER(SuperPage, trapAbort);
 	MBUF_MEMBER(SuperPage, exception);
+	MBUF_MEMBER(SuperPage, uartDroppedChars);
+	MBUF_MEMBER_TYPE(SuperPage, uartRequest, "KAsyncRequest");
 	MBUF_MEMBER_TYPE(SuperPage, crashRegisters, "regset");
 
 	MBUF_NEW(SuperPage, TheSuperPage);
@@ -314,6 +322,7 @@ static void WeveCrashedSetupDebuggingStuff(lua_State* L) {
 	MBUF_ENUM(ThreadState, EReady);
 	MBUF_ENUM(ThreadState, EBlocked);
 	MBUF_ENUM(ThreadState, EDead);
+	MBUF_ENUM(ThreadState, EWaitForRequest);
 
 	MBUF_TYPE(Thread);
 	MBUF_MEMBER(Thread, prev);
