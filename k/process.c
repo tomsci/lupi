@@ -32,7 +32,7 @@ static int process_init(Process* p, const char* processName) {
 	if (!p->pdePhysicalAddress) {
 		p->pdePhysicalAddress = mmu_mapPageInSection(Al, (uint32*)KProcessesPdeSection_pt, (uintptr)pde, KPageUserPde);
 		uintptr userPtsStart = (uintptr)PT_FOR_PROCESS(p, 0);
-		mmu_mapSection(Al, userPtsStart, (uintptr)kernPtForTheUserPts, (uint32*)KKernPtForProcPts_pt);
+		mmu_mapSection(Al, userPtsStart, (uintptr)kernPtForTheUserPts, (uint32*)KKernPtForProcPts_pt, KPageKernPtForProcPts);
 		//TODO check return code
 	}
 	zeroPage(pde);

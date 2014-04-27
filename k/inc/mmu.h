@@ -38,20 +38,20 @@ uintptr mmu_mapSectionContiguous(PageAllocator* pa, uintptr virtualAddress, uint
 /*
  * Let 'PTS' be the section where the page table for the new section is going to go.
  * This function does 3 things.
- * 1) It allocates a physical page to be a page table, and maps this into PTS at pteAddr (using PTS's page table, 'ptsPt').
+ * 1) It allocates a physical page to be a page table, and maps this into PTS at pteAddr (using PTS's page table, 'ptsPt') using the page type ptPageType.
  * 2) It tells the top-level PDE that virtualAddress is a 1MB section defined by the newly-allocated
  *    page table.
  * 3) zeros the new page table so all of the section starts out unmapped
  */
 
-bool mmu_mapSection(PageAllocator* pa, uintptr sectionAddress, uintptr ptAddress, uint32* ptsPt);
+bool mmu_mapSection(PageAllocator* pa, uintptr sectionAddress, uintptr ptAddress, uint32* ptsPt, uint8 ptPageType);
 
 /*
  * Convenience function to create a new section whose page table is in section zero and is called
  * '<sectionName>_pt'.
  */
 #define mmu_createSection(pa, sectionName) \
-	mmu_mapSection(pa, sectionName, sectionName ## _pt, (uint32*)KSectionZeroPt)
+	mmu_mapSection(pa, sectionName, sectionName ## _pt, (uint32*)KSectionZeroPt, KPageSect0)
 
 /*
  * Allocates a new physical page with the specified type, and maps it into the section whose page

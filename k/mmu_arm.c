@@ -227,9 +227,9 @@ uintptr mmu_mapSectionContiguous(PageAllocator* pa, uintptr virtualAddress, uint
 	return phys;
 }
 
-bool mmu_mapSection(PageAllocator* pa, uintptr sectionAddress, uintptr ptAddress, uint32* ptsPt) {
+bool mmu_mapSection(PageAllocator* pa, uintptr sectionAddress, uintptr ptAddress, uint32* ptsPt, uint8 ptPageType) {
 	// Map a page for the section pt into the ptsPt
-	uint32 pageTablePhysical = mmu_mapPageInSection(pa, ptsPt, ptAddress, KPageSect0);
+	uint32 pageTablePhysical = mmu_mapPageInSection(pa, ptsPt, ptAddress, ptPageType);
 	if (!pageTablePhysical) return false;
 
 	// Now update so we can write to the new PTE page
