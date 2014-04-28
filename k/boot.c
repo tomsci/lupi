@@ -6,10 +6,7 @@
 void uart_init();
 void irq_init();
 void irq_enable();
-//void goDoLuaStuff();
-//void interactiveLuaPrompt();
 void runLuaIntepreterModule(uintptr heapPtr);
-const char* getLuaModule(const char* moduleName, int* modSize);
 
 void Boot() {
 #ifdef ENABLE_DCACHE

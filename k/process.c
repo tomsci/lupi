@@ -5,6 +5,7 @@
 #include <arm.h>
 #include <err.h>
 #include <exec.h>
+#include <module.h>
 
 #define KNumPreallocatedUserPages 0
 
@@ -15,13 +16,11 @@ extern uint32 user_ProcessPid;
 extern char user_ProcessName[];
 
 static bool thread_init(Process* p, int index);
-const char* getLuaModule(const char* moduleName, int* modSize);
 
 static int process_init(Process* p, const char* processName) {
 	// Do an early check that processName is valid - easier on callers if we fail now rather than
 	// once we've actually started executing the process
-	int dontCare;
-	const char* module = getLuaModule(processName, &dontCare);
+	const LuaModule* module = getLuaModule(processName);
 	if (!module) return KErrNotFound;
 
 	// Assume the Process page itself is already mapped, but nothing else necessarily is

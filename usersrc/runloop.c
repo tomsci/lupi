@@ -98,7 +98,7 @@ static int clearFlags(lua_State* L) {
 	return 0;
 }
 
-void initRunloopModule(lua_State* L) {
+int init_module_runloop(lua_State* L) {
 	lua_newtable(L);
 	luaL_Reg runloopFns[] = {
 		{ "newAsyncRequest", newAsyncRequest },
@@ -123,6 +123,5 @@ void initRunloopModule(lua_State* L) {
 	lua_pushvalue(L, -1);
 	lua_setfield(L, -2, "__index");
 	lua_setfield(L, -2, "AsyncRequest");
-
+	return 0;
 }
-

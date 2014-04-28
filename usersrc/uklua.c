@@ -5,20 +5,15 @@
 #include <lupi/membuf.h>
 #include <lupi/int64.h>
 #include <lupi/runloop.h>
-
-const char* getLuaModule(const char* moduleName, int* modSize);
-
-struct ModuleInfo {
-	const char* module;
-	int size;
-};
+#include <lupi/module.h>
 
 static const char* readerFn(lua_State* L, void* data, size_t* size) {
-	struct ModuleInfo* info = (struct ModuleInfo*)data;
-	if (info->size == 0) return NULL;
-	*size = info->size;
-	info->size = 0;
-	return info->module;
+	const LuaModule** module = (const LuaModule**)data;
+	if (*module == 0) return NULL;
+	*size = (*module)->size;
+	const char* result = (*module)->data;
+	*module = NULL;
+	return result;
 }
 
 static int requireFn(lua_State* L) {
@@ -36,13 +31,6 @@ static int requireFn(lua_State* L) {
 	return 1; // The copy of module we moved to the bottom
 }
 
-static bool lcmp(lua_State* L, int idx, const char* val) {
-	lua_pushstring(L, val);
-	bool result = lua_compare(L, idx, -1, LUA_OPEQ);
-	lua_pop(L, 1);
-	return result;
-}
-
 static int loaderFn(lua_State* L) {
 	// Custom loader that gives every module a separate _ENV, and makes sure that
 	// package.loaded[modName] will always be set to that _ENV unless the module returns a table.
@@ -53,28 +41,23 @@ static int loaderFn(lua_State* L) {
 
 	// Arg 1 is modName
 	// Arg 2 is whatever the searcher returned (which we don't bother with)
-	// upvalue 1 is the module fn itself
-
-	//TODO clean this up
-	bool isMbuf = lcmp(L, 1, "membuf");
-	bool isInt64 = lcmp(L, 1, "int64");
-	bool isRunloop = lcmp(L, 1, "runloop");
+	// upvalue 1 is the nativeInit function (or nil)
+	// upvalue 2 is the module fn itself
 
 	lua_newtable(L); // The _ENV
-	lua_pushvalue(L, lua_upvalueindex(1));
-	lua_getfield(L, LUA_REGISTRYINDEX, "LupiGlobalMetatable");
-	lua_setmetatable(L, -3); // setmetatable(_ENV, LupiGlobalMetatable)
+	luaL_setmetatable(L, "LupiGlobalMetatable");
+	lua_pushvalue(L, lua_upvalueindex(2));
 	// moduleFn at -1, _ENV at -2
 	lua_pushvalue(L, -2); // dups _ENV
 	lua_setupvalue(L, -2, 1); // Pops _ENV
 
 	lua_pushvalue(L, -2); // Another _ENV
-	if (isMbuf) {
-		initMbufModule(L);
-	} else if (isInt64) {
-		initInt64Module(L);
-	} else if (isRunloop) {
-		initRunloopModule(L);
+
+	if (lua_isfunction(L, lua_upvalueindex(1))) {
+		// Call the nativeInit function if there is one
+		lua_pushvalue(L, lua_upvalueindex(1));
+		lua_pushvalue(L, -2); // _ENV
+		lua_call(L, 1, 0);
 	}
 
 	lua_pushcclosure(L, requireFn, 1); // upvalue 1 for requireFn is _ENV (pops _ENV)
@@ -87,23 +70,26 @@ static int loaderFn(lua_State* L) {
 
 static int getLuaModule_searcherFn(lua_State* L) {
 	const char* moduleName = lua_tostring(L, 1);
-	int moduleSize;
 	// Slightly crazy we can call a (nominally kernel) function from user-side, but we can
 	// so we do, since it doesn't access any private kernel memory
-	const char* module = getLuaModule(moduleName, &moduleSize);
+	const LuaModule* module = getLuaModule(moduleName);
 	if (!module) {
 		lua_pushfstring(L, "\n\tno compiled module " LUA_QS, moduleName);
 		return 1;
 	}
-	struct ModuleInfo readerInfo = { module, moduleSize };
-	int ret = lua_load(L, readerFn, &readerInfo, moduleName, NULL);
+	if (module->nativeInit) {
+		lua_pushcfunction(L, module->nativeInit);
+	} else {
+		lua_pushnil(L);
+	}
+	int ret = lua_load(L, readerFn, &module, moduleName, NULL);
 	if (ret != LUA_OK) {
 		lua_pushfstring(L, "\n\tError loading compiled module: %s", lua_tostring(L, -1));
 		return 1;
 	}
 	// Ok now the module function is on the top of the stack
-	// We make it an upvalue of loaderFn and return that
-	lua_pushcclosure(L, loaderFn, 1);
+	// We make it and the native init fn upvalues of loaderFn and return that
+	lua_pushcclosure(L, loaderFn, 2);
 	return 1;
 }
 
@@ -126,12 +112,10 @@ lua_State* newLuaStateForModule(const char* moduleName, lua_State* L) {
 	lua_pop(L, 1); // package
 
 	// Setup a metatable for module envs to allow access to globals but not set em
-	//		REGISTRY["LupiGlobalMetatable"] = {}
-	//		REGISTRY["LupiGlobalMetatable"].__index = _G
-	lua_createtable(L, 0, 1);
+	luaL_newmetatable(L, "LupiGlobalMetatable");
 	lua_rawgeti(L, LUA_REGISTRYINDEX, LUA_RIDX_GLOBALS);
-	lua_setfield(L, -2, "__index");
-	lua_setfield(L, LUA_REGISTRYINDEX, "LupiGlobalMetatable");
+	lua_setfield(L, -2, "__index"); // __index = _G
+	lua_pop(L, 1);
 
 	// Since we've just added support for require, we might as well use that to load the
 	// main module for the process and save duplicating code. Note we bootstrap with global

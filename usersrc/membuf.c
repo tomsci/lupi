@@ -121,7 +121,7 @@ static int getType(lua_State* L) {
 	return 1;
 }
 
-void initMbufModule(lua_State* L) {
+int init_module_membuf(lua_State* L) {
 	// module env at top of L stack
 	luaL_newmetatable(L, MemBufMetatable);
 	luaL_Reg fns[] = {
@@ -138,6 +138,7 @@ void initMbufModule(lua_State* L) {
 	lua_pushinteger(L, sizeof(void*));
 	lua_setfield(L, -2, "_PTR_SIZE");
 	lua_setfield(L, -2, "MemBuf");
+	return 0;
 }
 
 //#define CALL(L, nargs, nret) if (lua_pcall(L, nargs, nret, 0) != 0) { lua_getglobal(L, "print"); lua_insert(L, -2); lua_call(L, 1, 0); }
@@ -145,18 +146,17 @@ void initMbufModule(lua_State* L) {
 
 MemBuf* mbuf_new(lua_State* L, void* ptr, int len, const char* type) {
 	MemBuf* buf = (MemBuf*)lua_newuserdata(L, sizeof(MemBuf));
+	luaL_setmetatable(L, MemBufMetatable);
 	buf->ptr = ptr;
 	buf->len = len;
 	int bufIdx = lua_gettop(L);
 	pushMemBuf(L);
-	lua_pushvalue(L, -1); // dup MemBufMetatable
 	if (type) {
 		lua_getfield(L, -1, "_types");
 		lua_getfield(L, -1, type);
 		lua_setuservalue(L, bufIdx);
 		lua_pop(L, 1); // _types
 	}
-	lua_setmetatable(L, bufIdx); // pops one of the MemBufMetatables
 	lua_getfield(L, -1, "_newObject");
 	lua_pushvalue(L, bufIdx);
 	CALL(L, 1, 0);
