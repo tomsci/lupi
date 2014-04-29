@@ -1,0 +1,17 @@
+{
+	"folders":
+	[
+		{
+			"path": "/Users/tomsci/Documents/lupi"
+		}
+	],
+	"build_systems":
+    [
+        {
+            "name": "build.lua",
+            "cmd": ["/usr/local/bin/fish", "-c", "lua ./build/build.lua -m pi"],
+            "working_dir": "${project_path}",
+            "file_regex": "^(?:bin/luac: )?(.*):([0-9]+)(?::?([0-9]+))"
+        }
+    ]
+}
