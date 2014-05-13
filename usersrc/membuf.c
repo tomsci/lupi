@@ -10,13 +10,12 @@
 
 #define MAX_BUFSIZE 1024*1024
 
-typedef struct MemBuf {
-	void* ptr;
-	int len;
-} MemBuf;
+MemBuf* mbuf_checkbuf(lua_State* L, int idx) {
+	return (MemBuf*)luaL_checkudata(L, idx, MemBufMetatable);
+}
 
 static MemBuf* checkBuf(lua_State* L) {
-	return (MemBuf*)luaL_checkudata(L, 1, MemBufMetatable);
+	return mbuf_checkbuf(L, 1);
 }
 
 static void pushMemBuf(lua_State* L) {
@@ -50,6 +49,17 @@ static int getInt(lua_State* L) {
 	}
 	lua_pushinteger(L, val);
 	return 1;
+}
+
+static int setInt(lua_State* L) {
+	MemBuf* buf = checkBuf(L);
+	int offset = luaL_checkint(L, 2);
+	boundsCheck(L, buf, offset, sizeof(int));
+	int val = luaL_checkint(L, 3);
+	uintptr ptr = (uintptr)buf->ptr + offset;
+	// We don't support using an accessfn for setInt, just set directly
+	*(int*)ptr = val;
+	return 0;
 }
 
 static int getByte(lua_State* L) {
@@ -132,6 +142,7 @@ int init_module_membuf(lua_State* L) {
 		{ "getLength", length },
 		{ "sub", sub },
 		{ "getType", getType },
+		{ "setInt", setInt },
 		{ NULL, NULL }
 	};
 	luaL_setfuncs(L, fns, 0);
@@ -203,7 +214,7 @@ void mbuf_declare_enum(lua_State* L, const char* typeName, int value, const char
 	lua_pop(L, 1);
 }
 
-void mbuf_get_object(lua_State* L, uintptr ptr, int size) {
+void mbuf_push_object(lua_State* L, uintptr ptr, int size) {
 	pushMemBuf(L);
 	lua_getfield(L, -1, "_objects");
 	lua_pushinteger(L, ptr);

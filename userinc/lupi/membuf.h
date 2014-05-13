@@ -4,9 +4,11 @@
 #include <stddef.h>
 
 typedef struct lua_State lua_State;
-typedef struct MemBuf MemBuf;
 
-void initMbufModule(lua_State* L);
+typedef struct MemBuf {
+	void* ptr;
+	int len;
+} MemBuf;
 
 #define MEMBER_SIZEOF(type, member) sizeof(((type*)0x1000)->member)
 
@@ -22,11 +24,13 @@ void initMbufModule(lua_State* L);
 void mbuf_declare_type(lua_State* L, const char* typeName, int size);
 void mbuf_declare_member(lua_State* L, const char* typeName, const char* memberName, int offset, int size, const char* memberType);
 void mbuf_declare_enum(lua_State* L, const char* typeName, int value, const char* name);
-MemBuf* mbuf_new(lua_State* L, void* ptr, int len, const char* type);
 
 typedef int (*mbuf_getvalue)(lua_State* L, uintptr ptr, int size);
 void mbuf_set_accessor(lua_State* L, mbuf_getvalue accessptr);
 
-void mbuf_get_object(lua_State* L, uintptr ptr, int size);
+void mbuf_push_object(lua_State* L, uintptr ptr, int size);
+
+MemBuf* mbuf_new(lua_State* L, void* ptr, int len, const char* type);
+MemBuf* mbuf_checkbuf(lua_State* L, int idx);
 
 #endif

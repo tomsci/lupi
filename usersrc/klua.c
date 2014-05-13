@@ -238,7 +238,7 @@ static int GetProcess_lua(lua_State* L) {
 		return luaL_error(L, "process index %d out of range", idx);
 	}
 	Process* p = GetProcess(idx);
-	mbuf_get_object(L, (uintptr)p, sizeof(Process));
+	mbuf_push_object(L, (uintptr)p, sizeof(Process));
 	return 1;
 }
 
