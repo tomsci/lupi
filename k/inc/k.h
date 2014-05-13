@@ -53,18 +53,21 @@ typedef struct Thread {
 	uint8 state;
 	uint8 timeslice;
 	uint8 completedRequests;
-	int exitReason;
+	int exitReason; // Also holds blockedReason if state is EBlockedFromSvc
 	uint32 savedRegisters[17];
 } Thread;
 
 typedef enum ThreadState {
 	EReady = 0,
-	EBlocked = 1,
+	EBlockedFromSvc = 1, // Reason is exitReason
 	EDead = 2,
 	EWaitForRequest = 3,
 	// ???
 } ThreadState;
 
+typedef enum ThreadBlockedReason {
+	EBlockedOnGetch = 1,
+} ThreadBlockedReason;
 
 /*
 This structure is one page in size (maximum), and is always page-aligned.
@@ -137,6 +140,7 @@ void thread_setState(Thread* t, enum ThreadState s);
 void thread_exit(Thread* t, int reason);
 void thread_requestSignal(KAsyncRequest* request);
 void thread_requestComplete(KAsyncRequest* request, int result);
+void thread_setBlockedReason(Thread* t, ThreadBlockedReason reason);
 
 NORETURN reschedule();
 void saveUserModeRegistersForCurrentThread(void* savedRegisters, bool svc);

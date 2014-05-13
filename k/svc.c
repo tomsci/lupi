@@ -30,8 +30,9 @@ int64 handleSvc(int cmd, uintptr arg1, uintptr* arg2, void* savedRegisters) {
 			if (byteReady()) {
 				return getch();
 			}
-			thread_setState(t, EBlocked);
+			thread_setState(t, EBlockedFromSvc);
 			saveUserModeRegistersForCurrentThread(savedRegisters, true);
+			thread_setBlockedReason(t, EBlockedOnGetch);
 			TheSuperPage->blockedUartReceiveIrqHandler = t;
 			reschedule();
 			// reschedule never returns - the IRQ handler is responsible for populating

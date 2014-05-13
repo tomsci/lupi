@@ -199,6 +199,11 @@ void thread_exit(Thread* t, int reason) {
 	}
 }
 
+void thread_setBlockedReason(Thread* t, ThreadBlockedReason reason) {
+	ASSERT(t->state == EBlockedFromSvc, (uintptr)t);
+	t->exitReason = reason;
+}
+
 NOINLINE NAKED uint32 do_user_read(uintptr ptr) {
 	asm("LDRT r1, [r0]");
 	asm("MOV r0, r1");
