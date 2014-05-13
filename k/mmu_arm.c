@@ -376,7 +376,11 @@ static void invalidateTLBEntry(uintptr virtualAddress, Process* p) {
 	asm("MCR p15, 0, %0, c8, c7, 1" : : "r" (virtualAddress)); // Invalidate TLB by MVA p218
 }
 
-void switch_process(Process* p) {
+Process* switch_process(Process* p) {
+	if (!p) return NULL;
+	Process* oldp = TheSuperPage->currentProcess;
+	if (p == oldp) return NULL;
+
 	uint32 asid = indexForProcess(p);
 
 	SetTTBR(0, p->pdePhysicalAddress);
@@ -389,6 +393,7 @@ void switch_process(Process* p) {
 
 	TheSuperPage->currentProcess = p;
 	// I think we're done - setting context ID does all the flushing required
+	return oldp;
 }
 
 void mmu_processExited(PageAllocator* pa, Process* p) {
@@ -404,7 +409,3 @@ void mmu_processExited(PageAllocator* pa, Process* p) {
 	int asid = indexForProcess(p);
 	asm("MCR p15, 0, %0, c8, c7, 2" : : "r" (asid)); // Invalidate TLB by ASID p218
 }
-
-
-
-

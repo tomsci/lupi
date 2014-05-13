@@ -211,21 +211,17 @@ static NOINLINE NAKED void do_user_write(uintptr ptr, uint32 data) {
 }
 
 void thread_requestComplete(KAsyncRequest* request, int result) {
-	Thread* t = request->thread;
-	Process* oldP = NULL;
-	Process* requestProcess = processForThread(t);
-	if (requestProcess != TheSuperPage->currentProcess) {
-		// Have to switch so we can write to it
-		oldP = TheSuperPage->currentProcess;
-		switch_process(requestProcess);
-	}
+	Process* requestProcess = processForThread(request->thread);
+	Process* oldP = switch_process(requestProcess);
 	do_user_write(request->userPtr, result); // AsyncRequest->result = result
 	do_user_write(request->userPtr + 4, KAsyncFlagPending | KAsyncFlagCompleted | KAsyncFlagIntResult);
-	if (oldP) {
-		switch_process(oldP);
-	}
+	switch_process(oldP);
+	thread_requestSignal(request);
+}
+
+void thread_requestSignal(KAsyncRequest* request) {
+	Thread* t = request->thread;
 	t->completedRequests++;
-	request->thread = NULL;
 	request->userPtr = 0;
 	if (t->state == EWaitForRequest) {
 		t->savedRegisters[0] = t->completedRequests;

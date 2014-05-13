@@ -79,11 +79,20 @@ void mmu_unmapPagesInProcess(PageAllocator* pa, Process* p, uintptr virtualAddre
 
 void mmu_finishedUpdatingPageTables();
 
-/*
- * Sets TTBR0 and contextId register to the values appropriate for process p. Also sets
- * TheSuperPage->currentProcess to p.
+/**
+Sets TTBR0 and contextId register to the values appropriate for process p. Also sets
+TheSuperPage->currentProcess to p.
+
+ Returns the old current process if different to p, or NULL if p is already the
+current process. If p is NULL, does nothing. This means you can temporarily switch
+to a process by doing:
+
+	Process* oldp = switch_process(p);
+	// Do stuff with p...
+	switch_process(oldp); // Restores the previous process if necessary
+
  */
-void switch_process(Process* p);
+Process* switch_process(Process* p);
 
 void mmu_processExited(PageAllocator* pa, Process* p);
 

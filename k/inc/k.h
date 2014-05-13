@@ -135,6 +135,7 @@ void process_start(Process* p);
 bool process_grow_heap(Process* p, int incr);
 void thread_setState(Thread* t, enum ThreadState s);
 void thread_exit(Thread* t, int reason);
+void thread_requestSignal(KAsyncRequest* request);
 void thread_requestComplete(KAsyncRequest* request, int result);
 
 NORETURN reschedule();

@@ -54,9 +54,7 @@ static NORETURN NAKED doScheduleThread(uint32* savedRegisters, uint32 spsr) {
 // For now assume we're in SVC
 NORETURN scheduleThread(Thread* t) {
 	Process* p = processForThread(t);
-	if (p != TheSuperPage->currentProcess) {
-		switch_process(p);
-	}
+	switch_process(p);
 	t->timeslice = THREAD_TIMESLICE;
 	TheSuperPage->currentThread = t;
 	//printk("Scheduling thread %d-%d ts=%d\n", indexForProcess(p), t->index, t->timeslice);
