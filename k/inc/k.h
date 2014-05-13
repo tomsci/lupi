@@ -20,6 +20,8 @@ Hmm, the "one page per process" limit turns out to be somewhat limiting...
 */
 #define MAX_THREADS 48
 
+#define MAX_SERVERS 32
+
 #define MAX_PROCESS_NAME 32
 
 #define THREAD_TIMESLICE 25 // milliseconds
@@ -45,6 +47,7 @@ NORETURN hang();
 
 typedef struct Process Process;
 typedef struct Thread Thread;
+typedef struct PageAllocator PageAllocator;
 
 typedef struct Thread {
 	Thread* prev;
@@ -97,6 +100,12 @@ typedef struct KAsyncRequest {
 	uintptr userPtr;
 } KAsyncRequest;
 
+typedef struct Server {
+	uint32 id; // a fourcc
+	KAsyncRequest serverRequest;
+	Thread* blockedClientList;
+} Server;
+
 typedef struct SuperPage {
 	uint32 nextPid;
 	Process* currentProcess;
@@ -112,6 +121,7 @@ typedef struct SuperPage {
 	KAsyncRequest uartRequest;
 	uint32 crashRegisters[17];
 	byte uartBuf[66];
+	Server servers[MAX_SERVERS];
 } SuperPage;
 
 ASSERT_COMPILE(sizeof(SuperPage) <= KPageSize);
@@ -130,7 +140,10 @@ static inline Thread* firstThreadForProcess(Process* p) {
 static inline Process* processForThread(Thread* t) {
 	// Threads are always within their process page, so simply mask off and cast
 	return (Process*)(((uintptr)t) & ~(KPageSize - 1));
-	
+}
+
+static inline Process* processForServer(Server* s) {
+	return processForThread(s->serverRequest.thread);
 }
 
 int process_new(const char* name, Process** resultProcess);

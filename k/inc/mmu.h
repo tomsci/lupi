@@ -69,7 +69,12 @@ bool mmu_createUserSection(PageAllocator* pa, Process* p, int sectionIdx);
  */
 bool mmu_mapPagesInProcess(PageAllocator* pa, Process* p, uintptr virtualAddress, int numPages);
 
-bool mmu_mapKernelPageInProcess(Process* p, uintptr physicalAddress, uintptr virtualAddress, bool readWrite);
+#define mmu_newSharedPage(pa, p, va) mmu_mapPagesInProcess(pa, p, va, -KPageSharedPage)
+
+/**
+Maps the page at srcUserAddr into dest *at the same address*.
+*/
+bool mmu_sharePage(PageAllocator* pa, Process* src, Process* dest, uintptr srcUserAddr);
 
 /*
  * Pages need not be in same section, although behaviour is

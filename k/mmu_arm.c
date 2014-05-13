@@ -70,7 +70,6 @@
 
 static void invalidateTLBEntry(uintptr virtualAddress, Process* p);
 
-
 uint32 makeCrForMmuEnable() {
 	uint32 cr;
 	asm("MRC p15, 0, %0, c1, c0, 0" : "=r" (cr));
@@ -291,9 +290,14 @@ void mmu_freeUserSection(PageAllocator* pa, Process* p, int sectionIdx) {
 	}
 }
 
-
 bool mmu_mapPagesInProcess(PageAllocator* pa, Process* p, uintptr virtualAddress, int numPages) {
 	//printk("mmu_mapPagesInProcess va=%p n=%d\n", (void*)virtualAddress, numPages);
+	uint8 pageType = KPageUser;
+	if (numPages < 0) {
+		ASSERT(-numPages == KPageSharedPage, -numPages); // The only other page type we support user-side
+		pageType = -numPages;
+		numPages = 1;
+	}
 	ASSERT(numPages > 0, numPages);
 	// User processes can only map up to 1GB due to how we've configured TTBCR
 	ASSERT(virtualAddress <= KMaxUserAddress - numPages * KPageSize, virtualAddress, numPages);
@@ -315,7 +319,7 @@ bool mmu_mapPagesInProcess(PageAllocator* pa, Process* p, uintptr virtualAddress
 	uint32* pte = pt + PTE_IDX(virtualAddress);
 	uint32* endPte = pte + numPages;
 	while (pte != endPte) {
-		uint32 newPagePhysical = pageAllocator_alloc(pa, KPageUser, 1);
+		uint32 newPagePhysical = pageAllocator_alloc(pa, pageType, 1);
 		if (!newPagePhysical) {
 			// Erk, better cleanup
 			mmu_unmapPagesInProcess(pa, p, virtualAddress, pte - pt);
@@ -324,6 +328,25 @@ bool mmu_mapPagesInProcess(PageAllocator* pa, Process* p, uintptr virtualAddress
 		*pte = newPagePhysical | KPteUserData;
 		pte++;
 	}
+	return true;
+}
+
+bool mmu_sharePage(PageAllocator* pa, Process* src, Process* dest, uintptr sharedPage) {
+	ASSERT(sharedPage >= KSharedPagesBase, (uint32)src, sharedPage);
+	ASSERT(sharedPage < KSharedPagesBase + KSharedPagesSize, (uint32)src, sharedPage);
+	ASSERT((sharedPage & 0xFFF) == 0, (uint32)src, sharedPage);
+	const int sectionIdx = sharedPage >> KSectionShift;
+	uint32* srcPte = PT_FOR_PROCESS(src, sectionIdx) + PTE_IDX(sharedPage);
+
+	uint32* destPde = (uint32*)PDE_FOR_PROCESS(dest);
+	// Check the dest shared page section has been created
+	if (!destPde[sectionIdx]) {
+		bool ok = mmu_createUserSection(pa, dest, sectionIdx);
+		if (!ok) return false;
+	}
+	uint32* destPte = PT_FOR_PROCESS(dest, sectionIdx) + PTE_IDX(sharedPage);
+	ASSERT(*destPte == 0, (uint32)dest, sharedPage);
+	*destPte = *srcPte;
 	return true;
 }
 

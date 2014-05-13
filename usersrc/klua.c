@@ -301,6 +301,11 @@ static void WeveCrashedSetupDebuggingStuff(lua_State* L) {
 	MBUF_MEMBER(KAsyncRequest, thread);
 	MBUF_MEMBER(KAsyncRequest, userPtr);
 
+	MBUF_TYPE(Server);
+	MBUF_MEMBER_TYPE(Server, id, "char[]"); // It's a uint32 kernel-side but that's actually a union to a char[4]
+	MBUF_MEMBER_TYPE(Server, serverRequest, "KAsyncRequest");
+	MBUF_MEMBER(Server, blockedClientList);
+
 	MBUF_TYPE(SuperPage);
 	MBUF_MEMBER(SuperPage, nextPid);
 	MBUF_MEMBER(SuperPage, currentProcess);
@@ -315,13 +320,16 @@ static void WeveCrashedSetupDebuggingStuff(lua_State* L) {
 	MBUF_MEMBER(SuperPage, uartDroppedChars);
 	MBUF_MEMBER_TYPE(SuperPage, uartRequest, "KAsyncRequest");
 	MBUF_MEMBER_TYPE(SuperPage, crashRegisters, "regset");
+	// TODO handle arrays...
+	// Servers, for implementation reasons, fill the servers array from the end backwards
+	mbuf_declare_member(L, "SuperPage", "firstServer", offsetof(SuperPage, servers[MAX_SERVERS-1]), sizeof(Server), "Server");
 
 	MBUF_NEW(SuperPage, TheSuperPage);
 	lua_setglobal(L, "TheSuperPage");
 
 	MBUF_TYPE(ThreadState);
 	MBUF_ENUM(ThreadState, EReady);
-	MBUF_ENUM(ThreadState, EBlocked);
+	MBUF_ENUM(ThreadState, EBlockedFromSvc);
 	MBUF_ENUM(ThreadState, EDead);
 	MBUF_ENUM(ThreadState, EWaitForRequest);
 
@@ -347,6 +355,10 @@ static void WeveCrashedSetupDebuggingStuff(lua_State* L) {
 		lua_pop(L, 1);
 	}
 
+	MBUF_TYPE(Server);
+	MBUF_MEMBER_TYPE(Server, id, "char[]");
+	MBUF_MEMBER_TYPE(Server, serverRequest, "KAsyncRequest");
+
 	MBUF_TYPE(PageAllocator);
 	MBUF_MEMBER(PageAllocator, numPages);
 	MBUF_MEMBER(PageAllocator, firstFreePage);
@@ -363,6 +375,7 @@ static void WeveCrashedSetupDebuggingStuff(lua_State* L) {
 	MBUF_ENUM(PageType, KPageUser);
 	MBUF_ENUM(PageType, KPageKluaHeap);
 	MBUF_ENUM(PageType, KPageKernPtForProcPts);
+	MBUF_ENUM(PageType, KPageSharedPage);
 
 	lua_pushcfunction(L, GetProcess_lua);
 	lua_setglobal(L, "GetProcess");

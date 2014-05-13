@@ -124,4 +124,5 @@ function pageStats()
 	printCount("User mem", count[PageType.KPageUser])
 	printCount("klua heap", count[PageType.KPageKluaHeap])
 	printCount("KernPtForProcPts", count[PageType.KPageKernPtForProcPts])
+	printCount("Shared pages", count[PageType.KPageSharedPage])
 end

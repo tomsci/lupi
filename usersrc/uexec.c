@@ -50,3 +50,7 @@ int NAKED exec_waitForAnyRequest() {
 void NAKED exec_abort() {
 	EXEC1(KExecAbort);
 }
+
+uintptr NAKED exec_newSharedPage() {
+	EXEC1(KExecNewSharedPage);
+}

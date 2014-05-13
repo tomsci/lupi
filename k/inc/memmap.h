@@ -87,12 +87,16 @@ User memory map:
 Unmapped						00000000-00007000
 BSS								00007000-00008000
 Heap							00008000-heapLimit
+Shared pages					0F000000-0F100000
 Thread stacks					0FE00000-10000000
 */
 
 #define KUserBss				0x00007000u
 // Heap assumed to be immediately following BSS in process_init()
 #define KUserHeapBase			0x00008000u
+// Note these next two inre also defined in usersrc/ipc.c
+#define KSharedPagesBase		0x0F000000u
+#define KSharedPagesSize		0x00100000u
 #define KUserStacksBase			0x0FE00000u
 
 // I'll be generous

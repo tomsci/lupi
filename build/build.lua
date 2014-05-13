@@ -186,6 +186,7 @@ function build_kernel()
 			"k/process.c",
 			"k/scheduler.c",
 			"k/svc.c",
+			"k/kipc.c",
 		}
 	end
 	if machineIs("arm") then

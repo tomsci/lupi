@@ -12,6 +12,7 @@
 #define KExecGetch_Async	9
 #define KExecAbort			10
 
+#define KExecNewSharedPage		11
 
 #define KAsyncFlagPending   1 // Is added to the RunLoop pendingRequests
 #define KAsyncFlagAccepted	2 // Has been passed to the kernel

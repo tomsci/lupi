@@ -1,11 +1,12 @@
 #include <k.h>
 #include <exec.h>
+#include <kipc.h>
 
 void putbyte(byte b);
 bool byteReady();
 byte getch();
 
-int64 handleSvc(int cmd, uintptr arg1, uintptr* arg2, void* savedRegisters) {
+int64 handleSvc(int cmd, uintptr arg1, uintptr arg2, void* savedRegisters) {
 	Process* p = TheSuperPage->currentProcess;
 	Thread* t = TheSuperPage->currentThread;
 
@@ -97,6 +98,8 @@ int64 handleSvc(int cmd, uintptr arg1, uintptr* arg2, void* savedRegisters) {
 #endif
 		case KExecGetUptime:
 			return TheSuperPage->uptime;
+		case KExecNewSharedPage:
+			return ipc_mapNewSharedPageInCurrentProcess();
 		default:
 			break;
 	}
