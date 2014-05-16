@@ -75,6 +75,23 @@ static int getLuaModule_searcherFn(lua_State* L) {
 	const LuaModule* module = getLuaModule(moduleName);
 	if (!module) {
 		lua_pushfstring(L, "\n\tno compiled module " LUA_QS, moduleName);
+	}
+	if (!module) {
+		// Try <moduleName>.init
+		lua_pushvalue(L, 1);
+		lua_pushstring(L, ".init");
+		lua_concat(L, 2);
+		const char* module_init = lua_tostring(L, -1);
+		module = getLuaModule(module_init);
+		if (!module) {
+			lua_pushfstring(L, "\n\tno compiled module " LUA_QS, module_init);
+			lua_remove(L, -2); // module_init
+			lua_concat(L, 2);
+		} else {
+			lua_pop(L, 1); // module_init
+		}
+	}
+	if (!module) {
 		return 1;
 	}
 	if (module->nativeInit) {
@@ -84,7 +101,7 @@ static int getLuaModule_searcherFn(lua_State* L) {
 	}
 	int ret = lua_load(L, readerFn, &module, moduleName, NULL);
 	if (ret != LUA_OK) {
-		lua_pushfstring(L, "\n\tError loading compiled module: %s", lua_tostring(L, -1));
+		lua_pushfstring(L, "\n\tError loading compiled module %s: %s", module->name, lua_tostring(L, -1));
 		return 1;
 	}
 	// Ok now the module function is on the top of the stack

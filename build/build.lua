@@ -430,8 +430,8 @@ function generateLuaModulesSource()
 	for i, luaModule in ipairs(luaModules) do
 		if type(luaModule) == "string" then luaModule = { path = luaModule } end
 		local module = luaModule.path
-		local cname = "KLuaModule_"..module:gsub("%W", "_")
-		local modName = module:gsub("^modules/(.*).lua", "%1")
+		local modName = module:gsub("^modules/(.*).lua", "%1"):gsub("/", ".")
+		local cname = "KLua_module_"..modName:gsub("%W", "_")
 		local nativeFn = luaModule.hasNative and "init_module_" .. modName
 		local moduleEntry = { name = modName, cname = cname, nativeInit = nativeFn}
 		table.insert(modulesMap, moduleEntry)
