@@ -264,6 +264,20 @@ static int pageStats_getCounts(lua_State* L) {
 	return 1;
 }
 
+static int lua_switch_process(lua_State* L) {
+	Process* p;
+	if (lua_isnumber(L, 1)) {
+		p = GetProcess(lua_tointeger(L, 1));
+	} else {
+		uintptr ptr = (uintptr)mbuf_checkbuf(L, 1)->ptr;
+		ASSERTL((ptr & 0xFFF) == 0);
+		ASSERTL((ptr - (uintptr)GetProcess(0)) >> KPageShift < MAX_PROCESSES);
+		p = (Process*)ptr;
+	}
+	switch_process(p);
+	return 0;
+}
+
 static void WeveCrashedSetupDebuggingStuff(lua_State* L) {
 	lua_getfield(L, -1, "require");
 	lua_pushstring(L, "membuf");
@@ -381,6 +395,8 @@ static void WeveCrashedSetupDebuggingStuff(lua_State* L) {
 	lua_setglobal(L, "GetProcess");
 	lua_pushcfunction(L, pageStats_getCounts);
 	lua_setglobal(L, "pageStats_getCounts");
+	lua_pushcfunction(L, lua_switch_process);
+	lua_setglobal(L, "switch_process");
 
 	EXPORT_INT(L, USER_STACK_SIZE);
 	EXPORT_INT(L, KPageSize);

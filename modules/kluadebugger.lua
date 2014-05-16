@@ -15,6 +15,8 @@ Functions:
     help()              prints this text.
     print(), p()        Standard print function
     GetProcess(idx)     returns the Process with the given index.
+    switch_process(p)   switches to the process p. If p is an integer, it is treated as a
+                        convenience for switch_process(GetProcess(p))
     mem(addr, len)      creates a MemBuf from an arbitrary address and length
     ustack()            Convenience for stack(TheSuperPage.currentThread.savedRegisters.r13)
     stack()             Convenience for stack(TheSuperPage.crashRegisters.r13)
