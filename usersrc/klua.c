@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <k.h>
 #include <pageAllocator.h>
+#include <mmu.h>
 #include <lupi/membuf.h>
 #include <lupi/int64.h>
 
@@ -151,7 +152,15 @@ static void WeveCrashedSetupDebuggingStuff(lua_State* L);
 static int lua_newMemBuf(lua_State* L) {
 	uint32 ptr = lua_tointeger(L, 1);
 	int len = lua_tointeger(L, 2);
-	mbuf_new(L, (void*)ptr, len, NULL);
+	const char* type = lua_tostring(L, 3);
+	mbuf_new(L, (void*)ptr, len, type);
+	return 1;
+}
+
+static int lua_getObj(lua_State* L) {
+	uint32 ptr = lua_tointeger(L, 1);
+	int len = lua_tointeger(L, 2);
+	mbuf_push_object(L, ptr, len);
 	return 1;
 }
 
@@ -284,6 +293,9 @@ static void WeveCrashedSetupDebuggingStuff(lua_State* L) {
 	lua_call(L, 1, 0);
 
 	lua_pushcfunction(L, lua_newMemBuf);
+	lua_setglobal(L, "newmem");
+
+	lua_pushcfunction(L, lua_getObj);
 	lua_setglobal(L, "mem");
 
 #ifndef HOSTED

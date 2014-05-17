@@ -17,7 +17,9 @@ Functions:
     GetProcess(idx)     returns the Process with the given index.
     switch_process(p)   switches to the process p. If p is an integer, it is treated as a
                         convenience for switch_process(GetProcess(p))
-    mem(addr, len)      creates a MemBuf from an arbitrary address and length
+    mem(addr, len)      if there is an existing membuf for this adress, returns it or nil
+    newmem(addr, len [,type])  creates a MemBuf from an arbitrary address and length, and
+                               optionally the supplied type.
     ustack()            Convenience for stack(TheSuperPage.currentThread.savedRegisters.r13)
     stack()             Convenience for stack(TheSuperPage.crashRegisters.r13)
     stack(obj)          Prints a stacktrace for obj. Obj can be a thread (in which case
