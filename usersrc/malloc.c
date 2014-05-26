@@ -1704,7 +1704,7 @@ static FORCEINLINE int win32munmap(void* ptr, size_t size) {
 #endif /* WIN32 */
 #endif /* HAVE_MREMAP */
 
-/**
+/*
  * Define CALL_MORECORE
  */
 #if HAVE_MORECORE
@@ -1717,7 +1717,7 @@ static FORCEINLINE int win32munmap(void* ptr, size_t size) {
     #define CALL_MORECORE(S)        MFAIL
 #endif /* HAVE_MORECORE */
 
-/**
+/*
  * Define CALL_MMAP/CALL_MUNMAP/CALL_DIRECT_MMAP
  */
 #if HAVE_MMAP
@@ -1749,7 +1749,7 @@ static FORCEINLINE int win32munmap(void* ptr, size_t size) {
     #define CALL_MUNMAP(a, s)       MUNMAP((a), (s))
 #endif /* HAVE_MMAP */
 
-/**
+/*
  * Define CALL_MREMAP
  */
 #if HAVE_MMAP && HAVE_MREMAP

@@ -21,8 +21,8 @@ static void putstr(const char* str) {
 }
 
 /**
- * buflen must be >= 2
- */
+buflen must be >= 2
+*/
 static char* uintToStr(ulong val, char* buf, int buflen) {
 	char* result = buf + buflen - 1;
 	*result = 0;

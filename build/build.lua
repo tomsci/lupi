@@ -16,9 +16,12 @@ maxJobs = 1
 
 local function loadConfig(c)
 	local env = {
-		print = print, error = error, ipairs = ipairs, pairs = pairs, table = table, string = string, os = os,
 		build = _G, -- Yeah yeah, hacky but gets the job done
 	}
+	local envMt = {
+		__index = _G,
+	}
+	setmetatable(env, envMt)
 	local f = assert(loadfile(baseDir.."build/"..c.."/buildconfig.lua", nil, env))
 	f()
 	local config = env.config
@@ -122,6 +125,26 @@ function objForSrc(source, suffix)
 	else
 		return dir..newname
 	end
+end
+
+function makePathComponents(path)
+	local pathComponents = {}
+	for component in path:gmatch("[^/]+") do
+		table.insert(pathComponents, component)
+	end
+	return pathComponents
+end
+
+function makeRelativePath(path, relativeTo)
+	local pathComponents = makePathComponents(path)
+	local relativeToComponents = makePathComponents(relativeTo)
+	-- Remove common parents
+	while (pathComponents[1] == relativeToComponents[1]) do
+		table.remove(pathComponents, 1)
+		table.remove(relativeToComponents, 1)
+	end
+	local result = string.rep("../", #relativeToComponents - 1) .. (table.concat(pathComponents, "/"))
+	return result
 end
 
 local function machineIs(m)
@@ -370,7 +393,6 @@ function build_kernel()
 			--# TODO fix hardcoded path!
 			table.insert(args, "/Users/tomsci/Documents/gcc-arm/gcc-arm-none-eabi-4_8-2013q4/lib/gcc/arm-none-eabi/4.8.3/armv6-m/libgcc.a")
 		end
-		--table.insert(args, "-Ttext 0x8000 -Tbss 0x28000")
 		-- The only BSS we have is userside, so we can set to a user address
 		table.insert(args, "-Ttext 0xF8008000 -Tbss 0x00007000")
 		local cmd = string.format("%s %s -o %s", config.ld, join(args), qrp(elf))
@@ -605,7 +627,7 @@ function run()
 	end
 
 	if not next(platforms) then
-		platforms = { "hosted" }
+		platforms = { "pi" }
 	end
 
 	for _, platform in ipairs(platforms) do

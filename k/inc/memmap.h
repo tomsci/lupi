@@ -5,8 +5,11 @@
 #define KPageSize 4096
 #define KPageShift 12
 
-/*
+/**
+Kernel memory map
+-----------------
 
+<pre>
 Section Zero:
 SuperPage						F8000000-F8001000	(4k)
 Sect0 PT	00003000-00004000	F8001000-F8002000	(4k)
@@ -30,7 +33,7 @@ Kern PTs for user proc PTs		F8200000-F8300000	(1 MB)
 User PDEs						F8300000-F8400000	(1 MB)
 -------------------------------------------------
 User PTs						90000000-A0000000	(256MB)
-
+</pre>
 */
 
 
@@ -81,14 +84,17 @@ User PTs						90000000-A0000000	(256MB)
 #define KLuaDebuggerStackSize	0x00002000u
 #define KLuaDebuggerHeap		0x42002000u
 
-/*
-User memory map:
+/**
+User memory map
+---------------
 
+<pre>
 Unmapped						00000000-00007000
 BSS								00007000-00008000
 Heap							00008000-heapLimit
 Shared pages					0F000000-0F100000
 Thread stacks					0FE00000-10000000
+</pre>
 */
 
 #define KUserBss				0x00007000u

@@ -12,6 +12,42 @@ function AsyncRequest:__newindex(key, value)
 	AsyncRequest.getMembers(self)[key] = value
 end
 
+--[[**
+Returns the members table for a specific async request
+]]
+--native function AsyncRequest.getMembers(asyncRequest)
+
+--[[**
+If the request has been completed, returns the result otherwise nil. The non-nil result
+will currently always be an integer.
+]]
+--native function AsyncRequest:getResult()
+
+--[[**
+Sets the result of the request, depending on the type of the argument:
+
+* If result is nil, clears the `completed` flag. No I'm not sure why you'd need this either.
+* If result is an integer, sets the `KAsyncFlagIntResult` flag.
+* Any other type will (currently) cause an error.
+]]
+--native function AsyncRequest:setResult(result)
+
+--[[**
+Sets the pending flag. Is called automatically by [RunLoop:queue(obj)](#RunLoop_queue).
+]]
+--native function AsyncRequest:setPending()
+
+--[[**
+Returns true if the message is not in use (from the kernel's point of view).
+]]
+--native function AsyncRequest:isFree()
+
+--[[**
+Clears all flags on the request. Called by the runloop just before the request's
+`completionFn` is called.
+]]
+--native function AsyncRequest:clearFlags()
+
 function RunLoop.new()
 	local rl = {
 		pendingRequests = {},
@@ -74,6 +110,16 @@ function RunLoop:handleCompletion(obj, result)
 	end
 end
 
+--[[**
+Creates a new async request. Does *not* automatically call `queue`.
+]]
+--native function RunLoop:newAsyncRequest(membersOrNil)
+
+--[[**
+Sets the given async request as pending. If `obj` has a `requestFn`, this function is
+called with `obj` as the only argument. If it doesn't, the caller is responsible for
+making the request as appropriate *after* calling `queue`.
+]]
 function RunLoop:queue(obj)
 	obj:setPending()
 	table.insert(self.pendingRequests, obj)
