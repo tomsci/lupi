@@ -163,6 +163,70 @@ not the same as the _physical_ address where the bootloader initially loads the
 kernel image. The early boot code is especially careful not to assume code is
 located at `0xF8008000` prior to it enabling the MMU.
 
+### Documentation
+
+The documentation is built by running `./build/build.lua doc`, and the resulting
+HTML is located in `bin/doc/`. All `*.md` files are automatically included in
+the generated docs, as are any source files (`*.lua`, `*.c`, `*.h`) that contain
+documentation comments. These are indicated in a similar way to javadoc or
+doxygen, by a `**` at the beginning of a multiline comment in the source file.
+The difference however is that the comments must be written in [markdown][], and
+that the syntax has been extended to support Lua-style comment syntax as well as
+C-style. C files and headers use the following syntax:
+
+		/**
+		Comment describing the following function definition/declaration goes
+		here. All the usual _markdown_ can be used.
+		*/
+		void someFunction() {
+			// ...
+		}
+
+		/**
+		Standalone snippets of documentation are ok too, providing they are followed
+		by an empty line (to distinguish them from function docs).
+		*/
+
+		// More code here etc...
+
+Lua code can be documented in exactly the same way, except that the comment
+delimeter is `--[[** ]]` instead of `/** */`. Note that in either language,
+there is no indentation or excess `*` characters prefixing the documentation
+lines. Lua modules that define native functions can document them in the Lua
+code by using a placeholder of the form `--native function foo()`. Functions
+defined in the module's C code that aren't exposed to the Lua side can be
+documented in the C file just like any other C function.
+
+		--[[**
+		Documentation for a Lua function.
+		]]
+		function someLuaFunction()
+			-- ...
+		end
+
+		--[[**
+		Documentation for a function that is defined in C - note this documentation
+		goes in the .lua file not the .c file!
+		]]
+		--native function someNativeFunction()
+
+Documentation may contain links to other areas of the docs. An anchor is created
+for all documented symbols, the format of which is the symbol name without
+brackets or arguments. Lua member functions have the `.` or `:` replaced with an
+underscore `_`. This means that from the top-level `README.md` (ie the file that
+generated README.html) we can link to the documentation for the function
+RunLoop:queue(obj) located in `modules/runloop.lua` with the following syntax
+`[link text](modules/runloop.html#RunLoop_queue)`, which produces the link:
+
+> [link text](modules/runloop.html#RunLoop_queue)
+
+Note that you must refer to the .html file in the link location, not the
+original .lua file. Note also that the build performs no fixup of the links - so
+you will need to provide a correct relative path, with the applicable number of
+`../` as necessary.
+
+[markdown]: http://daringfireball.net/projects/markdown/
+
 IPC mechanism
 -------------
 
@@ -331,3 +395,21 @@ There is a new global table with the functions described below:
 
 	Returns the number of milliseconds since boot as an `Int64`, see
 	`int64.lua`.
+
+### Modules with native C code
+
+All Lua modules have to be specified at ROM build time, by an entry in
+`build.lua`'s `luaModules` table. As part of the build process all the modules
+are embedded in the main binary as a const static C array. This is used at
+runtime to locate and load the modules in lieu of a full filesystem.
+
+Modules that require native code should set `hasNative = true` in their entry
+in `luaModules`. A C function with signature
+`int init_module_MODULENAME(lua_State* L)` must exist, usually defined in a file
+`usersrc/MODULENAME.c` to complement the Lua code in `modules/MODULENAME.lua`.
+This function will be called whenever the module is `require`d. It is called as
+a `lua_CFunction`, with one argument which is the `_ENV` for the module. It is
+called after the `_ENV` table has been constructed, but before any of the code
+in MODULENAME.lua has run. It should not return anything. The normal use of such
+an init function is to populate the module's `_ENV` with some native functions,
+usually via a call to `luaL_setfuncs(lua_State* L, const luaL_Reg* l, int nup)`.

@@ -1,8 +1,38 @@
 require "int64"
+--[[**
+MemBuf
+======
 
--- The MemBuf object itself and a bunch of primitives are declared in native code
+MemBufs represent raw chunks of native memory. They can be used as the
+interface between Lua code and lower-level C functions that operate on pointers
+to memory. MemBufs have both an address and a length, and unless otherwise
+explicitly stated below, any attempt to access outside of the defined bounds
+will cause an error. They cannot normally be created from Lua code (except for
+when the klua debugger is running), only from native code using
+[mbuf_new()](../usersrc/membuf.html#mbuf_new).
 
---# Note that for getByte and getInt, indexes are *ZERO-BASED* because we're talking memory, not Lua data structures.
+]]
+
+--[[**
+Returns the byte of memory located at self:getAddress() + offset, as a number.
+If an `_accessFn` is set, this will be used to read the memory, otherwise this
+function performs the equivalent of:
+
+		return *((char*)address + offset)
+
+Note therefore that offset is *zero-based* because it is an offset in memory and
+not a Lua table index. An error will be thrown if the location lies outside of
+the MemBuf.
+]]
+--native function MemBuf:getByte(offset)
+
+--[[**
+Returns the 32-bit value located at self:getAddress() + offset, as a number. The
+resulting int\* need not be aligned, but it must lie wholly inside the MemBuf.
+
+In every other way, behaves the same as [getByte()](#getByte).
+]]
+--native function MemBuf:getInt(offset)
 
 local function min(x,y)
 	return x < y and x or y
@@ -18,6 +48,10 @@ end
 
 local lvl = 0 -- Used while printing
 
+--[[**
+Returns a hexdump-style string of the first `length` bytes of the MemBuf (or of
+the entire MemBuf if length is nil).
+]]
 function MemBuf:hex(length)
 	if length == nil then length = self:getLength() end
 
@@ -38,6 +72,10 @@ function MemBuf:hex(length)
 	return table.concat(result)
 end
 
+--[[**
+Like [hex()](#hex) but interprets the data as 32-bit words. This means
+little-endian integers are displayed in a more readable fashion.
+]]
 function MemBuf:words(length)
 	if length == nil then length = self:getLength() end
 
@@ -154,6 +192,11 @@ function MemBuf:_descriptionForMember(m)
 	return desc
 end
 
+--[[**
+Returns a string representation of the MemBuf. If the MemBuf has a type, then
+its members will be enumerated and listed. Otherwise it returns a single-line
+description.
+]]
 function MemBuf:__tostring()
 	local bufType = self:getType()
 	if bufType then

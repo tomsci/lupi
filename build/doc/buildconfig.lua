@@ -28,7 +28,6 @@ local function scanFileForInlineDocs(file)
 				mdFile = build.objForSrc(file, ".md")
 				mkdirForFile(mdFile)
 				mdf = assert(io.open(mdFile, "w"))
-				mdf:write("# ", file, "\n\n")
 			end
 			inDocs = true
 		elseif next(docLines) then
@@ -40,8 +39,8 @@ local function scanFileForInlineDocs(file)
 			local id = header:match("function ([%w_.:]+)") or header:match("([%w_]+)%(")
 			if id then
 				id = id:gsub("[:.]", "_")
-				mdf:write(string.format('<h3 id="%s"><code>%s</code></h3>\n\n', id, header))
-			else
+				mdf:write(string.format('<h3><a name="%s"><code>%s</code></a></h3>\n\n', id, header))
+			elseif #header > 0 then
 				mdf:write("<h3>", header, "</h3>\n\n")
 			end
 			mdf:write(table.concat(docLines, "\n"))
@@ -91,16 +90,19 @@ local function doBuild()
 	 -- Ugh I hate how inconsistant Lua modules are - this one returns a function
 	local markdown = require("build/doc/markdown")
 	local origSources = {} -- Map of .md files to orig files, where relevant
-	local mdSources = {
-		"README.md",
-	}
+	local mdSources = {}
 
 	-- Iterate over all possible files
-	local cmd = 'find . -name "*.lua" -o -name "*.c" -o -name "*.h"'
+	local cmd = [[find . -path "./bin*" -prune -o \( -name "*.md" -o -name "*.lua" -o -name "*.c" -o -name "*.h" \) -print]]
 	local inlineFiles = {}
 	local p = io.popen(cmd)
 	for filename in p:lines() do
-		table.insert(inlineFiles, filename:sub(3)) -- Chop off the "./" from the front
+		filename = filename:match("^%./(.*)") or filename -- Chop off the "./" from the front
+		if filename:match(".md$") then
+			table.insert(mdSources, filename)
+		else
+			table.insert(inlineFiles, filename)
+		end
 	end
 	p:close()
 
@@ -130,7 +132,8 @@ local function doBuild()
 		local src = assert(f:read("*a"))
 		f:close()
 		local result = markdown(src)
-		local title = result:match("<h1>(.-)</h1>") or "Untitled"
+		local h1 = result:match("<h1>(.-)</h1>")
+		local title = h1 or origSources[file] or file
 		local outFile = docForSrc(file)
 		local relCss = build.makeRelativePath("bin/doc/lua.css", outFile)
 		local relIdx = build.makeRelativePath("bin/doc/index.html", outFile)
@@ -140,6 +143,10 @@ local function doBuild()
 
 		f = assert(io.open(outFile, "w"))
 		assert(f:write(header))
+		if not h1 then
+			-- There wasn't any proper title, so put one in
+			assert(f:write("<h1>", title, "</h1>\n\n"))
+		end
 		assert(f:write(result))
 		assert(f:write(footer))
 		f:close()

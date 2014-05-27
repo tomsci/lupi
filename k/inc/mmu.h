@@ -110,10 +110,9 @@ Returns the old current process if different to p, or NULL if p is already the
 current process. If p is NULL, does nothing. This means you can temporarily switch
 to a process by doing:
 
-	Process* oldp = switch_process(p);
-	// Do stuff with p...
-	switch_process(oldp); // Restores the previous process if necessary
-
+		Process* oldp = switch_process(p);
+		// Do stuff with p...
+		switch_process(oldp); // Restores the previous process if necessary
  */
 Process* switch_process(Process* p);
 
