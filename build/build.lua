@@ -139,12 +139,21 @@ function makeRelativePath(path, relativeTo)
 	local pathComponents = makePathComponents(path)
 	local relativeToComponents = makePathComponents(relativeTo)
 	-- Remove common parents
-	while (pathComponents[1] == relativeToComponents[1]) do
+	while (pathComponents[1] == relativeToComponents[1] and pathComponents[1] ~= nil) do
 		table.remove(pathComponents, 1)
 		table.remove(relativeToComponents, 1)
 	end
 	local result = string.rep("../", #relativeToComponents - 1) .. (table.concat(pathComponents, "/"))
 	return result
+end
+
+function lastPathComponent(path)
+	local pc = makePathComponents(path)
+	return pc[#pc]
+end
+
+function removeExtension(path)
+	return path:match("(.*)%.(.*)") or path
 end
 
 local function machineIs(m)

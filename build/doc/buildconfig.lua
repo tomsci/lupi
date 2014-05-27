@@ -75,6 +75,11 @@ local headerTemplate = [[
 	<link rel="stylesheet" type="text/css" href="STYLESHEET" />
 </head>
 <body>
+
+<p>
+	<a href="INDEX">[Index]</a>
+</p>
+
 ]]
 
 local footer = "</body></html>"
@@ -85,6 +90,7 @@ local function doBuild()
 
 	 -- Ugh I hate how inconsistant Lua modules are - this one returns a function
 	local markdown = require("build/doc/markdown")
+	local origSources = {} -- Map of .md files to orig files, where relevant
 	local mdSources = {
 		"README.md",
 	}
@@ -101,9 +107,23 @@ local function doBuild()
 	for _, f in ipairs(inlineFiles) do
 		local mdFile = scanFileForInlineDocs(f)
 		if mdFile then
+			origSources[mdFile] = f
 			table.insert(mdSources, mdFile)
 		end
 	end
+	table.sort(mdSources)
+
+	-- Create index
+	local indexFile = objForSrc("index.md", ".md")
+	local index = assert(io.open(indexFile, "w"))
+	index:write("# LuPi index\n\n")
+	for _, file in ipairs(mdSources) do
+		local origFile = origSources[file] or file
+		local relPath = build.makeRelativePath(docForSrc(file), indexFile)
+		index:write(string.format("* [%s](%s)\n", origFile, relPath))
+	end
+	index:close()
+	table.insert(mdSources, indexFile)
 
 	for _, file in ipairs(mdSources) do
 		local f = assert(io.open(file))
@@ -111,9 +131,12 @@ local function doBuild()
 		f:close()
 		local result = markdown(src)
 		local title = result:match("<h1>(.-)</h1>") or "Untitled"
-		local outFile = docForSrc(file) --build.objForSrc(file, ".html")
+		local outFile = docForSrc(file)
 		local relCss = build.makeRelativePath("bin/doc/lua.css", outFile)
-		local header = headerTemplate:gsub("TITLE", title):gsub("STYLESHEET", relCss)
+		local relIdx = build.makeRelativePath("bin/doc/index.html", outFile)
+		local header = headerTemplate:gsub("TITLE", title, 1)
+		header = header:gsub("STYLESHEET", relCss, 1)
+		header = header:gsub("INDEX", relIdx, 1)
 
 		f = assert(io.open(outFile, "w"))
 		assert(f:write(header))
