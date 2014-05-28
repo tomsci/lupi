@@ -34,6 +34,8 @@ typedef _Bool bool;
 #define NAKED                        __attribute__((naked))
 
 #define ASSERT_COMPILE(x) extern int __compiler_assert(int[(x)?1:-1])
+#define ASSERTL(cond, args...) ((cond) || luaL_error(L, "Assertion failure: " #cond args))
+#define PRINTL(args...) do { lua_getglobal(L, "print"); lua_pushfstring(L, args); lua_call(L, 1, 0); } while(0)
 
 typedef __builtin_va_list va_list;
 #define _VA_LIST
@@ -45,5 +47,7 @@ typedef __builtin_va_list va_list;
 #define unlikely(x)				__builtin_expect(!!(x), 0)
 
 #define offsetof(type, member)	__builtin_offsetof(type, member)
+
+#define KPageSize 4096
 
 #endif
