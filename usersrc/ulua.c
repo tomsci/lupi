@@ -5,6 +5,7 @@
 
 #include <lupi/exec.h>
 #include <lupi/runloop.h>
+#include <lupi/int64.h>
 
 void exec_putch(uint ch);
 int exec_getch();
@@ -55,7 +56,7 @@ static int createProcess(lua_State* L) {
 
 static int getUptime(lua_State* L) {
 	uint64 t = exec_getUptime();
-	lua_pushinteger(L, t); // Hmm we should support 64-bit in Lua code...
+	int64_new(L, (int64)t);
 	return 1;
 }
 
