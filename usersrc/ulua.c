@@ -3,7 +3,7 @@
 #include <lualib.h>
 #include <lauxlib.h>
 
-#include <lupi/exec.h>
+#include <lupi/ipc.h>
 #include <lupi/runloop.h>
 #include <lupi/int64.h>
 

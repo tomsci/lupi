@@ -1,5 +1,5 @@
 #include <lupi/runloop.h>
-#include <lupi/exec.h>
+#include <lupi/ipc.h>
 #include <lua.h>
 #include <lualib.h>
 #include <lauxlib.h>

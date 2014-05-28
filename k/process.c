@@ -4,7 +4,7 @@
 #include <mmu.h>
 #include <arm.h>
 #include <err.h>
-#include <exec.h>
+#include <ipc.h>
 #include <module.h>
 
 #define KNumPreallocatedUserPages 0
