@@ -9,6 +9,12 @@ typedef struct AsyncRequest AsyncRequest;
 	asm("SVC 0"); \
 	asm("BX lr") \
 
+#define EXEC2(code) \
+	asm("MOV r2, r1"); \
+	asm("MOV r1, r0"); \
+	asm("MOV r0, %0" : : "i" (code)); \
+	asm("SVC 0"); \
+	asm("BX lr") \
 
 void* NAKED sbrk(ptrdiff_t inc) {
 	EXEC1(KExecSbrk);
@@ -53,4 +59,20 @@ void NAKED exec_abort() {
 
 uintptr NAKED exec_newSharedPage() {
 	EXEC1(KExecNewSharedPage);
+}
+
+int NAKED exec_createServer(uint32 serverId) {
+	EXEC1(KExecCreateServer);
+}
+
+int NAKED exec_connectToServer(uint32 server, void* ipcPage) {
+	EXEC2(KExecConnectToServer);
+}
+
+int NAKED exec_completeIpcRequest(AsyncRequest* ipcRequest, bool toServer) {
+	EXEC2(KExecCompleteIpcRequest);
+}
+
+void NAKED exec_requestServerMessage(AsyncRequest* serverRequest) {
+	EXEC1(KExecRequestServerMsg);
 }

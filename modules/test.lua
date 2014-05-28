@@ -9,9 +9,20 @@ assert(type(interp) == "table")
 assert(_ENV.interpreter == interp)
 assert(_G.interpreter == nil) -- but that we don't pollute the global namespace every time a module does a require
 
+require "runloop"
 function main(...)
 
 	print("I'm still special!\n")
+	runloop.new()
+	lupi.createProcess("timerserver.server")
+	local timerserver = require("timerserver")
+	print("Connecting...")
+	local t = timerserver.connect()
+	print("Test is connected to server")
 
+	t:sendInitMsg(function(result)
+		print("Test got response, yay", result);
+	end)
+	runloop.run()
 end
 

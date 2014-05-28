@@ -52,11 +52,20 @@ int ipc_createServer(uint32 id, Thread* thread) {
 	return 0;
 }
 
-static int sharedPageIsValid(uintptr sharedPage) {
+static int sharedPageIsValid(uintptr sharedPage, bool toServer) {
 	// Check sharedPage does in fact belong to the current process
+	// Or that we are the server it's associated with
 	int sharedPageIdx = indexForUserSharedPage(sharedPage);
-	if (ownerForSharedPage(sharedPageIdx) != TheSuperPage->currentProcess) {
-		return KErrBadHandle;
+	Process* cp = TheSuperPage->currentProcess;
+	if (toServer) {
+		if (ownerForSharedPage(sharedPageIdx) != cp) {
+			return KErrBadHandle;
+		}
+	} else {
+		Server* s = serverForSharedPage(sharedPageIdx);
+		if (!s || processForServer(s) != cp) {
+			return KErrBadHandle;
+		}
 	}
 	return sharedPageIdx;
 }
@@ -99,7 +108,7 @@ void ipc_requestServerMsg(Thread* serverThread, uintptr serverRequest) {
 int ipc_connectToServer(uint32 id, uintptr sharedPage) {
 	//printk("ipc_connectToServer %p\n", (void*)sharedPage);
 	Process* src = TheSuperPage->currentProcess;
-	int sharedPageIdx = sharedPageIsValid(sharedPage);
+	int sharedPageIdx = sharedPageIsValid(sharedPage, true);
 	if (sharedPage & 0xFFF) return KErrBadHandle;
 	if (sharedPageIdx < 0) {
 		return sharedPageIdx;
@@ -165,8 +174,10 @@ void ipc_processExited(PageAllocator* pa, Process* p) {
 }
 
 int ipc_completeRequest(uintptr request, bool toServer) {
-	int sharedPageIdx = sharedPageIsValid(request);
-	if (sharedPageIdx < 0) return sharedPageIdx;
+	int sharedPageIdx = sharedPageIsValid(request, toServer);
+	if (sharedPageIdx < 0) {
+		return sharedPageIdx;
+	}
 	Server* s = serverForSharedPage(sharedPageIdx);
 	// TODO validate that request is in fact an IpcMessage.request?
 	Thread* recipient;
@@ -174,7 +185,7 @@ int ipc_completeRequest(uintptr request, bool toServer) {
 	else recipient = &ownerForSharedPage(sharedPageIdx)->threads[0]; // TODO support non-main threads
 	ASSERT(recipient, request, (uintptr)s);
 	KAsyncRequest req = { .thread = recipient, .userPtr = request };
-	// User-side handles writing the result, we jsut have to signal
+	// User-side handles writing the result, we just have to signal
 	thread_requestSignal(&req);
 	return 0;
 }

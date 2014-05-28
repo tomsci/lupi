@@ -323,6 +323,7 @@ function build_kernel()
 		table.insert(sources, { path = "usersrc/ulua.c", user = true })
 		table.insert(sources, { path = "usersrc/uexec.c", user = true })
 		table.insert(sources, { path = "usersrc/runloop.c", user = true })
+		table.insert(sources, { path = "usersrc/ipc.c", user = true })
 	end
 
 	if config.include then
@@ -474,6 +475,9 @@ luaModules = {
 	"modules/spin.lua",
 	{ path = "modules/int64.lua", hasNative = true },
 	{ path = "modules/runloop.lua", hasNative = true },
+	{ path = "modules/ipc.lua", hasNative = true },
+	{ path = "modules/timerserver/init.lua" },
+	{ path = "modules/timerserver/server.lua" },
 }
 
 mallocSource = {

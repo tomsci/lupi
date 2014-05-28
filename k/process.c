@@ -229,6 +229,7 @@ void thread_requestComplete(KAsyncRequest* request, int result) {
 void thread_requestSignal(KAsyncRequest* request) {
 	Thread* t = request->thread;
 	t->completedRequests++;
+	//printk("Thread %s signalled nreq=%d state=%d\n", processForThread(t)->name, t->completedRequests, t->state);
 	request->userPtr = 0;
 	if (t->state == EWaitForRequest) {
 		t->savedRegisters[0] = t->completedRequests;

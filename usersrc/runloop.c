@@ -95,6 +95,16 @@ static int getMembers(lua_State* L) {
 	return 1;
 }
 
+static int tostring(lua_State* L) {
+	AsyncRequest* req = runloop_checkRequest(L, 1);
+	const char* completed = (req->flags & KAsyncFlagCompleted) ? " completed" : "";
+	const char* pending = (req->flags & KAsyncFlagPending) ? " pending" : "";
+	const char* accepted = (req->flags & KAsyncFlagAccepted) ? " accepted" : "";
+	lua_pushfstring(L, "AsyncRequest %p result=%d%s%s%s",
+		req, req->result, pending, accepted, completed);
+	return 1;
+}
+
 static int setPending(lua_State* L) {
 	AsyncRequest* req = runloop_checkRequest(L, 1);
 	if (req->flags & KAsyncFlagPending) {
@@ -139,6 +149,7 @@ int init_module_runloop(lua_State* L) {
 		{ "setPending", setPending },
 		{ "isFree", isFree },
 		{ "clearFlags", clearFlags },
+		{ "__tostring", tostring },
 		{ NULL, NULL }
 	};
 	luaL_setfuncs(L, reqFns, 0);

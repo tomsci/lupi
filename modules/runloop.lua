@@ -106,7 +106,14 @@ function RunLoop:run()
 				self:handleCompletion(req, r)
 			end
 		end
-		assert(numReqs == 0, "Oh no numReqs="..numReqs)
+		if numReqs ~= 0 then
+			print("Uh oh numReqs not zero at end of RunLoop:"..numReqs)
+			print("Pending requests:")
+			for _, req in ipairs(self.pendingRequests) do
+				print(tostring(req))
+			end
+			error("Bad numReqs")
+		end
 	end
 end
 
