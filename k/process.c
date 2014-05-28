@@ -71,7 +71,7 @@ static bool thread_init(Process* p, int index) {
 }
 
 #ifndef KLUA
-static void NAKED do_process_start(uint32 sp) {
+static NORETURN NAKED do_process_start(uint32 sp) {
 	ModeSwitch(KPsrModeUsr|KPsrFiqDisable);
 	// We are in user mode now! So no calling printk(), or doing priviledged stuff
 	asm("MOV sp, r0");
@@ -82,7 +82,7 @@ static void NAKED do_process_start(uint32 sp) {
 	// Definitely don't return from here
 }
 
-void process_start(Process* p) {
+NORETURN process_start(Process* p) {
 	switch_process(p);
 	Thread* t = firstThreadForProcess(p);
 	TheSuperPage->currentThread = t;

@@ -41,7 +41,12 @@ NORETURN hang();
 #define kabort1(arg) kabort4(arg, KRegisterNotSaved, KRegisterNotSaved, KRegisterNotSaved)
 #define kabortn(n, args) kabort4(argn(0, n, args), argn(1, n, args), argn(2, n, args), argn(3, n, args))
 
-#define ASSERT(cond, args...) if (unlikely(!(cond))) { printk("assert %s at line %d\n", #cond, __LINE__); uint32 argsArray[] = {args}; kabortn(sizeof(argsArray)/sizeof(uint32), argsArray); }
+#define ASSERT(cond, args...) \
+	if (unlikely(!(cond))) { \
+		printk("assert %s at line %d\n", #cond, __LINE__); \
+		uint32 argsArray[] = {args}; \
+		kabortn(sizeof(argsArray)/sizeof(uint32), argsArray); \
+	}
 
 #define IS_POW2(val) ((val & (val-1)) == 0)
 
@@ -149,13 +154,15 @@ static inline Process* processForServer(Server* s) {
 }
 
 int process_new(const char* name, Process** resultProcess);
-void process_start(Process* p);
+NORETURN process_start(Process* p);
 bool process_grow_heap(Process* p, int incr);
 void thread_setState(Thread* t, enum ThreadState s);
 void thread_exit(Thread* t, int reason);
 void thread_requestSignal(KAsyncRequest* request);
 void thread_requestComplete(KAsyncRequest* request, int result);
 void thread_setBlockedReason(Thread* t, ThreadBlockedReason reason);
+void thread_enqueueBefore(Thread* t, Thread* before);
+void thread_dequeue(Thread* t, Thread** head);
 
 NORETURN reschedule();
 void saveUserModeRegistersForCurrentThread(void* savedRegisters, bool svc);

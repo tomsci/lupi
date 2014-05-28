@@ -90,22 +90,27 @@ NORETURN NAKED reschedule_irq() {
 }
 
 static void dequeue(Thread* t) {
+	thread_dequeue(t, &TheSuperPage->readyList);
+}
+
+void thread_dequeue(Thread* t, Thread** head) {
 	//printk("dequeue t=%p t->next=%p\n", t, t?t->next:0);
 	t->prev->next = t->next;
 	t->next->prev = t->prev;
-	if (TheSuperPage->readyList == t) {
+	if (*head == t) {
 		if (t == t->next) {
-			TheSuperPage->readyList = NULL;
+			*head = NULL;
 		} else {
-			TheSuperPage->readyList = t->next;
+			*head = t->next;
 		}
 	}
-	// Not strictly necessary but good for debugging (in particular the assert in enqueueBefore)
+	// This is important to do when you factor in how we reuse prev and next in
+	// Server.blockedClientList (and it's handy for debugging regardless)
 	t->prev = NULL;
 	t->next = NULL;
 }
 
-static void enqueueBefore(Thread* t, Thread* before) {
+void thread_enqueueBefore(Thread* t, Thread* before) {
 	ASSERT(t->prev == NULL && t->next == NULL, (uint32)t);
 	if (before == NULL) {
 		// Must be nothing in the list
@@ -132,7 +137,7 @@ bool tick(void* savedRegs) {
 			saveUserModeRegistersForCurrentThread(savedRegs, false);
 			// Move to end of ready list
 			dequeue(t);
-			enqueueBefore(t, s->readyList ? s->readyList->prev : NULL);
+			thread_enqueueBefore(t, s->readyList ? s->readyList->prev : NULL);
 			if (!s->readyList) s->readyList = t;
 			return true;
 		}
@@ -144,7 +149,7 @@ void thread_setState(Thread* t, ThreadState s) {
 	//printk("thread_setState thread %d-%d s=%d t->next=%p\n", indexForProcess(processForThread(t)), t->index, s, t->next);
 	if (s == EReady) {
 		// Move to head of ready list
-		enqueueBefore(t, TheSuperPage->readyList);
+		thread_enqueueBefore(t, TheSuperPage->readyList);
 		TheSuperPage->readyList = t;
 	} else {
 		dequeue(t);
