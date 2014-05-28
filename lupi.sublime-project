@@ -9,9 +9,9 @@
     [
         {
             "name": "build.lua",
-            "cmd": ["/usr/local/bin/fish", "-c", "lua ./build/build.lua -m pi"],
+            "cmd": ["/usr/local/bin/fish", "-c", "lua ./build/build.lua -m pi -j64"],
             "working_dir": "${project_path}",
-            "file_regex": "^(?:bin/luac: )?(.*):([0-9]+)(?::?([0-9]+))"
+            "file_regex": "^(?:bin/luac: |lua: )?([^:]+)(?::([0-9]+)):"
         }
     ]
 }

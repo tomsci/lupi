@@ -56,7 +56,7 @@ local function setCursor(pos)
 	moveCursor(pos - cursor)
 end
 
-local function didLine(lineString)
+local function saveLineToHistory(lineString)
 	line = {}
 	cursor = 1
 	if #lineString == 0 then return end -- Nothing doing
@@ -143,17 +143,27 @@ local function handleEscape()
 	end
 end
 
+local function handleResult(ok, ...)
+	if not ok then
+		local err = select(1, ...)
+		print("Error: "..err)
+	elseif select("#", ...) > 0 then
+		print("==>", ...)
+	end
+end
+
 local function gotChar(ch)
 	if string.char(ch) == "\r" then
 		print("")
 		local lineString = table.concat(line)
+		saveLineToHistory(lineString) -- even if it didn't compile, it still goes in the history
+		if lineString:match("%)$") and not lineString:match("=") and not lineString:match("^return ") then
+			-- Assume it's a function call and prepend an implicit return statement
+			lineString = "return "..lineString
+		end
 		local fn, err = load(lineString, "<stdin>", nil, _ENV)
-		didLine(lineString) -- even if it didn't compile, it still goes in the history
 		if fn then
-			local ok, err = pcall(fn)
-			if not ok then
-				print("Error: "..err)
-			end
+			handleResult(pcall(fn))
 		else
 			print("Error: "..err)
 		end
