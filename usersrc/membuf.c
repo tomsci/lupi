@@ -8,6 +8,9 @@
 
 #define MemBufMetatable "LupiMemBufMt"
 
+/**
+The maximum permitted size of a MemBuf.
+*/
 #define MAX_BUFSIZE 1024*1024
 
 MemBuf* mbuf_checkbuf(lua_State* L, int idx) {

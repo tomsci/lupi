@@ -28,7 +28,7 @@ the MemBuf.
 
 --[[**
 Returns the 32-bit value located at self:getAddress() + offset, as a number. The
-resulting int\* need not be aligned, but it must lie wholly inside the MemBuf.
+value must be word aligned.
 
 In every other way, behaves the same as [getByte()](#getByte).
 ]]
