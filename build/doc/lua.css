@@ -83,14 +83,24 @@ table hr {
 	font-size: x-small ;
 }
 
-input[type=text] {
-	border: solid #a0a0a0 2px ;
-	border-radius: 2em ;
-	-moz-border-radius: 2em ;
-	background-image: url('images/search.png') ;
-	background-repeat: no-repeat;
-	background-position: 4px center ;
-	padding-left: 20px ;
-	height: 2em ;
+/*
+h3 code {
+	font-family: inherit ;
+	font-size: inherit ;
+}
+*/
+
+pre, code {
+	font-size: 12pt ;
 }
 
+p+h1, ul+h1 {
+	font-style: normal ;
+	padding-top: 0.4em ;
+	padding-bottom: 0.4em ;
+	padding-left: 16px ;
+	margin-left: -16px ;
+	background-color: #D0D0FF ;
+	border-radius: 8px ;
+	border: solid #000080 1px ;
+}

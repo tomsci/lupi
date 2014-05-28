@@ -5,6 +5,11 @@ if _VERSION ~= "Lua 5.2" then
 end
 local cmdargs = {...}
 
+local env = {}
+local envMt = { __index = _G }
+setmetatable(env, envMt)
+_ENV = env
+
 baseDir = "/Users/tomsci/Documents/lupi/"
 verbose = false
 listing = false
@@ -16,7 +21,7 @@ maxJobs = 1
 
 local function loadConfig(c)
 	local env = {
-		build = _G, -- Yeah yeah, hacky but gets the job done
+		build = _ENV,
 	}
 	local envMt = {
 		__index = _G,

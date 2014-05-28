@@ -116,7 +116,7 @@ local function doBuild()
 	table.sort(mdSources)
 
 	-- Create index
-	local indexFile = objForSrc("index.md", ".md")
+	local indexFile = build.objForSrc("index.md", ".md")
 	local index = assert(io.open(indexFile, "w"))
 	index:write("# LuPi index\n\n")
 	for _, file in ipairs(mdSources) do
