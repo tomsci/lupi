@@ -11,7 +11,7 @@ Note that Int64s should not be used as indexes into Lua tables - table indexing
 uses the definition of raw equality, so two Int64s with the same value will
 *not* index to the same value even though we define an __eq metamethod. Convert
 to a string first, or if performance is more important than readability, use
-[rawval()](#rawval] to return the raw value as a Lua string.
+[rawval()](#Int64_rawval) to return the raw value as a Lua string.
 ]]
 
 --[[**

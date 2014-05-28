@@ -18,22 +18,24 @@ Returns the members table for a specific async request
 --native function AsyncRequest.getMembers(asyncRequest)
 
 --[[**
-If the request has been completed, returns the result otherwise nil. The non-nil result
-will currently always be an integer.
+If the request has been completed, returns the result otherwise nil. The non-nil
+result will currently always be an integer.
 ]]
 --native function AsyncRequest:getResult()
 
 --[[**
 Sets the result of the request, depending on the type of the argument:
 
-* If result is nil, clears the `completed` flag. No I'm not sure why you'd need this either.
+* If result is nil, clears the `completed` flag. No I'm not sure why you'd need
+  this either.
 * If result is an integer, sets the `KAsyncFlagIntResult` flag.
 * Any other type will (currently) cause an error.
 ]]
 --native function AsyncRequest:setResult(result)
 
 --[[**
-Sets the pending flag. Is called automatically by [RunLoop:queue(obj)](#RunLoop_queue).
+Sets the pending flag. Is called automatically by
+[RunLoop:queue(obj)](#RunLoop_queue).
 ]]
 --native function AsyncRequest:setPending()
 
@@ -53,10 +55,19 @@ function RunLoop.new()
 		pendingRequests = {},
 	}
 	setmetatable(rl, RunLoop)
+	if not current then
+		current = rl
+	end
 	return rl
 end
 
 new = RunLoop.new
+-- current set by RunLoop.new
+
+function run()
+	assert(current, "No runloop constructed")
+	current:run()
+end
 
 local function iter(tbl)
 	local deleted = false
@@ -116,9 +127,9 @@ Creates a new async request. Does *not* automatically call `queue`.
 --native function RunLoop:newAsyncRequest(membersOrNil)
 
 --[[**
-Sets the given async request as pending. If `obj` has a `requestFn`, this function is
-called with `obj` as the only argument. If it doesn't, the caller is responsible for
-making the request as appropriate *after* calling `queue`.
+Sets the given async request as pending. If `obj` has a `requestFn`, this
+function is called with `obj` as the only argument. If it doesn't, the caller is
+responsible for making the request as appropriate *after* calling `queue`.
 ]]
 function RunLoop:queue(obj)
 	obj:setPending()
@@ -127,3 +138,9 @@ function RunLoop:queue(obj)
 		obj:requestFn()
 	end
 end
+
+--[[**
+Blocks the thread until any request completes. Returns the number of completed
+requests (which will always be >= 1).
+]]
+--native function RunLoop:waitForAnyRequest()

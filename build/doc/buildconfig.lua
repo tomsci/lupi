@@ -34,7 +34,7 @@ local function scanFileForInlineDocs(file)
 			-- We're waiting for the first line after the docs, which should be the function
 			-- signature - unless it's a documentation in Lua of a native function, in which
 			-- case it will be the last line of the doc instead
-			local header = l:match("(.*)[{;]") or l -- Chop the { if there is one
+			local header = l:match("(.*)%s*[{;\\]") or l -- Chop the { if there is one
 			header = header:gsub("%-%-native", "") -- Chop native comment
 			local id = header:match("function ([%w_.:]+)") or header:match("([%w_]+)%(")
 			if id then

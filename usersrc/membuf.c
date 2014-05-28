@@ -155,11 +155,6 @@ int init_module_membuf(lua_State* L) {
 //#define CALL(L, nargs, nret) if (lua_pcall(L, nargs, nret, 0) != 0) { lua_getglobal(L, "print"); lua_insert(L, -2); lua_call(L, 1, 0); }
 #define CALL(L, nargs, nret) lua_call(L, nargs, nret)
 
-/**
-Construct a new MemBuf. `type` can be NULL, or a string previously passed to
-[mbuf\_declare\_type()](#mbuf_declare_type). The returned `MemBuf*` is owned by
-the Lua runtime - the corresponding Lua userdata is pushed onto the stack.
-*/
 MemBuf* mbuf_new(lua_State* L, void* ptr, int len, const char* type) {
 	MemBuf* buf = (MemBuf*)lua_newuserdata(L, sizeof(MemBuf));
 	luaL_setmetatable(L, MemBufMetatable);
@@ -181,13 +176,6 @@ MemBuf* mbuf_new(lua_State* L, void* ptr, int len, const char* type) {
 	return buf;
 }
 
-/**
-Declare a new type of MemBuf which has the given size. Normally this is called
-via the `MBUF_TYPE()` macro, for example: `MBUF_TYPE(struct Something)`.
-
-All the `mbuf_declare_*` functions are currently only of use by the klua
-debugger, which uses them to decode kernel data structures.
-*/
 void mbuf_declare_type(lua_State* L, const char* typeName, int size) {
 	pushMemBuf(L);
 	lua_getfield(L, -1, "_declareType");
@@ -197,10 +185,6 @@ void mbuf_declare_type(lua_State* L, const char* typeName, int size) {
 	lua_pop(L, 1);
 }
 
-/**
-Declares that MemBufs of type `typeName` have a member called `memberName` of
-given size at the given offset.
-*/
 void mbuf_declare_member(lua_State* L, const char* typeName, const char* memberName, int offset, int size, const char* memberType) {
 	pushMemBuf(L);
 	lua_getfield(L, -1, "_declareMember");

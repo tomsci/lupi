@@ -21,16 +21,47 @@ typedef struct MemBuf {
 #define MBUF_ENUM(t, e) mbuf_declare_enum(L, #t, e, #e)
 #define MBUF_NEW(type, ptr) mbuf_new(L, ptr, sizeof(type), #type)
 
+/**
+Declare a new type of MemBuf which has the given size. Normally this is called
+via the `MBUF_TYPE()` macro, for example: `MBUF_TYPE(struct Something)`.
+
+All the `mbuf_declare_*` functions are currently only of use by the klua
+debugger, which uses them to decode kernel data structures.
+*/
 void mbuf_declare_type(lua_State* L, const char* typeName, int size);
+
+/**
+Declares that MemBufs of type `typeName` have a member called `memberName` of
+given size at the given offset.
+*/
 void mbuf_declare_member(lua_State* L, const char* typeName, const char* memberName, int offset, int size, const char* memberType);
 void mbuf_declare_enum(lua_State* L, const char* typeName, int value, const char* name);
 
 typedef int (*mbuf_getvalue)(lua_State* L, uintptr ptr, int size);
-void mbuf_set_accessor(lua_State* L, mbuf_getvalue accessptr);
+
+/**
+Sets an accessor function. If set, this function is used instead of a raw
+pointer dereference to access the memory of all MemBufs. The debugger uses this
+to implement a trapped access that throws an error (instead of crashing again)
+if invalid memory is accessed. The accessor function must be of the form:
+
+		accessorFn(lua_State* L, uintptr ptr, int size)
+*/
+void mbuf_set_accessor(lua_State* L, mbuf_getvalue accessorFn);
 
 void mbuf_push_object(lua_State* L, uintptr ptr, int size);
 
+/**
+Construct a new MemBuf. `type` can be NULL, or a string previously passed to
+[mbuf\_declare\_type()](#mbuf_declare_type). The returned `MemBuf*` is owned by
+the Lua runtime - the corresponding Lua userdata is pushed onto the stack.
+*/
 MemBuf* mbuf_new(lua_State* L, void* ptr, int len, const char* type);
+
+/**
+Checks that the value at Lua stack index `idx` is a MemBuf, and returns it.
+Otherwise errors.
+*/
 MemBuf* mbuf_checkbuf(lua_State* L, int idx);
 
 #endif

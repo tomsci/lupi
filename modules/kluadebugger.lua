@@ -1,6 +1,84 @@
+--[[**
+The KLua Debugger
+=================
+
+This is an interactive command-line debugger that is invoked when the kernel
+crashes. It reuses the user interpreter and membuf modules to provide an
+interactive Lua prompt that can view all the kernel data structures. It also
+contains various helper functions to aid debugging.
+
+In terms of implementation, it runs with interrupts disabled in System mode,
+which means it is priviledged and can access the entire address space, but can
+still make SVC calls. This is important because it means it can reuse the same
+Lua binary that is used user-side.
+
+The available syntax is below.
+
+]]
+
+-- Note the weird bracket syntax so this is both a string we can print at
+-- runtime, and also something that looks like a documentation comment
+local helpText = [=[
+--[[**
+Functions
+---------
+
+    help()              prints this text.
+    print(), p()        Standard print function
+    GetProcess(idx)     returns the Process with the given index.
+    switch_process(p)   switches to the process p. If p is an integer, it is
+                        treated as a convenience for
+                        switch_process(GetProcess(p))
+    mem(addr, len)      if there is an existing membuf for this adress, returns
+                        it. Otherwise returns nil.
+    newmem(addr, len [,type])  creates a MemBuf from an arbitrary address and
+                        length, and optionally the supplied type.
+    ustack()            Convenience for
+                        stack(TheSuperPage.currentThread.savedRegisters.r13)
+    stack()             Convenience for stack(TheSuperPage.crashRegisters.r13)
+    stack(obj)          Prints a stacktrace for obj. Obj can be a thread (in
+                        which case thread.savedRegisters.r13 is used) or a
+                        number (which is assumed to be a stack pointer) or nil
+                        (in which case TheSuperPage.crashRegisters.r13 is used).
+    pageStats()         Print stats about the PageAllocator.
+
+    buf:getAddress()    returns the address of the MemBuf.
+    buf:getLength()     returns the length of the MemBuf in bytes.
+    buf:getInt(offset)  returns *(int*)(buf:getAddress() + offset)
+    buf:getByte(offset) returns *(byte*)(buf:getAddress() + offset)
+    buf:hex()           returns a hexdumped string of the given buf. General
+                        usage is to call print(buf:hex()).
+    buf:words()         returns a hexdumped string of the given buf assuming
+                        its contents are word-sized. Upshot being that
+                        word-sized values on a little-endian machine are
+                        displayed correctly.
+
+Variables
+---------
+
+    TheSuperPage, sp    the SuperPage
+    Al                  the PageAllocator
+
+Syntax
+------
+
+Most of the kernel data structs have their members declared to MemBuf, meaning
+the members can accessed using normal Lua member syntax. Ie:
+
+    print(TheSuperPage.currentProcess.name) -- Prints the name of the current
+                                            -- process
+
+As a convenience, calling a function from the command line automatically prints
+any returned values, so "GetProcess(0)" is equivalent to print(GetProcess(0))
+
+]]
+
+]=]
+
+local require = require -- Make sure we keep this even after we've changed _ENV
 local membuf = require("membuf")
 
---# We're not a module, just a collection of helper fns that should be global
+-- We're not a module, just a collection of helper fns that should be global
 _ENV = _G
 
 -- Conveniences
@@ -11,43 +89,8 @@ function help()
 	print([[
 The klua debugger.
 
-Functions:
-    help()              prints this text.
-    print(), p()        Standard print function
-    GetProcess(idx)     returns the Process with the given index.
-    switch_process(p)   switches to the process p. If p is an integer, it is treated as a
-                        convenience for switch_process(GetProcess(p))
-    mem(addr, len)      if there is an existing membuf for this adress, returns it or nil
-    newmem(addr, len [,type])  creates a MemBuf from an arbitrary address and length, and
-                               optionally the supplied type.
-    ustack()            Convenience for stack(TheSuperPage.currentThread.savedRegisters.r13)
-    stack()             Convenience for stack(TheSuperPage.crashRegisters.r13)
-    stack(obj)          Prints a stacktrace for obj. Obj can be a thread (in which case
-                        thread.savedRegisters.r13 is used) or a number (which is assumed to be a
-                        stack pointer) or nil (in which case TheSuperPage.crashRegisters.r13 is
-                        used).
-    pageStats()         Print stats about the PageAllocator.
-
-    buf:getAddress()    returns the address of the MemBuf.
-    buf:getLength()     returns the length of the MemBuf in bytes.
-    buf:getInt(offset)  returns *(int*)(buf:getAddress() + offset)
-    buf:getByte(offset) returns *(byte*)(buf:getAddress() + offset)
-    buf:hex()           returns a hexdumped string of the given buf. General usage is to call
-                        print(buf:hex()).
-    buf:words()         returns a hexdumped string of the given buf assuming its contents are
-                        word-sized. Upshot being that word-sized values on a little-endian machine
-                        are displayed correctly.
-
-Variables:
-    TheSuperPage, sp    the SuperPage
-    Al                  the PageAllocator
-
-Syntax:
-    All MemBuf objects may have their contents accessed using normal Lua member syntax. Ie:
-
-    print(TheSuperPage.currentProcess.name) -- Prints the name of the current process
-
 ]])
+	print(helpText:sub(7, -(#helpText - 7 - 3))) -- Skip documentation comment bit
 end
 
 --local band, bnot = bit32.band, bit32.bnot

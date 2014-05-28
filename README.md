@@ -16,7 +16,8 @@ user-side.
 
 Further to those concepts, it is a microkernel architecture that (currently)
 only runs on the Raspberry Pi. There is no x86 support, no device tree or
-dynamic libraries or any kind, no virtual (swap) memory, and no file system.
+dynamic libraries or any kind, no paging (swap memory), and no file system.
+And definitely no POSIX support or fork/exec.
 
 Kernel design
 -------------
@@ -183,8 +184,8 @@ C-style. C files and headers use the following syntax:
 		}
 
 		/**
-		Standalone snippets of documentation are ok too, providing they are followed
-		by an empty line (to distinguish them from function docs).
+		Standalone snippets of documentation are ok too, providing they are
+		followed by an empty line (to distinguish them from function docs).
 		*/
 
 		// More code here etc...
@@ -205,8 +206,8 @@ documented in the C file just like any other C function.
 		end
 
 		--[[**
-		Documentation for a function that is defined in C - note this documentation
-		goes in the .lua file not the .c file!
+		Documentation for a function that is defined in C - note this
+		documentation goes in the .lua file not the .c file!
 		]]
 		--native function someNativeFunction()
 
@@ -393,8 +394,8 @@ There is a new global table with the functions described below:
 
 *	`lupi.getUptime()`
 
-	Returns the number of milliseconds since boot as an `Int64`, see
-	`int64.lua`.
+	Returns the number of milliseconds since boot as an
+	[Int64](modules/int64.html).
 
 ### Modules with native C code
 
