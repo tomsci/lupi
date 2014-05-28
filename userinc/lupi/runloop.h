@@ -12,6 +12,9 @@ typedef struct AsyncRequest {
 
 void initRunloopModule(lua_State* L);
 
-AsyncRequest* checkRequestPending(lua_State* L, int idx);
+AsyncRequest* runloop_checkRequest(lua_State* L, int idx);
+AsyncRequest* runloop_checkRequestPending(lua_State* L, int idx);
+
+void runloop_newIndirectAsyncRequest(lua_State* L, AsyncRequest* req);
 
 #endif

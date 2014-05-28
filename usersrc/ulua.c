@@ -33,7 +33,7 @@ static int getch_lua(lua_State* L) {
 }
 
 static int getch_async(lua_State* L) {
-	AsyncRequest* req = checkRequestPending(L, 1);
+	AsyncRequest* req = runloop_checkRequestPending(L, 1);
 	req->flags |= KAsyncFlagAccepted;
 	exec_getch_async(req);
 	return 0;

@@ -8,12 +8,18 @@ extern int exec_waitForAnyRequest();
 
 #define AsyncRequestMetatable "LupiAsyncRequestMt"
 
-static AsyncRequest* checkRequest(lua_State* L, int idx) {
-	return (AsyncRequest*)luaL_checkudata(L, idx, AsyncRequestMetatable);
+AsyncRequest* runloop_checkRequest(lua_State* L, int idx) {
+	void* ptr = luaL_checkudata(L, idx, AsyncRequestMetatable);
+	if (lua_rawlen(L, idx) == sizeof(void*)) {
+		// It's a double indirect - used for AsyncRequests in IpcPages
+		return *(AsyncRequest**)ptr;
+	} else {
+		return (AsyncRequest*)ptr;
+	}
 }
 
-AsyncRequest* checkRequestPending(lua_State* L, int idx) {
-	AsyncRequest* req = checkRequest(L, idx);
+AsyncRequest* runloop_checkRequestPending(lua_State* L, int idx) {
+	AsyncRequest* req = runloop_checkRequest(L, idx);
 	if (!(req->flags & KAsyncFlagPending)) {
 		luaL_error(L, "AsyncRequest must be pending");
 	}
@@ -26,7 +32,7 @@ AsyncRequest* checkRequestPending(lua_State* L, int idx) {
 	return req;
 }
 
-int newAsyncRequest(lua_State* L) {
+static int newAsyncRequest(lua_State* L) {
 	AsyncRequest* req = (AsyncRequest*)lua_newuserdata(L, sizeof(AsyncRequest));
 	req->flags = 0;
 	luaL_setmetatable(L, AsyncRequestMetatable);
@@ -42,6 +48,15 @@ int newAsyncRequest(lua_State* L) {
 	return 1;
 }
 
+void runloop_newIndirectAsyncRequest(lua_State* L, AsyncRequest* req) {
+	AsyncRequest** obj = (AsyncRequest**)lua_newuserdata(L, sizeof(AsyncRequest*));
+	*obj = req;
+	luaL_setmetatable(L, AsyncRequestMetatable);
+	// Setup uservalue
+	lua_newtable(L);
+	lua_setuservalue(L, -2);
+}
+
 static int wfar(lua_State* L) {
 	int numRequests = exec_waitForAnyRequest();
 	lua_pushinteger(L, numRequests);
@@ -49,7 +64,7 @@ static int wfar(lua_State* L) {
 }
 
 static int getResult(lua_State* L) {
-	AsyncRequest* req = checkRequest(L, 1);
+	AsyncRequest* req = runloop_checkRequest(L, 1);
 	if (req->flags & KAsyncFlagCompleted) {
 		//ASSERT(req->flags & KAsyncFlagIntResult, req->flags); // Don't support any other types of completion yet
 		lua_pushinteger(L, req->result);
@@ -60,7 +75,7 @@ static int getResult(lua_State* L) {
 }
 
 static int setResult(lua_State* L) {
-	AsyncRequest* req = checkRequest(L, 1);
+	AsyncRequest* req = runloop_checkRequest(L, 1);
 	if (lua_isnoneornil(L, 2)) {
 		req->flags = req->flags & ~(KAsyncFlagCompleted);
 	} else if (req->flags & KAsyncFlagCompleted) {
@@ -75,13 +90,13 @@ static int setResult(lua_State* L) {
 }
 
 static int getMembers(lua_State* L) {
-	/*AsyncRequest* req =*/ checkRequest(L, 1);
+	/*AsyncRequest* req =*/ runloop_checkRequest(L, 1);
 	lua_getuservalue(L, 1);
 	return 1;
 }
 
 static int setPending(lua_State* L) {
-	AsyncRequest* req = checkRequest(L, 1);
+	AsyncRequest* req = runloop_checkRequest(L, 1);
 	if (req->flags & KAsyncFlagPending) {
 		return luaL_error(L, "Request is already pending");
 	}
@@ -92,8 +107,14 @@ static int setPending(lua_State* L) {
 	return 0;
 }
 
+static int isFree(lua_State* L) {
+	AsyncRequest* req = runloop_checkRequest(L, 1);
+	lua_pushboolean(L, !(req->flags & KAsyncFlagAccepted));
+	return 1;
+}
+
 static int clearFlags(lua_State* L) {
-	AsyncRequest* req = checkRequest(L, 1);
+	AsyncRequest* req = runloop_checkRequest(L, 1);
 	req->flags = 0;
 	return 0;
 }
@@ -116,6 +137,7 @@ int init_module_runloop(lua_State* L) {
 		{ "getResult", getResult },
 		{ "setResult", setResult },
 		{ "setPending", setPending },
+		{ "isFree", isFree },
 		{ "clearFlags", clearFlags },
 		{ NULL, NULL }
 	};
