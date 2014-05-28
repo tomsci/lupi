@@ -23,6 +23,7 @@ int64 handleSvc(int cmd, uintptr arg1, uintptr arg2, void* savedRegisters) {
 		case KExecPrintString:
 			// TODO sanitise parameters!
 			printk("%s", (const char*)arg1);
+			//printk("[%d] %s", indexForProcess(p), (const char*)arg1);
 			break;
 		case KExecPutch:
 			putbyte(arg1);
@@ -100,6 +101,19 @@ int64 handleSvc(int cmd, uintptr arg1, uintptr arg2, void* savedRegisters) {
 			return TheSuperPage->uptime;
 		case KExecNewSharedPage:
 			return ipc_mapNewSharedPageInCurrentProcess();
+		case KExecCreateServer:
+			return ipc_createServer(arg1, t);
+		case KExecConnectToServer:
+			// Always save registers, because we'll need to block
+			saveUserModeRegistersForCurrentThread(savedRegisters, true);
+			// This doesn't return, unless there was an error
+			return ipc_connectToServer(arg1, arg2);
+		case KExecRequestServerMsg:
+			ipc_requestServerMsg(t, arg1);
+			break;
+		case KExecCompleteIpcRequest:
+			return ipc_completeRequest(arg1, arg2);
+			break;
 		default:
 			break;
 	}

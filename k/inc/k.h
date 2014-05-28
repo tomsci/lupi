@@ -75,6 +75,8 @@ typedef enum ThreadState {
 
 typedef enum ThreadBlockedReason {
 	EBlockedOnGetch = 1,
+	EBlockedWaitingForServerConnect = 2,
+	EBlockedInServerConnect = 3,
 } ThreadBlockedReason;
 
 /*
@@ -166,5 +168,12 @@ void thread_dequeue(Thread* t, Thread** head);
 
 NORETURN reschedule();
 void saveUserModeRegistersForCurrentThread(void* savedRegisters, bool svc);
+
+uintptr ipc_mapNewSharedPageInCurrentProcess();
+int ipc_connectToServer(uint32 id, uintptr sharedPage);
+int ipc_createServer(uint32 id, Thread* thread);
+void ipc_processExited(PageAllocator* pa, Process* p);
+void ipc_requestServerMsg(Thread* serverThread, uintptr serverRequest);
+int ipc_completeRequest(uintptr request, bool toServer);
 
 #endif // LUPI_K_H

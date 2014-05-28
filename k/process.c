@@ -172,6 +172,8 @@ int process_new(const char* name, Process** resultProcess) {
 }
 
 static void process_exit(Process* p, int reason) {
+	ipc_processExited(Al, p);
+
 	// Cleans up caches and frees all memory associated with process
 	mmu_processExited(Al, p);
 
