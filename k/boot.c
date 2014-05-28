@@ -2,25 +2,31 @@
 #include <mmu.h>
 #include <pageAllocator.h>
 #include <arm.h>
+#include <atags.h>
 
 void uart_init();
 void irq_init();
 void irq_enable();
 void runLuaIntepreterModule(uintptr heapPtr);
+void dump_atags();
+void parseAtags(uint32* atagsPtr, AtagsParams* params);
 
-void Boot() {
+void Boot(uintptr atagsPhysAddr) {
 #ifdef ENABLE_DCACHE
 	mmu_setCache(false, true);
 #endif
 	uart_init();
-	printk("\n\n" LUPI_VERSION_STRING "\n");
 
-	//printk("Start of code base is:\n");
-	//printk("%X = %X\n", KKernelCodeBase, *(uint32*)KKernelCodeBase);
+	//dump_atags();
+	printk("\n\n" LUPI_VERSION_STRING);
 
 	// Set up data structures that weren't part of mmu_init()
+	mmu_mapSect0Data(KKernelAtagsBase, atagsPhysAddr & ~0xFFF, 1);
+	AtagsParams atags;
+	parseAtags((uint32*)(KKernelAtagsBase + (atagsPhysAddr & 0xFFF)), &atags);
+	printk(" (RAM = %d MB, board=%x)\n", atags.totalRam >> 20, atags.boardRev);
 
-	const int numPagesRam = KPhysicalRamSize >> KPageShift;
+	const int numPagesRam = atags.totalRam >> KPageShift;
 	const uint paSizePages = PAGE_ROUND(pageAllocator_size(numPagesRam)) >> KPageShift;
 	ASSERT_COMPILE(paSizePages<<KPageShift <= KPageAllocatorMaxSize);
 	mmu_mapSect0Data(KPageAllocatorAddr, KPhysPageAllocator, paSizePages);
@@ -52,6 +58,8 @@ void Boot() {
 	mmu_finishedUpdatingPageTables();
 
 	zeroPage(TheSuperPage);
+	TheSuperPage->totalRam = atags.totalRam;
+	TheSuperPage->boardRev = atags.boardRev;
 	irq_init();
 	irq_enable();
 
@@ -250,3 +258,8 @@ void NAKED kabort4(uint32 r0, uint32 r1, uint32 r2, uint32 r3) {
 	LABEL_WORD(.notSavedValue, KRegisterNotSaved);
 	LABEL_WORD(.abortStackBase, KAbortStackBase + KPageSize);
 }
+
+// void dumpATAGS() {
+// 	mmu_mapSect0Data(KKernelAtagsBase, KPhysicalAtagsBase, 1);
+// 	worddump((const void*)(KKernelAtagsBase + 0x100), 0x2E00);
+// }

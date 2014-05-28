@@ -333,6 +333,8 @@ static void WeveCrashedSetupDebuggingStuff(lua_State* L) {
 	MBUF_MEMBER(Server, blockedClientList);
 
 	MBUF_TYPE(SuperPage);
+	MBUF_MEMBER(SuperPage, totalRam);
+	MBUF_MEMBER(SuperPage, boardRev);
 	MBUF_MEMBER(SuperPage, nextPid);
 	MBUF_MEMBER(SuperPage, currentProcess);
 	MBUF_MEMBER(SuperPage, currentThread);

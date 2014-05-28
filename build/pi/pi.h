@@ -15,7 +15,7 @@
 #define KPeripheralSize		0x00300000
 
 #define KPhysicalRamBase	0x00000000
-#define KPhysicalRamSize	0x20000000 // 512MB - we're assuming model B atm
+// Available RAM is read from ATAGS (it varies depending on the GPU config)
 
 #define KSystemClockFreq	250000000 // 250 MHz
 

@@ -3,7 +3,7 @@
 
 #include <std.h>
 
-#define LUPI_VERSION_STRING "LuPi 0.16"
+#define LUPI_VERSION_STRING "LuPi 0.17"
 
 typedef unsigned long PhysAddr;
 
@@ -107,6 +107,8 @@ typedef struct Server {
 } Server;
 
 typedef struct SuperPage {
+	uint32 totalRam;
+	uint32 boardRev;
 	uint32 nextPid;
 	Process* currentProcess;
 	Thread* currentThread;

@@ -25,7 +25,8 @@ Guard		-----------------	F804C000-F804D000	(4k)
 Kern stack	00006000-00008000	F804D000-F804F000	(8k)
 Guard		-----------------	F804F000-F8050000	(4k)
 KKernPtForProcPts_pt			F8050000-F8051000	(4k)
-Unused		-----------------	F8051000-F80C0000
+atags		00000000-00001000	F8051000-F8052000	(12k)
+Unused		-----------------	F8052000-F80C0000
 PageAlloctr	0004C000-dontcare	F80C0000-F8100000	(256k)
 -------------------------------------------------
 Processes						F8100000-F8200000	(1 MB)
@@ -62,6 +63,8 @@ User PTs						90000000-A0000000	(256MB)
 #define KPhysPageAllocator		0x0004C000u
 #define KPageAllocatorAddr		0xF80C0000u
 #define KPageAllocatorMaxSize	0x00040000u
+
+#define KKernelAtagsBase		0xF8051000u
 
 #define KSuperPageAddress		0xF8000000u
 
