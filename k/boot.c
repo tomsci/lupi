@@ -24,7 +24,7 @@ void Boot(uintptr atagsPhysAddr) {
 	mmu_mapSect0Data(KKernelAtagsBase, atagsPhysAddr & ~0xFFF, 1);
 	AtagsParams atags;
 	parseAtags((uint32*)(KKernelAtagsBase + (atagsPhysAddr & 0xFFF)), &atags);
-	printk(" (RAM = %d MB, board=%x)\n", atags.totalRam >> 20, atags.boardRev);
+	printk(" (RAM = %d MB, board = %X)\n", atags.totalRam >> 20, atags.boardRev);
 
 	const int numPagesRam = atags.totalRam >> KPageShift;
 	const uint paSizePages = PAGE_ROUND(pageAllocator_size(numPagesRam)) >> KPageShift;
