@@ -48,7 +48,7 @@ void int64_new(lua_State* L, int64 n) {
 	// Make sure this function works even if the module hasn't been officially loaded yet
 	if (!moduleLoaded) {
 		lua_getglobal(L, "require");
-		lua_pushstring(L, "int64");
+		lua_pushliteral(L, "int64");
 		lua_call(L, 1, 0);
 	}
 	luaL_setmetatable(L, Int64Metatable);

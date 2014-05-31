@@ -182,7 +182,7 @@ void runLuaIntepreterModule(uintptr heapBase) {
 	lua_setglobal(L, "putch");
 	lua_pushcfunction(L, getch_lua);
 	lua_setglobal(L, "getch");
-	lua_pushstring(L, "klua> ");
+	lua_pushliteral(L, "klua> ");
 	lua_setfield(L, interpreterIdx, "prompt");
 
 #ifdef KLUA_DEBUGGER
@@ -289,7 +289,7 @@ static int lua_switch_process(lua_State* L) {
 
 static void WeveCrashedSetupDebuggingStuff(lua_State* L) {
 	lua_getfield(L, -1, "require");
-	lua_pushstring(L, "membuf");
+	lua_pushliteral(L, "membuf");
 	lua_call(L, 1, 0);
 
 	lua_pushcfunction(L, lua_newMemBuf);
@@ -424,7 +424,7 @@ static void WeveCrashedSetupDebuggingStuff(lua_State* L) {
 	EXPORT_INT(L, KPageAllocatorAddr);
 
 	lua_getfield(L, -1, "require");
-	lua_pushstring(L, "kluadebugger");
+	lua_pushliteral(L, "kluadebugger");
 	lua_call(L, 1, 0);
 
 }

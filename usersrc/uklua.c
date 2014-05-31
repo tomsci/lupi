@@ -79,7 +79,7 @@ static int getLuaModule_searcherFn(lua_State* L) {
 	if (!module) {
 		// Try <moduleName>.init
 		lua_pushvalue(L, 1);
-		lua_pushstring(L, ".init");
+		lua_pushliteral(L, ".init");
 		lua_concat(L, 2);
 		const char* module_init = lua_tostring(L, -1);
 		module = getLuaModule(module_init);
