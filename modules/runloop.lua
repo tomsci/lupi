@@ -1,3 +1,4 @@
+require "common"
 
 -- AsyncRequest and RunLoop objects setup by native code
 
@@ -69,32 +70,11 @@ function run()
 	current:run()
 end
 
-local function iter(tbl)
-	local deleted = false
-	local i = 0
-	local function remove()
-		table.remove(tbl, i)
-		deleted = true
-	end
-	local function f(state, lastIdx)
-		if deleted then
-			i = lastIdx
-			deleted = false
-		else
-			i = lastIdx + 1
-		end
-		local obj = tbl[i]
-		if obj == nil then return nil end
-		return i, obj, remove
-	end
-	return f, tbl, 0
-end
-
 function RunLoop:run()
 	while true do
 		local numReqs = self:waitForAnyRequest()
 		-- Now search the list and complete exactly numReqs requests
-		for i, req, removeReqFromTable in iter(self.pendingRequests) do
+		for i, req, removeReqFromTable in common.iter(self.pendingRequests) do
 			if numReqs == 0 then
 				break
 			end

@@ -469,6 +469,7 @@ luaSources = {
 
 luaModules = {
 	"modules/init.lua",
+	"modules/common.lua",
 	"modules/test.lua",
 	"modules/interpreter.lua",
 	{ path = "modules/membuf.lua", hasNative = true },
