@@ -287,6 +287,12 @@ static int lua_switch_process(lua_State* L) {
 	return 0;
 }
 
+extern void reboot();
+static int lua_reboot(lua_State* L) {
+	reboot();
+	return 0;
+}
+
 static void WeveCrashedSetupDebuggingStuff(lua_State* L) {
 	lua_getfield(L, -1, "require");
 	lua_pushliteral(L, "membuf");
@@ -297,6 +303,9 @@ static void WeveCrashedSetupDebuggingStuff(lua_State* L) {
 
 	lua_pushcfunction(L, lua_getObj);
 	lua_setglobal(L, "mem");
+
+	lua_pushcfunction(L, lua_reboot);
+	lua_setglobal(L, "reboot");
 
 #ifndef HOSTED
 	mbuf_set_accessor(L, memBufGetMem); // Handles aborts

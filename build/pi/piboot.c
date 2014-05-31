@@ -192,3 +192,22 @@ void parseAtags(uint32* ptr, AtagsParams* params) {
 		ptr += tagsize; // tagsize is in words, so this is the correct thing to do
 	}
 }
+
+// Wouldn't it be nice if this was documented somewhere?
+
+#define PM_RSTC						(KPeripheralBase + 0x0010001c)
+#define PM_WDOG						(KPeripheralBase + 0x00100024)
+#define PM_PASSWORD					0x5a000000
+#define PM_RSTC_WRCFG_MASK			0x00000030
+#define PM_RSTC_WRCFG_FULL_RESET	0x00000020
+
+void reboot() {
+	uint32 val;
+	// I think this sets the watchdog timeout to 10 ticks (~150us)
+	PUT32(PM_WDOG, 10 | PM_PASSWORD);
+	// And this sets the behaviour when it expires?
+	val = GET32(PM_RSTC);
+	val &= ~PM_RSTC_WRCFG_MASK;
+	val |= PM_PASSWORD | PM_RSTC_WRCFG_FULL_RESET;
+	PUT32(PM_RSTC, val);
+}
