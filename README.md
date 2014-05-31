@@ -404,13 +404,14 @@ All Lua modules have to be specified at ROM build time, by an entry in
 are embedded in the main binary as a const static C array. This is used at
 runtime to locate and load the modules in lieu of a full filesystem.
 
-Modules that require native code should set `hasNative = true` in their entry
-in `luaModules`. A C function with signature
-`int init_module_MODULENAME(lua_State* L)` must exist, usually defined in a file
-`usersrc/MODULENAME.c` to complement the Lua code in `modules/MODULENAME.lua`.
-This function will be called whenever the module is `require`d. It is called as
-a `lua_CFunction`, with one argument which is the `_ENV` for the module. It is
-called after the `_ENV` table has been constructed, but before any of the code
-in MODULENAME.lua has run. It should not return anything. The normal use of such
-an init function is to populate the module's `_ENV` with some native functions,
-usually via a call to `luaL_setfuncs(lua_State* L, const luaL_Reg* l, int nup)`.
+Modules that require native code should set `native = "path/to/nativecode.c"` in
+their entry in `luaModules`.
+
+A C function with signature `int init_module_MODULENAME(lua_State* L)` must
+exist in the file that `native` refers to. This function will be called whenever
+the module is `require`d. It is called as a `lua_CFunction`, with one argument
+which is the `_ENV` for the module. It is called after the `_ENV` table has been
+constructed, but before any of the code in MODULENAME.lua has run. It should not
+return anything. The normal use of such an init function is to populate the
+module's `_ENV` with some native functions, usually via a call to
+`luaL_setfuncs(lua_State* L, const luaL_Reg* l, int nup)`.

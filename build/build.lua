@@ -303,9 +303,6 @@ function build_kernel()
 		if not config.fullyHosted then
 			table.insert(sources, { path = "usersrc/crt.c", user = true })
 			table.insert(sources, { path = "usersrc/uklua.c", user = true })
-			table.insert(sources, { path = "usersrc/membuf.c", user = true })
-			table.insert(sources, { path = "usersrc/int64.c", user = true })
-			table.insert(sources, { path = "modules/timerserver/timers.c", user = true })
 		end
 		if config.ulua then
 			table.insert(sources, mallocSource)
@@ -323,8 +320,12 @@ function build_kernel()
 	if config.ulua then
 		table.insert(sources, { path = "usersrc/ulua.c", user = true })
 		table.insert(sources, { path = "usersrc/uexec.c", user = true })
-		table.insert(sources, { path = "usersrc/runloop.c", user = true })
-		table.insert(sources, { path = "usersrc/ipc.c", user = true })
+		-- Add any modules with native code
+		for _, module in ipairs(luaModules) do
+			if type(module) == "table" and module.native then
+				table.insert(sources, { path = module.native, user = true })
+			end
+		end
 	end
 
 	if config.include then
@@ -459,9 +460,9 @@ luaSources = {
 	"lua/lbitlib.c",
 	"lua/lcorolib.c",
 	"lua/ldblib.c",
-	--#"lua/liolib.c",
-	--#"lua/lmathlib.c",
-	--#"lua/loslib.c",
+	--"lua/liolib.c",
+	--"lua/lmathlib.c",
+	--"lua/loslib.c",
 	"lua/lstrlib.c",
 	"lua/ltablib.c",
 	"lua/loadlib.c",
@@ -473,13 +474,13 @@ luaModules = {
 	"modules/common.lua",
 	"modules/test.lua",
 	"modules/interpreter.lua",
-	{ path = "modules/membuf.lua", hasNative = true },
 	"modules/spin.lua",
-	{ path = "modules/int64.lua", hasNative = true },
-	{ path = "modules/runloop.lua", hasNative = true },
-	{ path = "modules/ipc.lua", hasNative = true },
+	{ path = "modules/membuf.lua", native = "usersrc/membuf.c" },
+	{ path = "modules/int64.lua", native = "usersrc/int64.c" },
+	{ path = "modules/runloop.lua", native = "usersrc/runloop.c" },
+	{ path = "modules/ipc.lua", native = "usersrc/ipc.c" },
 	{ path = "modules/timerserver/init.lua" },
-	{ path = "modules/timerserver/server.lua", hasNative = true },
+	{ path = "modules/timerserver/server.lua", native = "modules/timerserver/timers.c" },
 }
 
 mallocSource = {
@@ -511,7 +512,7 @@ function generateLuaModulesSource()
 		local module = luaModule.path
 		local modName = module:gsub("^modules/(.*).lua", "%1"):gsub("/", ".")
 		local cname = "KLua_module_"..modName:gsub("%W", "_")
-		local nativeFn = luaModule.hasNative and "init_module_" .. modName:gsub("%W", "_")
+		local nativeFn = luaModule.native and "init_module_" .. modName:gsub("%W", "_")
 		local moduleEntry = { name = modName, src = luaModule.path, cname = cname, nativeInit = nativeFn}
 		table.insert(modulesMap, moduleEntry)
 		if compileModules then
