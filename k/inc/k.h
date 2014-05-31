@@ -5,8 +5,6 @@
 
 #define LUPI_VERSION_STRING "LuPi 0.17"
 
-typedef unsigned long PhysAddr;
-
 /*
 Limiting to 256 running processes makes the maths quite nice - the ProcessList fits into a page,
 and Process overhead is a maximum 1MB (sounds big but it's fixed). There's maybe also some
@@ -128,6 +126,8 @@ typedef struct SuperPage {
 	bool exception; // only used in kdebugger mode
 	byte uartDroppedChars;
 	KAsyncRequest uartRequest;
+	KAsyncRequest timerRequest;
+	uint64 timerCompletionTime;
 	uint32 crashRegisters[17];
 	byte uartBuf[66];
 	Server servers[MAX_SERVERS];

@@ -7,14 +7,17 @@ typedef struct AsyncRequest AsyncRequest;
 	asm("MOV r1, r0"); \
 	asm("MOV r0, %0" : : "i" (code)); \
 	asm("SVC 0"); \
-	asm("BX lr") \
+	asm("BX lr")
 
 #define EXEC2(code) \
 	asm("MOV r2, r1"); \
-	asm("MOV r1, r0"); \
-	asm("MOV r0, %0" : : "i" (code)); \
-	asm("SVC 0"); \
-	asm("BX lr") \
+	EXEC1(code)
+
+/*
+#define EXEC3(code) \
+	asm("MOV r3, r2"); \
+	EXEC2(code)
+*/
 
 void* NAKED sbrk(ptrdiff_t inc) {
 	EXEC1(KExecSbrk);
@@ -75,4 +78,8 @@ int NAKED exec_completeIpcRequest(AsyncRequest* ipcRequest, bool toServer) {
 
 void NAKED exec_requestServerMessage(AsyncRequest* serverRequest) {
 	EXEC1(KExecRequestServerMsg);
+}
+
+void NAKED exec_setTimer(AsyncRequest* request, uint64* time) {
+	EXEC2(KExecSetTimer);
 }

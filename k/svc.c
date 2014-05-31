@@ -1,10 +1,18 @@
 #include <k.h>
 #include <exec.h>
 #include <kipc.h>
+#include <err.h>
 
 void putbyte(byte b);
 bool byteReady();
 byte getch();
+
+NOINLINE NAKED uint64 readUserInt64(uintptr ptr) {
+	asm("MOV r2, r0");
+	asm("LDRT r0, [r2], #4"); // I think this is the correct way round...
+	asm("LDRT r1, [r2]");
+	asm("BX lr");
+}
 
 int64 handleSvc(int cmd, uintptr arg1, uintptr arg2, void* savedRegisters) {
 	Process* p = TheSuperPage->currentProcess;
@@ -114,6 +122,23 @@ int64 handleSvc(int cmd, uintptr arg1, uintptr arg2, void* savedRegisters) {
 		case KExecCompleteIpcRequest:
 			return ipc_completeRequest(arg1, arg2);
 			break;
+		case KExecSetTimer: {
+			if (TheSuperPage->timerRequest.thread && TheSuperPage->timerRequest.thread != t) {
+				printk("Some other thread %p muscling in on the timer racket\n", t);
+				return KErrAlreadyExists;
+			}
+			TheSuperPage->timerRequest.thread = t;
+			TheSuperPage->timerRequest.userPtr = arg1;
+			uint64 time = readUserInt64(arg2);
+			if (time <= TheSuperPage->uptime) {
+				// Already ready, don't wait for tick()
+				TheSuperPage->timerCompletionTime = UINT64_MAX;
+				thread_requestComplete(&TheSuperPage->timerRequest, 0);
+			} else {
+				TheSuperPage->timerCompletionTime = time;
+			}
+			break;
+		}
 		default:
 			break;
 	}

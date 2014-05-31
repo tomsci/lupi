@@ -13,6 +13,9 @@ typedef unsigned int uint32;
 typedef unsigned int uint;
 typedef unsigned long long uint64;
 
+#define INT64_MAX 0x7FFFFFFFFFFFFFFFLL
+#define UINT64_MAX 0xFFFFFFFFFFFFFFFFULL
+
 typedef unsigned long ulong;
 typedef unsigned long uintptr;
 

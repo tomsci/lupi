@@ -126,8 +126,12 @@ void thread_enqueueBefore(Thread* t, Thread* before) {
 
 // This runs in IRQ context remember
 bool tick(void* savedRegs) {
-	SuperPage* s = TheSuperPage;
+	SuperPage* const s = TheSuperPage;
 	s->uptime++;
+	if (s->uptime == s->timerCompletionTime) {
+		s->timerCompletionTime = UINT64_MAX;
+		thread_requestComplete(&s->timerRequest, 0);
+	}
 	Thread* t = s->currentThread;
 	if (t && t->state == EReady) {
 		ASSERT(t->timeslice > 0); // Otherwise it shouldn't have been running

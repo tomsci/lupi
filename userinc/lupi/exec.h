@@ -19,4 +19,5 @@
 #define KExecCompleteIpcRequest	15
 #define KExecRequestServerMsg	16
 
+#define KExecSetTimer			17
 #endif

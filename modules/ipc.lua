@@ -12,7 +12,7 @@ local function doHandleMsg(msg, cmd)
 	local decodedMsg = {
 	}
 	for i=0,len,4 do -- for (i = 0; i <= len; i+= 4)
-		table.insert(decodedMsg, msg.page:getInt(i))
+		table.insert(decodedMsg, msg.page:getInt(dataPos + i))
 	end
 
 	if msg.server.fns[cmd] then
@@ -118,7 +118,7 @@ function serialiseToPage(server, args)
 		error("Page full, aargh")
 	end
 	local pos = startOfData
-	for i,v in ipairs(tbl) do
+	for i,v in ipairs(args) do
 		if i > 4 then error("Too many parameters to IPC!") end
 		page:setInt(pos, v)
 		pos = pos + 4
