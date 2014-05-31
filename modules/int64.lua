@@ -3,9 +3,9 @@ Int64
 =====
 
 The Int64 type is a userdata containing a C `int64` (`long long`). Int64s are
-only returned by a few native APIs, and do not (currently) implement a full
-suite of metamethods. At the moment all you can usefully do at the moment is
-print them, via the [__tostring()](#Int64___tostring) metamethod.
+only returned by a few native APIs, and can not (currently) be created by Lua
+code. Int64s are immutable (from Lua code) and support the usual range of
+operators which always create a new object.
 
 Note that Int64s should not be used as indexes into Lua tables - table indexing
 uses the definition of raw equality, so two Int64s with the same value will
@@ -15,7 +15,9 @@ to a string first, or if performance is more important than readability, use
 ]]
 
 --[[**
-Returns the value of the Int64 as a string of 16 hex degits.
+Returns the value of the Int64 as a string of 16 hex degits. Usage:
+
+		tostring(theInt64)
 ]]
 function Int64:__tostring()
 	return string.format("%08X%08X", self:hi(), self:lo())
