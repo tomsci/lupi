@@ -15,8 +15,11 @@ function connect()
 	return session
 end
 
-function TimerSession:after(secs, completionFn)
-	ipc.send(self, After, completionFn)
+--[[**
+Calls `completionFn` after `msecs` milliseconds.
+]]
+function TimerSession:after(msecs, completionFn)
+	ipc.send(self, After, {msecs}, completionFn)
 end
 
 function TimerSession:sendInitMsg(completionFn)

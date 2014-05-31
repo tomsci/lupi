@@ -305,6 +305,7 @@ function build_kernel()
 			table.insert(sources, { path = "usersrc/uklua.c", user = true })
 			table.insert(sources, { path = "usersrc/membuf.c", user = true })
 			table.insert(sources, { path = "usersrc/int64.c", user = true })
+			table.insert(sources, { path = "modules/timerserver/timers.c", user = true })
 		end
 		if config.ulua then
 			table.insert(sources, mallocSource)
@@ -478,7 +479,7 @@ luaModules = {
 	{ path = "modules/runloop.lua", hasNative = true },
 	{ path = "modules/ipc.lua", hasNative = true },
 	{ path = "modules/timerserver/init.lua" },
-	{ path = "modules/timerserver/server.lua" },
+	{ path = "modules/timerserver/server.lua", hasNative = true },
 }
 
 mallocSource = {
@@ -510,7 +511,7 @@ function generateLuaModulesSource()
 		local module = luaModule.path
 		local modName = module:gsub("^modules/(.*).lua", "%1"):gsub("/", ".")
 		local cname = "KLua_module_"..modName:gsub("%W", "_")
-		local nativeFn = luaModule.hasNative and "init_module_" .. modName
+		local nativeFn = luaModule.hasNative and "init_module_" .. modName:gsub("%W", "_")
 		local moduleEntry = { name = modName, src = luaModule.path, cname = cname, nativeInit = nativeFn}
 		table.insert(modulesMap, moduleEntry)
 		if compileModules then

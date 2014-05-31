@@ -14,7 +14,6 @@ function main(...)
 
 	print("I'm still special!\n")
 	runloop.new()
-	lupi.createProcess("timerserver.server")
 	local timerserver = require("timerserver")
 	print("Connecting...")
 	local t = timerserver.connect()
@@ -22,6 +21,7 @@ function main(...)
 
 	t:sendInitMsg(function(result)
 		print("Test got response, yay", result);
+		t:after(5000, function() print("[test] after completed!") end)
 	end)
 	runloop.run()
 end
