@@ -201,7 +201,7 @@ void parseAtags(uint32* ptr, AtagsParams* params) {
 #define PM_RSTC_WRCFG_MASK			0x00000030
 #define PM_RSTC_WRCFG_FULL_RESET	0x00000020
 
-void reboot() {
+NORETURN reboot() {
 	uint32 val;
 	// I think this sets the watchdog timeout to 10 ticks (~150us)
 	PUT32(PM_WDOG, 10 | PM_PASSWORD);
@@ -210,4 +210,6 @@ void reboot() {
 	val &= ~PM_RSTC_WRCFG_MASK;
 	val |= PM_PASSWORD | PM_RSTC_WRCFG_FULL_RESET;
 	PUT32(PM_RSTC, val);
+	// This doesn't reboot immediately, so hang until it does
+	hang();
 }

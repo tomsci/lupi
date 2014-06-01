@@ -20,4 +20,6 @@
 #define KExecRequestServerMsg	16
 
 #define KExecSetTimer			17
+#define KExecReboot				18
+
 #endif

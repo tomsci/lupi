@@ -32,6 +32,7 @@ void worddump(const void* addr, int len);
 void dumpRegisters(uint32* regs, uint32 pc, uint32 dataAbortFar);
 NORETURN kabort4(uint32 r0, uint32 r1, uint32 r2, uint32 r3);
 NORETURN hang();
+NORETURN reboot();
 
 #define KRegisterNotSaved 0xA11FADE5
 #define kabort() kabort4(KRegisterNotSaved, KRegisterNotSaved, KRegisterNotSaved, KRegisterNotSaved)

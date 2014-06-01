@@ -63,6 +63,10 @@ void NAKED exec_abort() {
 	SLOW_EXEC1(KExecAbort);
 }
 
+void NAKED exec_reboot() {
+	SLOW_EXEC1(KExecReboot);
+}
+
 uintptr NAKED exec_newSharedPage() {
 	SLOW_EXEC1(KExecNewSharedPage);
 }

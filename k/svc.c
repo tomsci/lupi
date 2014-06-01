@@ -78,6 +78,9 @@ int64 handleSvc(int cmd, uintptr arg1, uintptr arg2, uintptr r14_svc) {
 			saveUserModeRegistersForCurrentThread(&r14_svc, true);
 			kabort1(0xABBADEAD); // doesn't return
 			break;
+		case KExecReboot:
+			reboot(); // doesn't return
+			break;
 		case KExecGetch_Async: {
 			if (byteReady()) {
 				KAsyncRequest req = { .thread = t, .userPtr = arg1 };
