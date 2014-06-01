@@ -5,10 +5,9 @@
 void saveUserModeRegistersForCurrentThread(void* savedRegisters, bool svc) {
 	Thread* t = TheSuperPage->currentThread;
 	if (svc) {
-		// savedRegisters[0..8] contains r4-r12 and savedRegisters[9] has LR_svc
-		memcpy(&t->savedRegisters[4], savedRegisters, 9 * sizeof(uint32));
-		// LR_svc in savedRegisters[9] is what PC_usr needs to be restored to
-		t->savedRegisters[15] = ((uint32*)savedRegisters)[9];
+		// savedRegisters[0] has LR_svc and that's it
+		// (LR_svc is what PC_usr needs to be restored to)
+		t->savedRegisters[15] = ((uint32*)savedRegisters)[0];
 	} else {
 		// savedRegisters[0..12] contains r0-r12 and savedRegisters[13] has LR_irq
 		memcpy(&t->savedRegisters[0], savedRegisters, 13 * sizeof(uint32));
@@ -40,15 +39,12 @@ Thread* findNextReadyThread() {
 }
 
 static NORETURN NAKED doScheduleThread(uint32* savedRegisters, uint32 spsr) {
-	// Important to reset r13_svc because it might be pointed up at whatever called reschedule()
-	asm("LDR r13, .svcStack");
 	asm("MSR spsr_c, r1"); // make sure the 'S' returns us to the correct mode
 	asm("LDR r14, [r0, #60]"); // r14 = savedRegisters[15]
 
 	ASM_JFDI("LDM r0, {r0-r14}^");
 	asm("MOVS pc, r14");
 	// And we're done
-	LABEL_WORD(.svcStack, KKernelStackBase + KKernelStackSize);
 }
 
 // For now assume we're in SVC

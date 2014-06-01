@@ -55,10 +55,12 @@
 #define KPteKernelCode			0x0000022A // C=1, B=0, XN=0, APX=b110, S=0, TEX=0, nG=0
 #define KPteKernelData			0x00000013 // C=B=0, XN=1, APX=b001, S=0, TEX=0, nG=0
 #define KPteUserData			0x0000083F // C=B=1, XN=1, APX=b011, S=0, TEX=0, nG=1
+#define KPteProcessKernelData	0x0000081F // C=B=1, XN=1, APX=b001, S=0, TEX=0, nG=1
 #else
 #define KPteKernelCode			0x00000222 // C=B=0, XN=0, APX=b110, S=0, TEX=0, nG=0
 #define KPteKernelData			0x00000013 // C=B=0, XN=1, APX=b001, S=0, TEX=0, nG=0
 #define KPteUserData			0x00000833 // C=B=0, XN=1, APX=b011, S=0, TEX=0, nG=1
+#define KPteProcessKernelData	0x00000813 // C=B=0, XN=1, APX=b001, S=0, TEX=0, nG=1
 #endif
 
 // Control register bits, see p176
@@ -294,7 +296,8 @@ bool mmu_mapPagesInProcess(PageAllocator* pa, Process* p, uintptr virtualAddress
 	//printk("mmu_mapPagesInProcess va=%p n=%d\n", (void*)virtualAddress, numPages);
 	uint8 pageType = KPageUser;
 	if (numPages < 0) {
-		ASSERT(-numPages == KPageSharedPage, -numPages); // The only other page type we support user-side
+		// The only other page types we support user-side
+		ASSERT(-numPages == KPageSharedPage || -numPages == KPageThreadSvcStack, -numPages);
 		pageType = -numPages;
 		numPages = 1;
 	}
@@ -318,6 +321,12 @@ bool mmu_mapPagesInProcess(PageAllocator* pa, Process* p, uintptr virtualAddress
 	// keep incrementing pte until we're done
 	uint32* pte = pt + PTE_IDX(virtualAddress);
 	uint32* endPte = pte + numPages;
+	uint32 pageMappingType;
+	if (pageType == KPageThreadSvcStack) {
+		pageMappingType = KPteProcessKernelData;
+	} else {
+		pageMappingType = KPteUserData;
+	}
 	while (pte != endPte) {
 		uint32 newPagePhysical = pageAllocator_alloc(pa, pageType, 1);
 		if (!newPagePhysical) {
@@ -325,7 +334,7 @@ bool mmu_mapPagesInProcess(PageAllocator* pa, Process* p, uintptr virtualAddress
 			mmu_unmapPagesInProcess(pa, p, virtualAddress, pte - pt);
 			return false;
 		}
-		*pte = newPagePhysical | KPteUserData;
+		*pte = newPagePhysical | pageMappingType;
 		pte++;
 	}
 	return true;
@@ -420,10 +429,7 @@ Process* switch_process(Process* p) {
 }
 
 void mmu_processExited(PageAllocator* pa, Process* p) {
-	// First, reclaim all memory allocated to the process. Since we know processes can only
-	// allocate memory using sbrk, we can avoid having to do eg a full page table walk
-	mmu_unmapPagesInProcess(pa, p, KUserBss, 1 + ((p->heapLimit - KUserHeapBase) >> KPageShift));
-	// And clean up the page tables themselves
+	// Clean up the page tables themselves
 	for (int sectionIdx = 0; sectionIdx < (KMaxUserAddress >> KSectionShift); sectionIdx++) {
 		mmu_freeUserSection(pa, p, sectionIdx);
 	}

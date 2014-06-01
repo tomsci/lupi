@@ -115,8 +115,14 @@ function stack(obj)
 	-- Figure out what type of stack addr is, and thus how big it is
 	local stackTop
 	if addr <= 0x4000000 then
-		-- User stacks are aligned to 20KB boundary (USER_STACK_SIZE + KPageSize) because of guard page
-		stackTop = roundDown(addr, USER_STACK_SIZE + KPageSize) + USER_STACK_SIZE
+		-- Check if it's a user stack or an svc stack
+		local stackAreaStart = roundDown(addr+100, bit32.lshift(1, USER_STACK_AREA_SHIFT))
+		local svc = addr >= stackAreaStart - 100 and addr < stackAreaStart + KPageSize
+		if svc then
+			stackTop = stackAreaStart + KPageSize
+		else
+			stackTop = stackAreaStart + 2 * KPageSize + USER_STACK_SIZE
+		end
 	elseif addr >= KKernelStackBase - 100 and addr <= KKernelStackBase + KKernelStackSize then
 		stackTop = roundDown(addr, KKernelStackSize) + KKernelStackSize
 	else
@@ -172,4 +178,5 @@ function pageStats()
 	printCount("klua heap", count[PageType.KPageKluaHeap])
 	printCount("KernPtForProcPts", count[PageType.KPageKernPtForProcPts])
 	printCount("Shared pages", count[PageType.KPageSharedPage])
+	printCount("User stack pages", count[PageType.KPageThreadSvcStack])
 end

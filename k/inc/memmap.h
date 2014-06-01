@@ -22,8 +22,9 @@ Abort stack	00004000-00005000	F8049000-F804A000	(4k)
 Guard		-----------------	F804A000-F804B000	(4k)
 IRQ stack	00005000-00006000	F804B000-F804C000	(4k)
 Guard		-----------------	F804C000-F804D000	(4k)
-Kern stack	00006000-00008000	F804D000-F804F000	(8k)
-Guard		-----------------	F804F000-F8050000	(4k)
+Kern stack	00006000-00007000	F804D000-F804E000	(8k)
+Guard		-----------------	F804E000-F804F000	(4k)
+Unused		-----------------	F804F000-F8050000	(4k)
 KKernPtForProcPts_pt			F8050000-F8051000	(4k)
 atags		00000000-00001000	F8051000-F8052000	(12k)
 Unused		-----------------	F8052000-F80C0000
@@ -51,7 +52,7 @@ Peripherals	20000000-20300000	F2000000-F2300000	(3 MB)
 
 #define KPhysicalStackBase		0x00006000u
 #define KKernelStackBase		0xF804D000u
-#define KKernelStackSize		0x00002000u // 8kB
+#define KKernelStackSize		0x00001000u // 4kB
 
 #define KPhysicalCodeBase		0x00008000u
 #define KKernelCodeBase			0xF8008000u
@@ -111,9 +112,23 @@ Thread stacks					0FE00000-10000000
 #define KSharedPagesSize		0x00100000u
 #define KUserStacksBase			0x0FE00000u
 
-// I'll be generous
+/**
+I'm feeling generous.
+*/
 #define USER_STACK_SIZE (16*1024)
 
-#define userStackBase(idx) (KUserStacksBase + idx * (USER_STACK_SIZE + KPageSize))
+#define USER_STACK_AREA_SHIFT 15 // 32kB
+
+/**
+The format is of each user stack area is as follows. Note the svc stack for a
+thread is always 4kB, and that the area is rounded up to a power of 2 to make
+calculating the svc stack address simpler.
+
+	svc stack			1 page
+	guard page			---------------
+	user stack			USER_STACK_SIZE (16kB)
+	guard page			---------------
+	padding				4kB
+*/
 
 #endif

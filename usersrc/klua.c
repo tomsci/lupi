@@ -413,6 +413,7 @@ static void WeveCrashedSetupDebuggingStuff(lua_State* L) {
 	MBUF_ENUM(PageType, KPageKluaHeap);
 	MBUF_ENUM(PageType, KPageKernPtForProcPts);
 	MBUF_ENUM(PageType, KPageSharedPage);
+	MBUF_ENUM(PageType, KPageThreadSvcStack);
 
 	lua_pushcfunction(L, GetProcess_lua);
 	lua_setglobal(L, "GetProcess");
@@ -422,6 +423,7 @@ static void WeveCrashedSetupDebuggingStuff(lua_State* L) {
 	lua_setglobal(L, "switch_process");
 
 	EXPORT_INT(L, USER_STACK_SIZE);
+	EXPORT_INT(L, USER_STACK_AREA_SHIFT);
 	EXPORT_INT(L, KPageSize);
 	EXPORT_INT(L, MAX_PROCESSES);
 	EXPORT_INT(L, MAX_THREADS);

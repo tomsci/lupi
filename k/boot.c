@@ -207,17 +207,35 @@ void NAKED prefetchAbort() {
 }
 
 void NAKED svc() {
-	// Save onto supervisor mode stack.
-	asm("PUSH {r4-r12, r14}");
-	asm("MOV r3, sp"); // Full descending stack means sp now points to the regs we saved
+	// First set up the stack for this thread
+#if 0 // Fast exec
+	// Fast execs can use the supervisor stack - they can't be preempted so it's
+	// safe, and it saves a smidge of calculation
+	asm("MOV r13, %0" : : "i" (KSectionZero));
+	asm("ADD r13, r13, %0" : : "i" (KKernelStackBase + KKernelStackSize - KSectionZero));
+	asm("PUSH {r4-r12}");
+#endif
+
+	// Slow execs have already saved regs r4 to r12 so we can use them as temps
+	asm("MOV r4, %0" : : "i" (KSuperPageAddress));
+	asm("LDR r5, [r4, %0]" : : "i" (offsetof(SuperPage, currentThread)));
+	asm("LDRB r6, [r5, %0]" : : "i" (offsetof(Thread, index)));
+
+	asm("MOV r7, %0" : : "i" (KUserStacksBase));
+	asm("ADD r13, r7, r6, LSL %0" : : "i" (USER_STACK_AREA_SHIFT));
+	asm("ADD r13, r13, #4096"); // So r13 points to top of stack not base
+
+	asm("MOV r3, r14"); // r14_svc is address to return to user side
+	// Also save it for ourselves in the case where we don't get preempted
+	asm("MOV r4, r14");
+
 	// r0, r1, r2 already have the correct data in them for handleSvc()
 	asm("BL handleSvc");
 	// Avoid leaking kernel info into user space (like we really care!)
 	asm("MOV r2, #0");
 	asm("MOV r3, #0");
 
-	asm("POP {r4-r12, r14}");
-	asm("MOVS pc, r14");
+	asm("MOVS pc, r4"); // r4 is where we stashed the user return address
 }
 
 void NAKED dataAbort() {

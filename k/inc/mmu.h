@@ -89,6 +89,8 @@ bool mmu_mapPagesInProcess(PageAllocator* pa, Process* p, uintptr virtualAddress
 
 #define mmu_newSharedPage(pa, p, va) mmu_mapPagesInProcess(pa, p, va, -KPageSharedPage)
 
+#define mmu_mapSvcStack(pa, p, va) mmu_mapPagesInProcess(pa, p, va, -KPageThreadSvcStack)
+
 /**
 Maps the page at `srcUserAddr` into `dest` *at the same address*.
 */

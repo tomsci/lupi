@@ -11,7 +11,8 @@
 #define KPageKluaHeap 7
 #define KPageKernPtForProcPts 8
 #define KPageSharedPage 9
-#define KPageNumberOfTypes 10
+#define KPageThreadSvcStack 10
+#define KPageNumberOfTypes 11
 
 typedef struct PageAllocator {
 	int numPages;

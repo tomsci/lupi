@@ -64,6 +64,11 @@ static bool thread_init(Process* p, int index) {
 	uintptr stackBase = userStackForThread(t);
 	bool ok = mmu_mapPagesInProcess(Al, p, stackBase, USER_STACK_SIZE >> KPageShift);
 	if (!ok) return false;
+	ok = mmu_mapSvcStack(Al, p, svcStackBase(index));
+	if (!ok) {
+		mmu_unmapPagesInProcess(Al, p, stackBase, USER_STACK_SIZE >> KPageShift);
+		return false;
+	}
 
 	t->savedRegisters[13] = stackBase + USER_STACK_SIZE;
 	thread_setState(t, EReady);
@@ -174,7 +179,10 @@ int process_new(const char* name, Process** resultProcess) {
 static void process_exit(Process* p, int reason) {
 	ipc_processExited(Al, p);
 
-	// Cleans up caches and frees all memory associated with process
+	// Now reclaim the heap
+	mmu_unmapPagesInProcess(Al, p, KUserBss, 1 + ((p->heapLimit - KUserHeapBase) >> KPageShift));
+
+	// Cleans up caches and page tables etc
 	mmu_processExited(Al, p);
 
 	if (TheSuperPage->currentProcess == p) {

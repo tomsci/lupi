@@ -140,6 +140,11 @@ ASSERT_COMPILE(sizeof(SuperPage) <= KPageSize);
 
 #define GetProcess(idx) ((Process*)(KProcessesSection + ((idx) << KPageShift)))
 #define indexForProcess(p) ((int)((((uintptr)(p)) >> KPageShift) & 0xFF))
+
+// NOTE: don't change these without also updating the asm in svc()
+#define svcStackOffset(threadIdx) (threadIdx << USER_STACK_AREA_SHIFT)
+#define svcStackBase(threadIdx) (KUserStacksBase + svcStackOffset(threadIdx))
+#define userStackBase(threadIdx) (svcStackBase(threadIdx) + 2*KPageSize)
 #define userStackForThread(t) userStackBase(t->index)
 
 static inline Thread* firstThreadForProcess(Process* p) {

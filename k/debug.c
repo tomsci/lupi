@@ -185,7 +185,7 @@ void worddump(const void* aAddr, int len) {
 static uintptr stackBaseForMode(uint32 mode) {
 	switch (mode) {
 		case KPsrModeUsr: return userStackForThread(TheSuperPage->currentThread);
-		case KPsrModeSvc: return KKernelStackBase;
+		case KPsrModeSvc: return svcStackBase(TheSuperPage->currentThread->index);
 		case KPsrModeAbort: return KAbortStackBase;
 		case KPsrModeUnd: return KAbortStackBase;
 		case KPsrModeIrq: return KIrqStackBase;

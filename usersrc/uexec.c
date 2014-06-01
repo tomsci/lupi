@@ -3,15 +3,18 @@
 
 typedef struct AsyncRequest AsyncRequest;
 
-#define EXEC1(code) \
+#define SLOW_EXEC1(code) \
 	asm("MOV r1, r0"); \
 	asm("MOV r0, %0" : : "i" (code)); \
+	asm("PUSH {r4-r12}"); \
 	asm("SVC 0"); \
+	asm("POP {r4-r12}"); \
 	asm("BX lr")
 
-#define EXEC2(code) \
+#define SLOW_EXEC2(code) \
 	asm("MOV r2, r1"); \
-	EXEC1(code)
+	SLOW_EXEC1(code)
+
 
 /*
 #define EXEC3(code) \
@@ -20,66 +23,66 @@ typedef struct AsyncRequest AsyncRequest;
 */
 
 void* NAKED sbrk(ptrdiff_t inc) {
-	EXEC1(KExecSbrk);
+	SLOW_EXEC1(KExecSbrk);
 }
 
 void NAKED lupi_printstring(const char* str) {
-	EXEC1(KExecPrintString);
+	SLOW_EXEC1(KExecPrintString);
 }
 
 void NAKED exec_putch(uint ch) {
-	EXEC1(KExecPutch);
+	SLOW_EXEC1(KExecPutch);
 }
 
 uint NAKED exec_getch() {
-	EXEC1(KExecGetch);
+	SLOW_EXEC1(KExecGetch);
 }
 
 void NAKED exec_getch_async(AsyncRequest* request) {
-	EXEC1(KExecGetch_Async);
+	SLOW_EXEC1(KExecGetch_Async);
 }
 
 int NAKED exec_createProcess(const char* name) {
-	EXEC1(KExecCreateProcess);
+	SLOW_EXEC1(KExecCreateProcess);
 }
 
 uint64 NAKED exec_getUptime() {
-	EXEC1(KExecGetUptime);
+	SLOW_EXEC1(KExecGetUptime);
 }
 
 void NAKED exec_threadExit(int reason) {
-	EXEC1(KExecThreadExit);
+	SLOW_EXEC1(KExecThreadExit);
 }
 
 // returns number of completed requests
 int NAKED exec_waitForAnyRequest() {
-	EXEC1(KExecWaitForAnyRequest);
+	SLOW_EXEC1(KExecWaitForAnyRequest);
 }
 
 void NAKED exec_abort() {
-	EXEC1(KExecAbort);
+	SLOW_EXEC1(KExecAbort);
 }
 
 uintptr NAKED exec_newSharedPage() {
-	EXEC1(KExecNewSharedPage);
+	SLOW_EXEC1(KExecNewSharedPage);
 }
 
 int NAKED exec_createServer(uint32 serverId) {
-	EXEC1(KExecCreateServer);
+	SLOW_EXEC1(KExecCreateServer);
 }
 
 int NAKED exec_connectToServer(uint32 server, void* ipcPage) {
-	EXEC2(KExecConnectToServer);
+	SLOW_EXEC2(KExecConnectToServer);
 }
 
 int NAKED exec_completeIpcRequest(AsyncRequest* ipcRequest, bool toServer) {
-	EXEC2(KExecCompleteIpcRequest);
+	SLOW_EXEC2(KExecCompleteIpcRequest);
 }
 
 void NAKED exec_requestServerMessage(AsyncRequest* serverRequest) {
-	EXEC1(KExecRequestServerMsg);
+	SLOW_EXEC1(KExecRequestServerMsg);
 }
 
 void NAKED exec_setTimer(AsyncRequest* request, uint64* time) {
-	EXEC2(KExecSetTimer);
+	SLOW_EXEC2(KExecSetTimer);
 }

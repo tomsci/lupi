@@ -14,7 +14,7 @@ NOINLINE NAKED uint64 readUserInt64(uintptr ptr) {
 	asm("BX lr");
 }
 
-int64 handleSvc(int cmd, uintptr arg1, uintptr arg2, void* savedRegisters) {
+int64 handleSvc(int cmd, uintptr arg1, uintptr arg2, uintptr r14_svc) {
 	Process* p = TheSuperPage->currentProcess;
 	Thread* t = TheSuperPage->currentThread;
 
@@ -41,7 +41,7 @@ int64 handleSvc(int cmd, uintptr arg1, uintptr arg2, void* savedRegisters) {
 				return getch();
 			}
 			thread_setState(t, EBlockedFromSvc);
-			saveUserModeRegistersForCurrentThread(savedRegisters, true);
+			saveUserModeRegistersForCurrentThread(&r14_svc, true);
 			thread_setBlockedReason(t, EBlockedOnGetch);
 			TheSuperPage->blockedUartReceiveIrqHandler = t;
 			reschedule();
@@ -59,7 +59,7 @@ int64 handleSvc(int cmd, uintptr arg1, uintptr arg2, void* savedRegisters) {
 			Process* p = NULL;
 			int err = process_new(name, &p);
 			if (err == 0) {
-				saveUserModeRegistersForCurrentThread(savedRegisters, true);
+				saveUserModeRegistersForCurrentThread(&r14_svc, true);
 				t->savedRegisters[0] = p->pid;
 				process_start(p); // effectively causes a reschedule
 				// We should never get here because when the calling thread gets rescheduled,
@@ -76,7 +76,7 @@ int64 handleSvc(int cmd, uintptr arg1, uintptr arg2, void* savedRegisters) {
 			reschedule(); // Never returns
 			break;
 		case KExecAbort:
-			saveUserModeRegistersForCurrentThread(savedRegisters, true);
+			saveUserModeRegistersForCurrentThread(&r14_svc, true);
 			kabort1(0xABBADEAD); // doesn't return
 			break;
 		case KExecGetch_Async: {
@@ -99,7 +99,7 @@ int64 handleSvc(int cmd, uintptr arg1, uintptr arg2, void* savedRegisters) {
 				return result;
 			} else {
 				thread_setState(t, EWaitForRequest);
-				saveUserModeRegistersForCurrentThread(savedRegisters, true);
+				saveUserModeRegistersForCurrentThread(&r14_svc, true);
 				reschedule();
 			}
 			break;
@@ -113,7 +113,7 @@ int64 handleSvc(int cmd, uintptr arg1, uintptr arg2, void* savedRegisters) {
 			return ipc_createServer(arg1, t);
 		case KExecConnectToServer:
 			// Always save registers, because we'll need to block
-			saveUserModeRegistersForCurrentThread(savedRegisters, true);
+			saveUserModeRegistersForCurrentThread(&r14_svc, true);
 			// This doesn't return, unless there was an error
 			return ipc_connectToServer(arg1, arg2);
 		case KExecRequestServerMsg:
