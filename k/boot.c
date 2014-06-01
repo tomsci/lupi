@@ -206,6 +206,36 @@ void NAKED prefetchAbort() {
 	iThinkYouOughtToKnowImFeelingVeryDepressed();
 }
 
+//#define STACK_DEPTH_DEBUG
+
+#ifdef STACK_DEPTH_DEBUG
+#define UNUSED_STACK 0x1A1A1A1A
+
+// Hopefully the register keyword is enough to avoid touching the stack, meaning
+// we don't have to code these up in assembly.
+void svc_cleanstack() {
+	register uint32 p = svcStackBase(TheSuperPage->currentThread->index);
+	uint32 endp;
+	endp = (uint32)&endp; // Don't trash anything above us otherwise we'll break svc()
+	for (; p != endp; p += sizeof(uint32)) {
+		*(uint32*)p = UNUSED_STACK;
+	}
+}
+
+void svc_checkstack(uint32 execId) {
+	// Find low-water mark of stack
+	uint32 p = svcStackBase(TheSuperPage->currentThread->index);
+	const uint32 endp = p + KPageSize;
+	for (; p != endp; p += sizeof(uint32)) {
+		if (*(uint32*)p != UNUSED_STACK) {
+			// Found it
+			printk("Exec %d used %d bytes of stack\n", execId, endp - p);
+			break;
+		}
+	}
+}
+#endif
+
 void NAKED svc() {
 	// First set up the stack for this thread
 #if 0 // Fast exec
@@ -229,8 +259,20 @@ void NAKED svc() {
 	// Also save it for ourselves in the case where we don't get preempted
 	asm("MOV r4, r14");
 
+	#ifdef STACK_DEPTH_DEBUG
+		asm("PUSH {r0-r3}");
+		asm("MOV r11, r0"); // Save the exec id for later
+		asm("BL svc_cleanstack");
+		asm("POP {r0-r3}");
+	#endif
 	// r0, r1, r2 already have the correct data in them for handleSvc()
 	asm("BL handleSvc");
+	#ifdef STACK_DEPTH_DEBUG
+		asm("PUSH {r0-r1}");
+		asm("MOV r0, r11");
+		asm("BL svc_checkstack");
+		asm("POP {r0-r1}");
+	#endif
 	// Avoid leaking kernel info into user space (like we really care!)
 	asm("MOV r2, #0");
 	asm("MOV r3, #0");
