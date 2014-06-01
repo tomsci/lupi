@@ -38,5 +38,8 @@
 
 #define WFI(reg)				asm("MCR p15, 0, " #reg ", c7, c4, 0")
 
+#define GetKernelStackTop(reg) \
+	asm("MOV " #reg ", %0" : : "i" (KSectionZero)); \
+	asm("ADD " #reg ", " #reg ", %0" : : "i" (KKernelStackBase + KKernelStackSize - KSectionZero))
 
 #endif

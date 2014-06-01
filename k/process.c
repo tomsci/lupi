@@ -176,11 +176,29 @@ int process_new(const char* name, Process** resultProcess) {
 	return err;
 }
 
+static void freeThreadStacks(Thread* t) {
+	uintptr stackBase = userStackForThread(t);
+	Process* p = processForThread(t);
+	mmu_unmapPagesInProcess(Al, p, stackBase, USER_STACK_SIZE >> KPageShift);
+	mmu_unmapPagesInProcess(Al, p, svcStackBase(t->index), 1);
+}
+
 static void process_exit(Process* p, int reason) {
 	ipc_processExited(Al, p);
 
 	// Now reclaim the heap
 	mmu_unmapPagesInProcess(Al, p, KUserBss, 1 + ((p->heapLimit - KUserHeapBase) >> KPageShift));
+
+	// Currently there's no way for the process to die unless all its threads
+	// are already dead and cleaned up, but do this anyway in case we ever add
+	// an explicit process exit API.
+	for (int i = 0; i < p->numThreads; i++) {
+		Thread* t = &p->threads[i];
+		if (t->state != EDead) {
+			thread_setState(t, EDead);
+			freeThreadStacks(t);
+		}
+	}
 
 	// Cleans up caches and page tables etc
 	mmu_processExited(Al, p);
@@ -192,9 +210,10 @@ static void process_exit(Process* p, int reason) {
 	//printk("Process %s exited with %d", p->name, reason);
 }
 
-void thread_exit(Thread* t, int reason) {
+void do_thread_exit(Thread* t, int reason) {
 	t->exitReason = reason;
 	thread_setState(t, EDead);
+	freeThreadStacks(t);
 	Process* p = processForThread(t);
 	// Check if the process still has any alive threads - if not call process_exit()
 	bool dead = true;
@@ -207,6 +226,16 @@ void thread_exit(Thread* t, int reason) {
 	if (dead) {
 		process_exit(p, reason);
 	}
+}
+
+NORETURN NAKED thread_exit(Thread* t, int reason) {
+	// We're going to be cleaning up the thread's stack, and since we only ever
+	// call this when t is the current thread, we'd better switch to a stack a
+	// little more permanent. Since we don't return from this function we don't
+	// have to worry about anything already on the stack.
+	GetKernelStackTop(r13);
+	asm("BL do_thread_exit");
+	asm("B reschedule");
 }
 
 void thread_setBlockedReason(Thread* t, ThreadBlockedReason reason) {

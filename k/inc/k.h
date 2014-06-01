@@ -164,7 +164,7 @@ int process_new(const char* name, Process** resultProcess);
 NORETURN process_start(Process* p);
 bool process_grow_heap(Process* p, int incr);
 void thread_setState(Thread* t, enum ThreadState s);
-void thread_exit(Thread* t, int reason);
+NORETURN thread_exit(Thread* t, int reason);
 void thread_requestSignal(KAsyncRequest* request);
 void thread_requestComplete(KAsyncRequest* request, int result);
 void thread_setBlockedReason(Thread* t, ThreadBlockedReason reason);

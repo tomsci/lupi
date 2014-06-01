@@ -241,8 +241,7 @@ void NAKED svc() {
 #if 0 // Fast exec
 	// Fast execs can use the supervisor stack - they can't be preempted so it's
 	// safe, and it saves a smidge of calculation
-	asm("MOV r13, %0" : : "i" (KSectionZero));
-	asm("ADD r13, r13, %0" : : "i" (KKernelStackBase + KKernelStackSize - KSectionZero));
+	GetKernelStackTop(r13);
 	asm("PUSH {r4-r12}");
 #endif
 
