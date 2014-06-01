@@ -18,7 +18,7 @@ The available syntax is below.
 
 -- Note the weird bracket syntax so this is both a string we can print at
 -- runtime, and also something that looks like a documentation comment
-local helpText = [=[
+local helpText = [[
 --[[**
 Functions
 ---------
@@ -69,11 +69,8 @@ the members can accessed using normal Lua member syntax. Ie:
                                             -- process
 
 As a convenience, calling a function from the command line automatically prints
-any returned values, so "GetProcess(0)" is equivalent to print(GetProcess(0))
-
+any returned values, so "GetProcess(0)" is equivalent to print(GetProcess(0)).
 ]]
-
-]=]
 
 local require = require -- Make sure we keep this even after we've changed _ENV
 local membuf = require("membuf")
@@ -86,11 +83,8 @@ sp = TheSuperPage
 p = print
 
 function help()
-	print([[
-The klua debugger.
-
-]])
-	print(helpText:sub(7, -(#helpText - 7 - 3))) -- Skip documentation comment bit
+	print("The klua debugger.")
+	print(helpText:sub(7, #helpText)) -- Skip documentation comment bit
 end
 
 --local band, bnot = bit32.band, bit32.bnot
@@ -168,6 +162,7 @@ function pageStats()
 		print(string.format("%s:%s%d (%d kB)", text, pad, num, num * 4))
 	end
 
+	printCount("Total used RAM", TheSuperPage.totalRam/4096 - count[PageType.KPageFree])
 	printCount("Free pages", count[PageType.KPageFree])
 	printCount("Section 0 pages", count[PageType.KPageSect0])
 	printCount("Allocator", count[PageType.KPageAllocator])
