@@ -157,6 +157,8 @@ local function gotChar(ch)
 		print("")
 		local lineString = table.concat(line)
 		saveLineToHistory(lineString) -- even if it didn't compile, it still goes in the history
+		-- Like the standard Lua interpreter, support "=" as a synonym for "return"
+		lineString = lineString:gsub("^=", "return ")
 		if lineString:match("%)$") and not lineString:match("=") and not lineString:match("^return ") then
 			-- Assume it's a function call and prepend an implicit return statement
 			lineString = "return "..lineString
