@@ -18,7 +18,7 @@ function link(objs)
 		quotedObjs[i] = build.qrp(obj)
 	end
 	local out = build.qrp("bin/luac")
-	local cmd = string.format("gcc -arch i386 -Os -o %s %s ", out, build.join(objs))
+	local cmd = string.format("gcc -arch i386 -Os -o %s %s ", out, build.join(quotedObjs))
 	local ok = build.exec(cmd)
 	if not ok then error("Link failed!") end
 end

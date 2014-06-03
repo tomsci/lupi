@@ -1,17 +1,22 @@
 {
+	"build_systems":
+	[
+		{
+			"cmd":
+			[
+				"/usr/local/bin/fish",
+				"-c",
+				"lua ./build/build.lua -m pi -j64"
+			],
+			"file_regex": "^(?:bin/luac: |lua: )?([^:]+)(?::([0-9]+)):",
+			"name": "build.lua",
+			"working_dir": "${project_path}"
+		}
+	],
 	"folders":
 	[
 		{
-			"path": "/Users/tomsci/Documents/lupi"
+			"path": "."
 		}
-	],
-	"build_systems":
-    [
-        {
-            "name": "build.lua",
-            "cmd": ["/usr/local/bin/fish", "-c", "lua ./build/build.lua -m pi -j64"],
-            "working_dir": "${project_path}",
-            "file_regex": "^(?:bin/luac: |lua: )?([^:]+)(?::([0-9]+)):"
-        }
-    ]
+	]
 }
