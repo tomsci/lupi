@@ -148,7 +148,6 @@ Syntax:
 				 --modules option.
 		doc		Generates the HTML documentation.
 
-For pi builds, the compiler binary `arm-none-eabi-cpp` must be on the path.
 Targets are built in the order specified on the command line, so if you specify
 `clean`, it should be first. Eg:
 
@@ -163,6 +162,14 @@ the kernel code segment will be located at `0xF8008000`, which is
 not the same as the _physical_ address where the bootloader initially loads the
 kernel image. The early boot code is especially careful not to assume code is
 located at `0xF8008000` prior to it enabling the MMU.
+
+The system requirements for running build.lua are:
+
+* Lua 5.2 must be on your `PATH`, and must support `io.popen()`.
+* For pi builds, `arm-none-eabi-gcc` must be on your `PATH`, and must support
+  gcc 4.x syntax.
+* The default system shell must support `which`, `find -path`, `mkdir -p`,
+  `rm`.
 
 ### Documentation
 

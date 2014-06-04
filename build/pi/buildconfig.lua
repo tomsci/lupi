@@ -1,6 +1,6 @@
 config = {
 	toolchainPrefix = "arm-none-eabi-",
-	machine = { "arm", "armv6", "arm1176jzf-s" },
+	machine = { "arm", "armv6", "armv6-m", "arm1176jzf-s" },
 
 	include = "pi.h",
 	userInclude = "piuser.h",

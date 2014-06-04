@@ -154,16 +154,35 @@ end
 
 function makeAbsolutePath(path, relativeTo)
 	if path:match("^/") then return path end -- already absolute
-	local result = relativeTo .. "/" .. path
-	-- And normalise
-	result = result:gsub("//+", "/"):gsub("/%./", "/")
-	result = result:gsub("/([^/]+)/../", "/")
+	local pc = makePathComponents(relativeTo)
+	for _, c in ipairs(makePathComponents(path)) do
+		table.insert(pc, c)
+	end
+	-- Normalise
+	local i = 1
+	while i <= #pc do
+		if pc[i] == "." then
+			table.remove(pc, i)
+		elseif pc[i] == ".." and i > 1 then
+			table.remove(pc, i)
+			table.remove(pc, i-1)
+			i = i - 1
+		else
+			i = i + 1
+		end
+	end
+	result = table.concat(pc, "/")
 	return result
 end
 
 function lastPathComponent(path)
 	local pc = makePathComponents(path)
 	return pc[#pc]
+end
+
+function removeLastPathComponent(path)
+	local pc = makePathComponents(path)
+	return table.concat(pc, "/", 1, #pc - 1)
 end
 
 function removeExtension(path)
@@ -246,6 +265,32 @@ function calculateUniqueDirsFromSources(prefix, sources)
 		end
 	end
 	return result
+end
+
+local function findLibgcc()
+	-- First find where gcc is
+	local h = io.popen("which "..config.cc)
+	local path = h:read("*l")
+	assert(h:close())
+	-- Then look for libgcc in ../lib/gcc relative to the gcc binary
+	local binDir = removeLastPathComponent(path)
+	local libDir = makeAbsolutePath("../lib/gcc", binDir)
+	-- Search for a libgcc.a in a dir matching one of the entries in
+	-- config.machine. Have to do repeated searches to ensure we pick up the
+	-- most specific one
+	local foundLib
+	for i = #config.machine, 1, -1 do
+		local path = string.format("*/%s/libgcc.a", config.machine[i])
+		local cmd = string.format("find %s -path %s", quote(libDir), quote(path))
+		h = io.popen(cmd)
+		for p in h:lines() do
+			foundLib = p
+		end
+		assert(h:close())
+		if foundLib then break end
+	end
+	assert(foundLib, "Cannot locate libgcc.a")
+	return foundLib
 end
 
 function build_kernel()
@@ -415,9 +460,8 @@ function build_kernel()
 			args[i] = qrp(obj)
 		end
 		if config.klua or config.ulua then
-			--# I need your clothes, your boots and your run-time EABI helper functions
-			--# TODO fix hardcoded path!
-			table.insert(args, "/Users/tomsci/Documents/gcc-arm/gcc-arm-none-eabi-4_8-2013q4/lib/gcc/arm-none-eabi/4.8.3/armv6-m/libgcc.a")
+			-- I need your clothes, your boots and your run-time EABI helper functions
+			table.insert(args, findLibgcc())
 		end
 		-- The only BSS we have is userside, so we can set to a user address
 		table.insert(args, "-Ttext 0xF8008000 -Tbss 0x00007000")
@@ -676,7 +720,6 @@ function run()
 		else
 			config = loadConfig(platform)
 			build_kernel()
-			--build_lua()
 			for _,step in ipairs(config.buildSteps or {}) do
 				step()
 			end
