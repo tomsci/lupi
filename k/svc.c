@@ -18,6 +18,7 @@ int64 handleSvc(int cmd, uintptr arg1, uintptr arg2, uintptr r14_svc) {
 	Process* p = TheSuperPage->currentProcess;
 	Thread* t = TheSuperPage->currentThread;
 
+	cmd = cmd & ~KFastExec; // Mask off the fast exec bit if necessary
 	switch (cmd) {
 		case KExecSbrk:
 			if (arg1) {

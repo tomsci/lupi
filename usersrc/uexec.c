@@ -15,12 +15,16 @@ typedef struct AsyncRequest AsyncRequest;
 	asm("MOV r2, r1"); \
 	SLOW_EXEC1(code)
 
-
-/*
-#define EXEC3(code) \
-	asm("MOV r3, r2"); \
-	EXEC2(code)
-*/
+// User-side, fast execs are set up exactly the same as slow ones,
+// except for ORing KFastExec
+#define FAST_EXEC1(code) \
+	asm("MOV r1, r0"); \
+	asm("MOV r0, %0" : : "i" (code)); \
+	asm("ORR r0, r0, %0" : : "i" (KFastExec)); \
+	asm("PUSH {r4-r12}"); \
+	asm("SVC 0"); \
+	asm("POP {r4-r12}"); \
+	asm("BX lr")
 
 void* NAKED sbrk(ptrdiff_t inc) {
 	SLOW_EXEC1(KExecSbrk);
@@ -56,7 +60,7 @@ void NAKED exec_threadExit(int reason) {
 
 // returns number of completed requests
 int NAKED exec_waitForAnyRequest() {
-	SLOW_EXEC1(KExecWaitForAnyRequest);
+	FAST_EXEC1(KExecWaitForAnyRequest);
 }
 
 void NAKED exec_abort() {

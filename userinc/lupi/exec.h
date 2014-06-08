@@ -1,6 +1,8 @@
 #ifndef LUPI_EXEC_H
 #define LUPI_EXEC_H
 
+#define KFastExec 				0x00800000
+
 #define KExecSbrk				1
 #define KExecPrintString		2
 #define KExecPutch				3

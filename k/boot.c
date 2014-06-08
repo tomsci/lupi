@@ -3,6 +3,7 @@
 #include <pageAllocator.h>
 #include <arm.h>
 #include <atags.h>
+#include <exec.h>
 
 void uart_init();
 void irq_init();
@@ -238,12 +239,12 @@ void svc_checkstack(uint32 execId) {
 
 void NAKED svc() {
 	// First set up the stack for this thread
-#if 0 // Fast exec
 	// Fast execs can use the supervisor stack - they can't be preempted so it's
 	// safe, and it saves a smidge of calculation
-	GetKernelStackTop(r13);
-	asm("PUSH {r4-r12}");
-#endif
+	asm("TST r0, %0" : : "i" (KFastExec));
+	// cond will be NE if exec&KFastExec
+	GetKernelStackTop(NE, r13);
+	asm("BNE .doexec");
 
 	// Slow execs have already saved regs r4 to r12 so we can use them as temps
 	asm("MOV r4, %0" : : "i" (KSuperPageAddress));
@@ -254,6 +255,9 @@ void NAKED svc() {
 	asm("ADD r13, r7, r6, LSL %0" : : "i" (USER_STACK_AREA_SHIFT));
 	asm("ADD r13, r13, #4096"); // So r13 points to top of stack not base
 
+	// TODO at some point, re-enable interrupts for slow execs
+
+	asm(".doexec:");
 	asm("MOV r3, r14"); // r14_svc is address to return to user side
 	// Also save it for ourselves in the case where we don't get preempted
 	asm("MOV r4, r14");

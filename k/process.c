@@ -233,7 +233,7 @@ NORETURN NAKED thread_exit(Thread* t, int reason) {
 	// call this when t is the current thread, we'd better switch to a stack a
 	// little more permanent. Since we don't return from this function we don't
 	// have to worry about anything already on the stack.
-	GetKernelStackTop(r13);
+	GetKernelStackTop(AL, r13);
 	asm("BL do_thread_exit");
 	asm("B reschedule");
 }
