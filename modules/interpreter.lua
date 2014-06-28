@@ -87,11 +87,18 @@ local function clearLine()
 	end
 end
 
+function handleCtrlA()
+	setCursor(1)
+end
+
+function handleCtrlE()
+	setCursor(#line + 1)
+end
+
 local function handleChar(ch)
-	if ch == CTRL('A') then
-		setCursor(1)
-	elseif ch == CTRL('E') then
-		setCursor(#line + 1)
+	local handleCtrlFn = ch < 30 and _ENV["handleCtrl"..(string.char(ch - 1 + c'A'))]
+	if handleCtrlFn then
+		handleCtrlFn(ch)
 	else
 		table.insert(line, cursor, string.char(ch))
 		safeputch(ch)

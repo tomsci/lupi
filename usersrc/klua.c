@@ -294,6 +294,7 @@ static int lua_reboot(lua_State* L) {
 }
 
 static void WeveCrashedSetupDebuggingStuff(lua_State* L) {
+	// Interpreter module at top of stack
 	lua_getfield(L, -1, "require");
 	lua_pushliteral(L, "membuf");
 	lua_call(L, 1, 0);

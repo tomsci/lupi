@@ -41,6 +41,7 @@ Functions
                         number (which is assumed to be a stack pointer) or nil
                         (in which case TheSuperPage.crashRegisters.r13 is used).
     pageStats()         Print stats about the PageAllocator.
+    reboot(), ^X        Reboot the device.
 
     buf:getAddress()    returns the address of the MemBuf.
     buf:getLength()     returns the length of the MemBuf in bytes.
@@ -77,6 +78,7 @@ local membuf = require("membuf")
 
 -- We're not a module, just a collection of helper fns that should be global
 _ENV = _G
+local interpreter = require("interpreter")
 
 -- Conveniences
 sp = TheSuperPage
@@ -123,7 +125,7 @@ function stack(obj)
 		stackTop = roundDown(addr, KPageSize) + KPageSize
 	end
 
-	local stackMem = mem(addr, stackTop - addr)
+	local stackMem = newmem(addr, stackTop - addr)
 	print(stackMem:words())
 end
 
@@ -147,6 +149,7 @@ function pageStats()
 	-- Maybe can revisit this if icache ever starts working
 	--[[
 	local n = Al.numPages
+	--TODO the pageList offset is almost certainly wrong by now
 	local pageList = mem(Al:getAddress() + 8, n)
 	local count = {}
 	for i = 0, n-1 do
@@ -174,4 +177,17 @@ function pageStats()
 	printCount("KernPtForProcPts", count[PageType.KPageKernPtForProcPts])
 	printCount("Shared pages", count[PageType.KPageSharedPage])
 	printCount("User stack pages", count[PageType.KPageThreadSvcStack])
+end
+
+function interpreter.handleCtrlX()
+	-- The interpreter will check for this fn if the user hits ctrl-X
+	print("reboot")
+	-- Some extra newlines because otherwise the reboot will occur before the
+	-- uart buffers have completed flushing and the "reboot" text will be
+	-- truncated
+	print("")
+	print("")
+	print("")
+	print("")
+	reboot()
 end
