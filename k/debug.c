@@ -161,17 +161,19 @@ void hexdump(const char* addr, int len) {
 
 void worddump(const void* aAddr, int len) {
 	const char* addr = (const char*)aAddr;
-	int nlines = len / 16;
+	const int nwords = len / 4;
+	int nlines = (nwords + 3) / 4;
 	char buf[9];
 	for (int i = 0; i < nlines; i++) {
 		const char* lineStart = addr + (i * 16);
 		printk("%p: ", lineStart);
-		for (int j = 0; j < 4; j++) {
+		const int n = (i+1 == nlines ? (nwords - i*4) : 4);
+		for (int j = 0; j < n; j++) {
 			putstr(uintToHex(((const uint32*)lineStart)[j], buf, sizeof(buf), true));
 			putch(' ');
 		}
 		putch(' ');
-		for (int j = 0; j < 16; j++) {
+		for (int j = 0; j < n*4; j++) {
 			char ch = lineStart[j];
 			if (ch < ' ' || ch >= 127) ch = '.';
 			putch(ch);
