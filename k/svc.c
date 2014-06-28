@@ -14,21 +14,26 @@ NOINLINE NAKED uint64 readUserInt64(uintptr ptr) {
 	asm("BX lr");
 }
 
-int64 handleSvc(int cmd, uintptr arg1, uintptr arg2, uintptr r14_svc) {
+int64 handleSvc(int cmd, uintptr arg1, uintptr arg2, uint32 r14_svc) {
+	if (cmd & KFastExec) {
+		cmd = cmd & ~KFastExec;
+	}
+
 	Process* p = TheSuperPage->currentProcess;
 	Thread* t = TheSuperPage->currentThread;
+	uint64 result = 0;
 
-	cmd = cmd & ~KFastExec; // Mask off the fast exec bit if necessary
 	switch (cmd) {
 		case KExecSbrk:
 			if (arg1) {
 				uintptr oldLim = p->heapLimit;
 				bool ok = process_grow_heap(p, (int)arg1);
-				if (ok) return oldLim;
-				else return -1;
+				if (ok) result = oldLim;
+				else result = -1;
 			} else {
-				return p->heapLimit;
+				result = p->heapLimit;
 			}
+			break;
 		case KExecPrintString:
 			// TODO sanitise parameters!
 			printk("%s", (const char*)arg1);
@@ -39,7 +44,8 @@ int64 handleSvc(int cmd, uintptr arg1, uintptr arg2, uintptr r14_svc) {
 			break;
 		case KExecGetch: {
 			if (byteReady()) {
-				return getch();
+				result = getch();
+				break;
 			}
 			thread_setState(t, EBlockedFromSvc);
 			saveUserModeRegistersForCurrentThread(&r14_svc, true);
@@ -68,7 +74,7 @@ int64 handleSvc(int cmd, uintptr arg1, uintptr arg2, uintptr r14_svc) {
 				// preemption in svc mode except for things that explicitly yield to user mode)
 				ASSERT(false);
 			} else {
-				return err;
+				result = err;
 			}
 			break;
 		}
@@ -77,6 +83,7 @@ int64 handleSvc(int cmd, uintptr arg1, uintptr arg2, uintptr r14_svc) {
 			break;
 		case KExecAbort:
 			saveUserModeRegistersForCurrentThread(&r14_svc, true);
+			printk("Abort called by process %s\n", p->name);
 			kabort1(0xABBADEAD); // doesn't return
 			break;
 		case KExecReboot:
@@ -97,9 +104,8 @@ int64 handleSvc(int cmd, uintptr arg1, uintptr arg2, uintptr r14_svc) {
 			uint8* reqs = &t->completedRequests;
 			if (*reqs) {
 				// There are some completed requests, return immediately
-				int result = *reqs;
+				result = *reqs;
 				*reqs = 0;
-				return result;
 			} else {
 				thread_setState(t, EWaitForRequest);
 				saveUserModeRegistersForCurrentThread(&r14_svc, true);
@@ -109,26 +115,31 @@ int64 handleSvc(int cmd, uintptr arg1, uintptr arg2, uintptr r14_svc) {
 		}
 #endif
 		case KExecGetUptime:
-			return TheSuperPage->uptime;
+			result = TheSuperPage->uptime;
+			break;
 		case KExecNewSharedPage:
-			return ipc_mapNewSharedPageInCurrentProcess();
+			result = ipc_mapNewSharedPageInCurrentProcess();
+			break;
 		case KExecCreateServer:
-			return ipc_createServer(arg1, t);
+			result = ipc_createServer(arg1, t);
+			break;
 		case KExecConnectToServer:
 			// Always save registers, because we'll need to block
 			saveUserModeRegistersForCurrentThread(&r14_svc, true);
 			// This doesn't return, unless there was an error
-			return ipc_connectToServer(arg1, arg2);
+			result = ipc_connectToServer(arg1, arg2);
+			break;
 		case KExecRequestServerMsg:
 			ipc_requestServerMsg(t, arg1);
 			break;
 		case KExecCompleteIpcRequest:
-			return ipc_completeRequest(arg1, arg2);
+			result = ipc_completeRequest(arg1, arg2);
 			break;
 		case KExecSetTimer: {
 			if (TheSuperPage->timerRequest.thread && TheSuperPage->timerRequest.thread != t) {
 				printk("Some other thread %p muscling in on the timer racket\n", t);
-				return KErrAlreadyExists;
+				result = KErrAlreadyExists;
+				break;
 			}
 			TheSuperPage->timerRequest.thread = t;
 			TheSuperPage->timerRequest.userPtr = arg1;
@@ -145,5 +156,5 @@ int64 handleSvc(int cmd, uintptr arg1, uintptr arg2, uintptr r14_svc) {
 		default:
 			break;
 	}
-	return 0;
+	return result;
 }

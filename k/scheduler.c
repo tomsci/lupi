@@ -2,7 +2,7 @@
 #include <mmu.h>
 #include <arm.h>
 
-void saveUserModeRegistersForCurrentThread(void* savedRegisters, bool svc) {
+void saveUserModeRegistersForCurrentThread(uint32* savedRegisters, bool svc) {
 	Thread* t = TheSuperPage->currentThread;
 	if (svc) {
 		// savedRegisters[0] has LR_svc and that's it
@@ -12,7 +12,7 @@ void saveUserModeRegistersForCurrentThread(void* savedRegisters, bool svc) {
 		// savedRegisters[0..12] contains r0-r12 and savedRegisters[13] has LR_irq
 		memcpy(&t->savedRegisters[0], savedRegisters, 13 * sizeof(uint32));
 		// LR_irq in savedRegisters[13] is 4 more than what PC_usr needs to be restored to
-		t->savedRegisters[15] = ((uint32*)savedRegisters)[13] - 4;
+		t->savedRegisters[15] = savedRegisters[13] - 4;
 	}
 	uint32* splr = &t->savedRegisters[13];
 	ASM_JFDI("STM %0, {r13-r14}^" : : "r" (splr)); // Saves the user (banked) r13 and r14
@@ -79,8 +79,10 @@ NORETURN NAKED reschedule() {
 NORETURN NAKED reschedule_irq() {
 	// Reset IRQ stack and call reschedule in SVC mode (so nothing else messes stack up again)
 	asm("LDR r13, .irqStack");
-	asm("MOV r1, #0"); DSB(r1); // Needed?
+	asm("MOV r1, #0");
+	DSB(r1);
 	ModeSwitch(KPsrModeSvc | KPsrFiqDisable | KPsrIrqDisable);
+	GetKernelStackTop(AL, r13);
 	asm("B reschedule");
 	LABEL_WORD(.irqStack, KIrqStackBase + KPageSize);
 }
