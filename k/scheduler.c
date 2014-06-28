@@ -2,24 +2,48 @@
 #include <mmu.h>
 #include <arm.h>
 
-void saveUserModeRegistersForCurrentThread(uint32* savedRegisters, bool svc) {
+// Assumes we were in IRQ mode with interrupts off to start with
+static NAKED NOINLINE void irq_saveSvcSpLr(uint32* splr) {
+	ModeSwitch(KPsrModeSvc | KPsrIrqDisable | KPsrFiqDisable);
+	asm("STM r0, {r13-r14}");
+	ModeSwitch(KPsrModeIrq | KPsrIrqDisable | KPsrFiqDisable);
+	asm("BX lr");
+}
+
+/**
+The behaviour of this function is different depending on the mode it is called
+in, and the mode the current thread is in (as indicated by the current value of
+spsr).
+
+* If mode is IRQ, `savedRegisters` should point to registers {r0-r12, pc} for
+  the mode specified by spsr_irq. r13 and r14 are retrieved via `STM ^` if
+  spsr_irq is USR (or System), and by a mode switch to SVC mode otherwise.
+* If mode is SVC, `savedRegisters` should point to r14_svc only (ie usr PC) and
+  spsr_svc really better be Usr or System. r13 and r14 are retreived via `STM ^`.
+*/
+void saveCurrentRegistersForThread(void* savedRegisters) {
 	Thread* t = TheSuperPage->currentThread;
-	if (svc) {
-		// savedRegisters[0] has LR_svc and that's it
-		// (LR_svc is what PC_usr needs to be restored to)
-		t->savedRegisters[15] = ((uint32*)savedRegisters)[0];
-	} else {
-		// savedRegisters[0..12] contains r0-r12 and savedRegisters[13] has LR_irq
+	uint32 cpsr, spsr;
+	GetCpsr(cpsr);
+	GetSpsr(spsr);
+	t->savedRegisters[16] = spsr;
+	bool irq = (cpsr & KPsrModeMask) == KPsrModeIrq;
+	uint32* splr = &t->savedRegisters[13];
+	if (irq) {
 		memcpy(&t->savedRegisters[0], savedRegisters, 13 * sizeof(uint32));
 		// LR_irq in savedRegisters[13] is 4 more than what PC_usr needs to be restored to
-		t->savedRegisters[15] = savedRegisters[13] - 4;
+		t->savedRegisters[15] = ((uint32*)savedRegisters)[13] - 4;
+		if ((spsr & KPsrModeMask) == KPsrModeSvc) {
+			// Have to mode switch to retrieve r13 and r14
+			ASSERT(false, 0x5C4D); // We don't currently ever save SVC registers
+			irq_saveSvcSpLr(splr);
+		} else {
+			ASM_JFDI("STM %0, {r13-r14}^" : : "r" (splr)); // Saves the user (banked) r13 and r14
+		}
+	} else {
+		t->savedRegisters[15] = ((uint32*)savedRegisters)[0];
+		ASM_JFDI("STM %0, {r13-r14}^" : : "r" (splr)); // Saves the user (banked) r13 and r14
 	}
-	uint32* splr = &t->savedRegisters[13];
-	ASM_JFDI("STM %0, {r13-r14}^" : : "r" (splr)); // Saves the user (banked) r13 and r14
-	uint32 userPsr;
-	asm("MRS %0, spsr" : "=r" (userPsr));
-	t->savedRegisters[16] = userPsr;
-
 	//printk("Saved registers thread %d-%d ts=%d\n", indexForProcess(processForThread(t)), t->index, t->timeslice);
 	//worddump((char*)&t->savedRegisters[0], sizeof(t->savedRegisters));
 }
@@ -136,7 +160,7 @@ bool tick(void* savedRegs) {
 		t->timeslice--;
 		if (t->timeslice == 0) {
 			// Thread is out of time!
-			saveUserModeRegistersForCurrentThread(savedRegs, false);
+			saveCurrentRegistersForThread(savedRegs);
 			// Move to end of ready list
 			dequeue(t);
 			thread_enqueueBefore(t, s->readyList ? s->readyList->prev : NULL);

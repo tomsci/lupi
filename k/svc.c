@@ -48,7 +48,7 @@ int64 handleSvc(int cmd, uintptr arg1, uintptr arg2, uint32 r14_svc) {
 				break;
 			}
 			thread_setState(t, EBlockedFromSvc);
-			saveUserModeRegistersForCurrentThread(&r14_svc, true);
+			saveCurrentRegistersForThread(&r14_svc);
 			thread_setBlockedReason(t, EBlockedOnGetch);
 			TheSuperPage->blockedUartReceiveIrqHandler = t;
 			reschedule();
@@ -66,7 +66,7 @@ int64 handleSvc(int cmd, uintptr arg1, uintptr arg2, uint32 r14_svc) {
 			Process* p = NULL;
 			int err = process_new(name, &p);
 			if (err == 0) {
-				saveUserModeRegistersForCurrentThread(&r14_svc, true);
+				saveCurrentRegistersForThread(&r14_svc);
 				t->savedRegisters[0] = p->pid;
 				process_start(p); // effectively causes a reschedule
 				// We should never get here because when the calling thread gets rescheduled,
@@ -82,7 +82,7 @@ int64 handleSvc(int cmd, uintptr arg1, uintptr arg2, uint32 r14_svc) {
 			thread_exit(t, (int)arg1); // Never returns
 			break;
 		case KExecAbort:
-			saveUserModeRegistersForCurrentThread(&r14_svc, true);
+			saveCurrentRegistersForThread(&r14_svc);
 			printk("Abort called by process %s\n", p->name);
 			kabort1(0xABBADEAD); // doesn't return
 			break;
@@ -108,7 +108,7 @@ int64 handleSvc(int cmd, uintptr arg1, uintptr arg2, uint32 r14_svc) {
 				*reqs = 0;
 			} else {
 				thread_setState(t, EWaitForRequest);
-				saveUserModeRegistersForCurrentThread(&r14_svc, true);
+				saveCurrentRegistersForThread(&r14_svc);
 				reschedule();
 			}
 			break;
@@ -125,7 +125,7 @@ int64 handleSvc(int cmd, uintptr arg1, uintptr arg2, uint32 r14_svc) {
 			break;
 		case KExecConnectToServer:
 			// Always save registers, because we'll need to block
-			saveUserModeRegistersForCurrentThread(&r14_svc, true);
+			saveCurrentRegistersForThread(&r14_svc);
 			// This doesn't return, unless there was an error
 			result = ipc_connectToServer(arg1, arg2);
 			break;

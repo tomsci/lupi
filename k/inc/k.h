@@ -173,7 +173,7 @@ void thread_enqueueBefore(Thread* t, Thread* before);
 void thread_dequeue(Thread* t, Thread** head);
 
 NORETURN reschedule();
-void saveUserModeRegistersForCurrentThread(uint32* savedRegisters, bool svc);
+void saveCurrentRegistersForThread(void* savedRegisters);
 
 uintptr ipc_mapNewSharedPageInCurrentProcess();
 int ipc_connectToServer(uint32 id, uintptr sharedPage);
