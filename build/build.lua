@@ -18,6 +18,7 @@ config = nil
 compileModules = false
 jobs = { n = 0 }
 maxJobs = 1
+debugSchedulingEntryPoint = false
 
 local function loadConfig(c)
 	local env = {
@@ -380,6 +381,10 @@ function build_kernel()
 				table.insert(sources, { path = module.native, user = true })
 			end
 		end
+	end
+	if debugSchedulingEntryPoint then
+		table.insert(sources, { path = "testing/debugSchedulingEntryPoint.c.c", user = true })
+		table.insert(userIncludes, "-DDEBUG_CUSTOM_ENTRY_POINT")
 	end
 
 	if config.include then

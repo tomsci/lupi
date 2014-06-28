@@ -22,6 +22,8 @@ void abort() {
 	exec_abort();
 }
 
+#ifndef DEBUG_CUSTOM_ENTRY_POINT
+
 static int putch_lua(lua_State* L) {
 	int ch = lua_tointeger(L, 1);
 	exec_putch((byte)ch);
@@ -112,3 +114,4 @@ int newProcessEntryPoint() {
 	lua_call(L, 0, 1);
 	return lua_tointeger(L, -1);
 }
+#endif
