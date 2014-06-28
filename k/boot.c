@@ -212,12 +212,9 @@ void NAKED prefetchAbort() {
 #ifdef STACK_DEPTH_DEBUG
 #define UNUSED_STACK 0x1A1A1A1A
 
-// Hopefully the register keyword is enough to avoid touching the stack, meaning
-// we don't have to code these up in assembly.
 void svc_cleanstack() {
-	register uint32 p = svcStackBase(TheSuperPage->currentThread->index);
-	uint32 endp;
-	endp = (uint32)&endp; // Don't trash anything above us otherwise we'll break svc()
+	uint32 p = svcStackBase(TheSuperPage->currentThread->index);
+	uint32 endp = (uint32)&p; // Don't trash anything above us otherwise we'll break svc()
 	for (; p != endp; p += sizeof(uint32)) {
 		*(uint32*)p = UNUSED_STACK;
 	}
