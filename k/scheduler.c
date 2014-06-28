@@ -39,7 +39,7 @@ Thread* findNextReadyThread() {
 }
 
 static NORETURN NAKED doScheduleThread(uint32* savedRegisters, uint32 spsr) {
-	asm("MSR spsr_c, r1"); // make sure the 'S' returns us to the correct mode
+	asm("MSR spsr, r1"); // make sure the 'S' returns us to the correct mode
 	asm("LDR r14, [r0, #60]"); // r14 = savedRegisters[15]
 
 	ASM_JFDI("LDM r0, {r0-r14}^");
