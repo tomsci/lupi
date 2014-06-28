@@ -14,6 +14,9 @@
 #define KPsrModeSystem	0x1F
 
 #define ModeSwitch(cpsr) asm("MSR cpsr_c, %0" : : "i" (cpsr))
+#define ModeSwitchReg(r) asm("MSR cpsr_c, " #r)
+#define GetCpsr(cpsr)    asm("MRS %0, cpsr" : "=r" (cpsr));
+#define GetSpsr(spsr)    asm("MRS %0, spsr" : "=r" (spsr));
 
 // Secure configuration register p184
 #define KScrAW			(1<<5)

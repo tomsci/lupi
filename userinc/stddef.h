@@ -19,10 +19,9 @@ typedef long ptrdiff_t;
 typedef unsigned long ulong;
 typedef unsigned long uintptr;
 
-
 typedef _Bool bool;
-#define true  1
-#define false 0
+#define true  ((bool)1)
+#define false ((bool)0)
 
 #define NULL ((void*)0)
 

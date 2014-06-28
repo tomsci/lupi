@@ -3,7 +3,7 @@
 
 #include <std.h>
 
-#define LUPI_VERSION_STRING "LuPi 0.17"
+#define LUPI_VERSION_STRING "LuPi 0.18"
 
 /*
 Limiting to 256 running processes makes the maths quite nice - the ProcessList fits into a page,
@@ -173,7 +173,7 @@ void thread_enqueueBefore(Thread* t, Thread* before);
 void thread_dequeue(Thread* t, Thread** head);
 
 NORETURN reschedule();
-void saveUserModeRegistersForCurrentThread(void* savedRegisters, bool svc);
+void saveUserModeRegistersForCurrentThread(uint32* savedRegisters, bool svc);
 
 uintptr ipc_mapNewSharedPageInCurrentProcess();
 int ipc_connectToServer(uint32 id, uintptr sharedPage);
