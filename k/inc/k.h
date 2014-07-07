@@ -131,6 +131,7 @@ typedef struct SuperPage {
 	KAsyncRequest timerRequest;
 	uint64 timerCompletionTime;
 	uint32 crashRegisters[17];
+	uint32 crashFar;
 	byte uartBuf[66];
 	Server servers[MAX_SERVERS];
 	byte svcPsrMode; // settable so we don't accidentally enable interrupts when crashed

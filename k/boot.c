@@ -14,6 +14,7 @@ int klua_runBootMenu();
 static void switchToKluaDebuggerMode(uintptr sp);
 void dump_atags();
 void parseAtags(uint32* atagsPtr, AtagsParams* params);
+static inline uint32 getFAR();
 
 enum BootMode {
 	BootModeUluaInterpreter,
@@ -168,6 +169,7 @@ static void NAKED switchToKluaDebuggerMode(uintptr sp) {
 }
 
 void iThinkYouOughtToKnowImFeelingVeryDepressed() {
+	uint32 far = getFAR();
 	if (!TheSuperPage->marvin) {
 		if (!mmu_mapSectionContiguous(Al, KLuaDebuggerSection, KPageKluaHeap)) {
 			printk("Failed to allocate memory for klua debugger heap, sorry.\n");
@@ -182,7 +184,11 @@ void iThinkYouOughtToKnowImFeelingVeryDepressed() {
 		TheSuperPage->trapAbort = false;
 		//printk("Returning from abort\n");
 		return;
+	} else if (far == TheSuperPage->crashFar) {
+		printk("Crash handler appears to be in a loop, gonna hang now...\n");
+		hang();
 	} else {
+		TheSuperPage->crashFar = far;
 		// We use a custom stack at the start of the debugger heap section
 		switchToKluaDebuggerMode(KLuaDebuggerStackBase + 0x1000);
 		klua_runIntepreterModule(KLuaDebuggerHeap);
