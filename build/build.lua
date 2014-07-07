@@ -19,6 +19,7 @@ compileModules = false
 jobs = { n = 0 }
 maxJobs = 1
 debugSchedulingEntryPoint = false
+bootMode = 0
 
 local function loadConfig(c)
 	local env = {
@@ -305,7 +306,7 @@ function build_kernel()
 		sources = {}
 	else
 		sources = {
-			"k/boot.c",
+			{ path = "k/boot.c", copts = { "-DBOOT_MODE="..bootMode } },
 			"k/debug.c",
 			--"k/lock.c",
 			"k/pageAllocator.c",
@@ -347,6 +348,9 @@ function build_kernel()
 			if config.ulua and config.klua then
 				table.insert(luaModules, "modules/kluadebugger.lua")
 			end
+			if bootMode ~= 0 then
+				table.insert(luaModules, "modules/bootmenu.lua")
+			end
 			for _, src in ipairs(generateLuaModulesSource()) do
 				table.insert(sources, { path = src, user = true })
 			end
@@ -383,7 +387,7 @@ function build_kernel()
 		end
 	end
 	if debugSchedulingEntryPoint then
-		table.insert(sources, { path = "testing/debugSchedulingEntryPoint.c.c", user = true })
+		table.insert(sources, { path = "testing/debugSchedulingEntryPoint.c", user = true })
 		table.insert(userIncludes, "-DDEBUG_CUSTOM_ENTRY_POINT")
 	end
 
@@ -707,8 +711,12 @@ function run()
 			compileModules = true
 		elseif a == "-p" or a == "--preprocess" then
 			preprocess = true
-		elseif a:match("^%-j") then
-			maxJobs = tonumber(a:match("^%-j([0-9]+)"))
+		elseif a == "-j" then
+			maxJobs = assert(tonumber(cmdargs[i+1]))
+			table.remove(cmdargs, i+1)
+		elseif a == "-b" or a == "--bootmode" then
+			bootMode = assert(tonumber(cmdargs[i+1]))
+			table.remove(cmdargs, i+1)
 		else
 			table.insert(platforms, a)
 		end

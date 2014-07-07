@@ -3,6 +3,13 @@
 #include <arm.h>
 #include <pageAllocator.h>
 
+/**
+Creates a new section map for the given index (where `sectionIdx` is the virtual address right-
+shifted by `KPageShift`) in the given Process.
+*/
+static bool mmu_createUserSection(PageAllocator* pa, Process* p, int sectionIdx);
+
+
 /*
  * Page Directory = "First-level translation table"
  * PDE = "first-level translation descriptor"
@@ -228,6 +235,17 @@ uintptr mmu_mapSectionContiguous(PageAllocator* pa, uintptr virtualAddress, uint
 	return phys;
 }
 
+void mmu_unmapSection(PageAllocator* pa, uintptr virtualAddress) {
+	uint32* pde = (uint32*)KKernelPdeBase;
+	uint32 sectionAddr = pde[virtualAddress >> KAddrToPdeIndexShift];
+	// This code only works with mmu_mapSectionContiguous
+	ASSERT((sectionAddr & 0xFFFFF) == KPdeSectionKernelData, virtualAddress, sectionAddr);
+	uintptr physAddr = sectionAddr & ~0xFFFFF;
+	pde[virtualAddress >> KAddrToPdeIndexShift] = 0;
+	mmu_finishedUpdatingPageTables();
+	pageAllocator_freePages(pa, physAddr, KPagesInSection);
+}
+
 bool mmu_mapSection(PageAllocator* pa, uintptr sectionAddress, uintptr ptAddress, uint32* ptsPt, uint8 ptPageType) {
 	// Map a page for the section pt into the ptsPt
 	uint32 pageTablePhysical = mmu_mapPageInSection(pa, ptsPt, ptAddress, ptPageType);
@@ -264,7 +282,7 @@ void NAKED mmu_finishedUpdatingPageTables() {
 	asm("BX lr");
 }
 
-bool mmu_createUserSection(PageAllocator* pa, Process* p, int sectionIdx) {
+static bool mmu_createUserSection(PageAllocator* pa, Process* p, int sectionIdx) {
 	// We need a new page for the user PT for this section.
 	uint32* newPt = PT_FOR_PROCESS(p, sectionIdx);
 	//printk("+mmu_createUserSection %d newPt=%p\n", sectionIdx, newPt);

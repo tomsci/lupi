@@ -23,5 +23,11 @@
 
 #define KExecSetTimer			17
 #define KExecReboot				18
+#define KExecGetInt				19
+
+typedef enum {
+	EValTotalRam,
+	EValBootMode,
+} ExecGettableValue;
 
 #endif

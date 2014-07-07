@@ -10,6 +10,7 @@
 #include <k.h>
 #include <pageAllocator.h>
 #include <mmu.h>
+#include <arm.h>
 #include <lupi/membuf.h>
 #include <lupi/int64.h>
 
@@ -164,26 +165,30 @@ static int lua_getObj(lua_State* L) {
 	return 1;
 }
 
-// A variant of interactiveLuaPrompt that lets us write the actual intepreter loop as a lua module
-void runLuaIntepreterModule(uintptr heapBase) {
+static lua_State* initModule(uintptr heapBase, const char* module) {
 #ifdef USE_HOST_MALLOC_FOR_LUA
 	lua_State* L = luaL_newstate();
 #else
 	klua_heapReset(heapBase);
 	lua_State* L = lua_newstate(klua_alloc_fn, (void*)heapBase);
 #endif
-	L = newLuaStateForModule("interpreter", L);
-	const int interpreterIdx = lua_gettop(L);
+	lua_atpanic(L, panicFn);
+	newLuaStateForModule(module, L);
 	// the interpreter module is now at top of L stack
 	ASSERT(L != NULL);
 
-	lua_atpanic(L, panicFn);
 	lua_pushcfunction(L, putch_lua);
 	lua_setglobal(L, "putch");
 	lua_pushcfunction(L, getch_lua);
 	lua_setglobal(L, "getch");
+	return L;
+}
+
+// A variant of interactiveLuaPrompt that lets us write the actual intepreter loop as a lua module
+void klua_runIntepreterModule(uintptr heapBase) {
+	lua_State* L = initModule(heapBase, "interpreter");
 	lua_pushliteral(L, "klua> ");
-	lua_setfield(L, interpreterIdx, "prompt");
+	lua_setfield(L, -2, "prompt");
 
 #ifdef KLUA_DEBUGGER
 	// klua debugger support
@@ -193,11 +198,46 @@ void runLuaIntepreterModule(uintptr heapBase) {
 	}
 #endif
 
-	lua_settop(L, interpreterIdx);
 	lua_getfield(L, -1, "main");
 	lua_call(L, 0, 0);
 	// Shouldn't return
-	ASSERT(false, 0xC10000A, __LINE__);
+	ASSERT(false);
+}
+
+NAKED int klua_runBootMenu() {
+	// This function is odd. We save the stack pointer, switch stacks and do
+	// all our stuff with the boot menu in system mode, then switch back as if
+	// nothing had happened
+
+	asm("MOV r1, r13"); // Save sp
+	asm("MOV r2, r14"); // Save lr
+
+	// Set r13_svc so we don't mess up the stack that called us when we do SVCs
+	asm("LDR r13, .svcStack");
+
+	// Now switch to system mode
+	ModeSwitch(KPsrModeSystem | KPsrIrqDisable | KPsrFiqDisable);
+	// And set r13_usr (system mode r13)
+	asm("LDR r13, .sysStack");
+	asm("PUSH {r1, r2}"); // Save the original SP and LR onto the sys stack
+
+	asm("BL klua_doRunBootMenu");
+
+	// Now return to normal boot (r0 has new boot mode)
+	asm("POP {r1, r2}"); // r1 = old sp, r2 = old lr
+	ModeSwitch(KPsrModeSvc | KPsrIrqDisable | KPsrFiqDisable);
+	asm("MOV r13, r1");
+	asm("BX r2");
+
+	LABEL_WORD(.svcStack, KLuaDebuggerSvcStackBase + 0x1000);
+	LABEL_WORD(.sysStack, KLuaDebuggerStackBase + 0x1000);
+}
+
+int klua_doRunBootMenu() {
+	lua_State* L = initModule(KLuaDebuggerHeap, "bootmenu");
+	lua_getfield(L, -1, "main");
+	lua_call(L, 0, 1);
+	return lua_tointeger(L, -1);
 }
 
 /*
@@ -313,7 +353,7 @@ static void WeveCrashedSetupDebuggingStuff(lua_State* L) {
 #endif
 
 	// Things embedded in structs (as opposed to being pointers) must be declared before the
-	// thingd they are embedded in.
+	// things they are embedded in.
 	mbuf_declare_type(L, "regset", sizeof(uint32)*17);
 	mbuf_declare_member(L, "regset", "r0", 0, 4, NULL);
 	mbuf_declare_member(L, "regset", "r1", 4, 4, NULL);
@@ -345,6 +385,7 @@ static void WeveCrashedSetupDebuggingStuff(lua_State* L) {
 	MBUF_TYPE(SuperPage);
 	MBUF_MEMBER(SuperPage, totalRam);
 	MBUF_MEMBER(SuperPage, boardRev);
+	MBUF_MEMBER(SuperPage, bootMode);
 	MBUF_MEMBER(SuperPage, nextPid);
 	MBUF_MEMBER(SuperPage, currentProcess);
 	MBUF_MEMBER(SuperPage, currentThread);
@@ -357,6 +398,8 @@ static void WeveCrashedSetupDebuggingStuff(lua_State* L) {
 	MBUF_MEMBER(SuperPage, exception);
 	MBUF_MEMBER(SuperPage, uartDroppedChars);
 	MBUF_MEMBER_TYPE(SuperPage, uartRequest, "KAsyncRequest");
+	MBUF_MEMBER_TYPE(SuperPage, timerRequest, "KAsyncRequest");
+	MBUF_MEMBER(SuperPage, timerCompletionTime);
 	MBUF_MEMBER_TYPE(SuperPage, crashRegisters, "regset");
 	// TODO handle arrays...
 	// Servers, for implementation reasons, fill the servers array from the end backwards

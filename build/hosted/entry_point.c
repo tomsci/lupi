@@ -8,7 +8,7 @@
 
 void goDoLuaStuff();
 void interactiveLuaPrompt();
-void runLuaIntepreterModule(uintptr heapBase);
+void klua_runIntepreterModule(uintptr heapBase);
 void runUserTests();
 
 void* kernelMemory;
@@ -116,7 +116,7 @@ int main(int argc, char* argv[]) {
 
 	//goDoLuaStuff();
 	//interactiveLuaPrompt();
-	runLuaIntepreterModule(KLuaHeapBase);
+	klua_runIntepreterModule(KLuaHeapBase);
 
 	return 0;
 }

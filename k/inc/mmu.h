@@ -43,10 +43,15 @@ void mmu_setCache(bool icache, bool dcache);
 void mmu_mapSect0Data(uintptr virtualAddress, uintptr physicalAddress, int npages);
 
 /**
-Maps 1MB of physically contiguous memory in the top-level PDE at the given virtual address.
+Maps 1MB of physically contiguous memory in the top-level PDE at the given
+virtual address. Returns the physical address, or zero on error.
 */
 uintptr mmu_mapSectionContiguous(PageAllocator* pa, uintptr virtualAddress, uint8 type);
 
+/**
+Only currently supports freeing sections created with `mmu_mapSectionContiguous`.
+*/
+void mmu_unmapSection(PageAllocator* pa, uintptr virtualAddress);
 
 /**
 Let 'PTS' be the section where the page table for the new section is going to go.
@@ -76,12 +81,6 @@ Returns the physical address of the new page
 uintptr mmu_mapPageInSection(PageAllocator* pa, uint32* pt, uintptr virtualAddress, uint8 type);
 
 /**
-Creates a new section map for the given index (where `sectionIdx` is the virtual address right-
-shifted by `KPageShift`) in the given Process.
-*/
-bool mmu_createUserSection(PageAllocator* pa, Process* p, int sectionIdx);
-
-/**
 Map pages into the user process p. Will call [mmu_createUserSection()](#mmu_createUserSection)
 if necessary. Note, does _not_ zero the memory. That is caller's responsiblility.
 */
@@ -106,7 +105,7 @@ void mmu_finishedUpdatingPageTables();
 
 /**
 Sets TTBR0 and contextId register to the values appropriate for process p.
-Also sets TheSuperPage->currentProcess to p. Switching to a process means you
+Also sets `TheSuperPage->currentProcess` to p. Switching to a process means you
 can access its memory with a normal pointer dereference, or preferably using
 `LDRT` instructions which enforce user access permissions.
 

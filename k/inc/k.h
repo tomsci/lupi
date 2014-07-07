@@ -42,7 +42,7 @@ NORETURN reboot();
 
 #define ASSERT(cond, args...) \
 	if (unlikely(!(cond))) { \
-		printk("assert %s at line %d\n", #cond, __LINE__); \
+		printk("assert %s at %s:%d\n", #cond, __FILE__, __LINE__); \
 		uint32 argsArray[] = {args}; \
 		kabortn(sizeof(argsArray)/sizeof(uint32), argsArray); \
 	}
@@ -115,6 +115,7 @@ typedef struct Server {
 typedef struct SuperPage {
 	uint32 totalRam;
 	uint32 boardRev;
+	int bootMode;
 	uint32 nextPid;
 	Process* currentProcess;
 	Thread* currentThread;
@@ -132,6 +133,7 @@ typedef struct SuperPage {
 	uint32 crashRegisters[17];
 	byte uartBuf[66];
 	Server servers[MAX_SERVERS];
+	byte svcPsrMode; // settable so we don't accidentally enable interrupts when crashed
 } SuperPage;
 
 ASSERT_COMPILE(sizeof(SuperPage) <= KPageSize);

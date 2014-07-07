@@ -6,6 +6,7 @@
 void putbyte(byte b);
 bool byteReady();
 byte getch();
+static int getInt(int arg);
 
 NOINLINE NAKED uint64 readUserInt64(uintptr ptr) {
 	asm("MOV r2, r0");
@@ -82,8 +83,14 @@ int64 handleSvc(int cmd, uintptr arg1, uintptr arg2, uint32 r14_svc) {
 			thread_exit(t, (int)arg1); // Never returns
 			break;
 		case KExecAbort:
-			saveCurrentRegistersForThread(&r14_svc);
-			printk("Abort called by process %s\n", p->name);
+			if (t) {
+				// It's conceivable the thread could be null, if we've aborted
+				// during the bootmenu for eg
+				saveCurrentRegistersForThread(&r14_svc);
+				printk("Abort called by process %s\n", p->name);
+			} else {
+				printk("Abort called during boot\n");
+			}
 			kabort1(0xABBADEAD); // doesn't return
 			break;
 		case KExecReboot:
@@ -153,8 +160,23 @@ int64 handleSvc(int cmd, uintptr arg1, uintptr arg2, uint32 r14_svc) {
 			}
 			break;
 		}
+		case KExecGetInt:
+			result = getInt(arg1);
+			break;
 		default:
+			ASSERT(false, cmd);
 			break;
 	}
 	return result;
+}
+
+static int getInt(int arg) {
+	switch(arg) {
+	case EValTotalRam:
+		return TheSuperPage->totalRam;
+	case EValBootMode:
+		return TheSuperPage->bootMode;
+	default:
+		ASSERT(false, arg);
+	}
 }

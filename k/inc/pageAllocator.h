@@ -44,8 +44,10 @@ memory. For example to allocate memory that must be on a 1MB boundary, you'd
 pass in `1024*1024` as the alignment.
 */
 uintptr pageAllocator_allocAligned(PageAllocator* allocator, uint8 type, int num, int alignment);
+
 void pageAllocator_free(PageAllocator* pa, uintptr addr);
-int pageAllocator_pagesInUse(PageAllocator* allocator);
+
+void pageAllocator_freePages(PageAllocator* pa, uintptr addr, int num);
 
 /**
 Returns the size in bytes of a PageAllocator object that is configured to track

@@ -94,3 +94,7 @@ void NAKED exec_requestServerMessage(AsyncRequest* serverRequest) {
 void NAKED exec_setTimer(AsyncRequest* request, uint64* time) {
 	SLOW_EXEC2(KExecSetTimer);
 }
+
+int NAKED exec_getInt(ExecGettableValue val) {
+	SLOW_EXEC1(KExecGetInt);
+}

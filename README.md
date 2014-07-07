@@ -137,7 +137,8 @@ Syntax:
 		-l | --listing    Build and dump kernel listings.
 		-p | --preprocess Preprocess sources only.
 		-v | --verbose    Verbose mode.
-		-j<number>        Run <number> of compiles in parallel.
+		-j <number>       Run <number> of compiles in parallel.
+		-b | --bootmode n Set the boot mode.
 
 	Supported targets:
 		clean	Removes all built products.

@@ -8,9 +8,18 @@
 void uart_init();
 void irq_init();
 void irq_enable();
-void runLuaIntepreterModule(uintptr heapPtr);
+static void checkBootModeForKlua();
+void klua_runIntepreterModule(uintptr heapPtr);
+int klua_runBootMenu();
+static void switchToKluaDebuggerMode(uintptr sp);
 void dump_atags();
 void parseAtags(uint32* atagsPtr, AtagsParams* params);
+
+enum BootMode {
+	BootModeUluaInterpreter,
+	BootModeKlua,
+	BootModeMenu,
+};
 
 void Boot(uintptr atagsPhysAddr) {
 #ifdef ENABLE_DCACHE
@@ -18,14 +27,14 @@ void Boot(uintptr atagsPhysAddr) {
 #endif
 	uart_init();
 
-	//dump_atags();
 	printk("\n\n" LUPI_VERSION_STRING);
 
 	// Set up data structures that weren't part of mmu_init()
 	mmu_mapSect0Data(KKernelAtagsBase, atagsPhysAddr & ~0xFFF, 1);
 	AtagsParams atags;
 	parseAtags((uint32*)(KKernelAtagsBase + (atagsPhysAddr & 0xFFF)), &atags);
-	printk(" (RAM = %d MB, board = %X)\n", atags.totalRam >> 20, atags.boardRev);
+	const int bootMode = BOOT_MODE;
+	printk(" (RAM = %d MB, board = %X, bootMode = %d)\n", atags.totalRam >> 20, atags.boardRev, bootMode);
 
 	const int numPagesRam = atags.totalRam >> KPageShift;
 	const uint paSizePages = PAGE_ROUND(pageAllocator_size(numPagesRam)) >> KPageShift;
@@ -61,20 +70,17 @@ void Boot(uintptr atagsPhysAddr) {
 	zeroPage(TheSuperPage);
 	TheSuperPage->totalRam = atags.totalRam;
 	TheSuperPage->boardRev = atags.boardRev;
+	TheSuperPage->bootMode = bootMode;
+	checkBootModeForKlua();
+
 	irq_init();
 	irq_enable();
-
-#ifdef KLUA
-	mmu_mapSectionContiguous(Al, KLuaHeapBase, KPageKluaHeap);
-	mmu_finishedUpdatingPageTables();
-	//interactiveLuaPrompt();
-	runLuaIntepreterModule(KLuaHeapBase);
-#else
 
 	// Start first process (so exciting!)
 	SuperPage* s = TheSuperPage;
 	s->nextPid = 1;
 	s->numValidProcessPages = 1;
+	s->svcPsrMode = KPsrModeSvc | KPsrFiqDisable | KPsrIrqDisable;
 
 	firstProcess->pid = 0;
 	firstProcess->pdePhysicalAddress = 0;
@@ -83,7 +89,31 @@ void Boot(uintptr atagsPhysAddr) {
 	int err = process_new("init", &p);
 	ASSERT(p == firstProcess && err == 0, err, (uint32)p);
 	process_start(firstProcess);
-#endif // KLUA
+}
+
+static void checkBootModeForKlua() {
+	int* bootMode = &TheSuperPage->bootMode;
+	if (*bootMode != BootModeMenu && *bootMode != BootModeKlua) {
+		return;
+	}
+	mmu_mapSectionContiguous(Al, KLuaDebuggerSection, KPageKluaHeap);
+	mmu_finishedUpdatingPageTables();
+
+	if (*bootMode == BootModeMenu) {
+		*bootMode = klua_runBootMenu();
+	}
+	if (*bootMode == BootModeKlua) {
+#ifdef KLUA_DEBUGGER
+		TheSuperPage->marvin = true; // Required for debugger functionality
+		switchToKluaDebuggerMode(KLuaDebuggerStackBase + 0x1000);
+		klua_runIntepreterModule(KLuaDebuggerHeap);
+#else
+		printk("Error: KLUA_DEBUGGER not defined\n");
+		kabort();
+#endif
+	}
+
+	mmu_unmapSection(Al, KLuaDebuggerSection);
 }
 
 //TODO move this stuff
@@ -144,6 +174,8 @@ void iThinkYouOughtToKnowImFeelingVeryDepressed() {
 			hang();
 		}
 		TheSuperPage->marvin = true;
+		// Make sure IRQs remain disabled in subsequent SVC calls by the klua debugger
+		TheSuperPage->svcPsrMode |= KPsrIrqDisable;
 	}
 	if (TheSuperPage->trapAbort) {
 		TheSuperPage->exception = true;
@@ -151,9 +183,9 @@ void iThinkYouOughtToKnowImFeelingVeryDepressed() {
 		//printk("Returning from abort\n");
 		return;
 	} else {
-		// We use a custom 8KB stack at the start of the debugger heap section
-		switchToKluaDebuggerMode(KLuaDebuggerStackBase + KLuaDebuggerStackSize);
-		runLuaIntepreterModule(KLuaDebuggerHeap);
+		// We use a custom stack at the start of the debugger heap section
+		switchToKluaDebuggerMode(KLuaDebuggerStackBase + 0x1000);
+		klua_runIntepreterModule(KLuaDebuggerHeap);
 	}
 }
 
@@ -235,26 +267,36 @@ void svc_checkstack(uint32 execId) {
 #endif
 
 void NAKED svc() {
-	// First set up the stack for this thread
-	// Fast execs can use the supervisor stack - they can't be preempted so it's
-	// safe, and it saves a smidge of calculation
-	asm("TST r0, %0" : : "i" (KFastExec));
-	// cond will be NE if exec&KFastExec
-	GetKernelStackTop(NE, r13);
-	asm("BNE .doexec");
+	// user r4-r12 has already been saved user-side so we can use them for temps
 
-	// Slow execs have already saved regs r4 to r12 so we can use them as temps
+	// r4 = TheSuperPage
 	asm("MOV r4, %0" : : "i" (KSuperPageAddress));
+
+	// r8 = svcPsrMode
+	asm("LDRB r8, [r4, %0]" : : "i" (offsetof(SuperPage, svcPsrMode)));
+
+	// Check if we're in klua bootmode, leave the stack as it is
+	// If we've crashed, use the kernel stack
+	asm("CMP r8, #0");
+	asm("BEQ .postStackSet"); // Just leave r13_svc as it is
+	// XXX: The GCC assembler seems to think this should be LDRNEB, even though
+	// the spec and indeed that disassembler confirm it SHOULD be written LDRBNE
+	asm("LDRNEB r9, [r4, %0]" : : "i" (offsetof(SuperPage, marvin)));
+	asm("CMPNE r9, #1");
+	GetKernelStackTop(EQ, r13);
+	asm("BEQ .postStackSet");
+
+	// Reenable interrupts (depending on what svcPsrMode says)
+	ModeSwitchReg(r8);
+
+	// Now setup the right stack
 	asm("LDR r5, [r4, %0]" : : "i" (offsetof(SuperPage, currentThread)));
 	asm("LDRB r6, [r5, %0]" : : "i" (offsetof(Thread, index)));
-
 	asm("MOV r7, %0" : : "i" (KUserStacksBase));
 	asm("ADD r13, r7, r6, LSL %0" : : "i" (USER_STACK_AREA_SHIFT));
 	asm("ADD r13, r13, #4096"); // So r13 points to top of stack not base
 
-	// TODO at some point, re-enable interrupts for slow execs
-
-	asm(".doexec:");
+	asm(".postStackSet:");
 	asm("MOV r3, r14"); // r14_svc is address to return to user side
 	// Also save it for ourselves in the case where we don't get preempted
 	asm("MOV r4, r14");

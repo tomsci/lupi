@@ -6,6 +6,7 @@
 #include <lupi/ipc.h>
 #include <lupi/runloop.h>
 #include <lupi/int64.h>
+#include <lupi/exec.h>
 
 void exec_putch(uint ch);
 int exec_getch();
@@ -14,6 +15,7 @@ int exec_getUptime();
 void exec_getch_async(AsyncRequest* request);
 void exec_abort();
 void exec_reboot();
+int exec_getInt(ExecGettableValue val);
 
 uint32 user_ProcessPid;
 char user_ProcessName[32];
@@ -73,6 +75,12 @@ static int lua_reboot(lua_State* L) {
 	return 0;
 }
 
+static int getInt(lua_State* L) {
+	int result = exec_getInt(lua_tointeger(L, 1));
+	lua_pushinteger(L, result);
+	return 1;
+}
+
 lua_State* newLuaStateForModule(const char* moduleName, lua_State* L);
 
 int newProcessEntryPoint() {
@@ -97,6 +105,7 @@ int newProcessEntryPoint() {
 		{ "getProcessName", getProcessName },
 		{ "createProcess", createProcess },
 		{ "getUptime", getUptime },
+		{ "getInt", getInt },
 		{ NULL, NULL }
 	};
 	lua_rawgeti(L, LUA_REGISTRYINDEX, LUA_RIDX_GLOBALS);
