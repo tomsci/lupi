@@ -349,7 +349,8 @@ function build_kernel()
 				table.insert(luaModules, "modules/kluadebugger.lua")
 			end
 			if bootMode ~= 0 then
-				table.insert(luaModules, "modules/bootmenu.lua")
+				table.insert(sources, "k/bootmenu.c")
+				table.insert(sources, "testing/atomic.c")
 			end
 			for _, src in ipairs(generateLuaModulesSource()) do
 				table.insert(sources, { path = src, user = true })

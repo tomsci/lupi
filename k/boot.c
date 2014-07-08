@@ -4,23 +4,20 @@
 #include <arm.h>
 #include <atags.h>
 #include <exec.h>
+#include <klua.h>
 
 void uart_init();
 void irq_init();
-void irq_enable();
-static void checkBootModeForKlua();
-void klua_runIntepreterModule(uintptr heapPtr);
-int klua_runBootMenu();
-static void switchToKluaDebuggerMode(uintptr sp);
 void dump_atags();
 void parseAtags(uint32* atagsPtr, AtagsParams* params);
 static inline uint32 getFAR();
 
-enum BootMode {
-	BootModeUluaInterpreter,
-	BootModeKlua,
-	BootModeMenu,
-};
+#if BOOT_MODE == 0
+// Then bootmode.c isn't compiled, so stub out the check to always return normal boot
+#define checkBootMode(x) (0)
+#else
+int checkBootMode(int bootMode);
+#endif
 
 void Boot(uintptr atagsPhysAddr) {
 #ifdef ENABLE_DCACHE
@@ -34,8 +31,7 @@ void Boot(uintptr atagsPhysAddr) {
 	mmu_mapSect0Data(KKernelAtagsBase, atagsPhysAddr & ~0xFFF, 1);
 	AtagsParams atags;
 	parseAtags((uint32*)(KKernelAtagsBase + (atagsPhysAddr & 0xFFF)), &atags);
-	const int bootMode = BOOT_MODE;
-	printk(" (RAM = %d MB, board = %X, bootMode = %d)\n", atags.totalRam >> 20, atags.boardRev, bootMode);
+	printk(" (RAM = %d MB, board = %X, bootMode = %d)\n", atags.totalRam >> 20, atags.boardRev, BOOT_MODE);
 
 	const int numPagesRam = atags.totalRam >> KPageShift;
 	const uint paSizePages = PAGE_ROUND(pageAllocator_size(numPagesRam)) >> KPageShift;
@@ -71,8 +67,7 @@ void Boot(uintptr atagsPhysAddr) {
 	zeroPage(TheSuperPage);
 	TheSuperPage->totalRam = atags.totalRam;
 	TheSuperPage->boardRev = atags.boardRev;
-	TheSuperPage->bootMode = bootMode;
-	checkBootModeForKlua();
+	TheSuperPage->bootMode = checkBootMode(BOOT_MODE);
 
 	irq_init();
 	irq_enable();
@@ -90,31 +85,6 @@ void Boot(uintptr atagsPhysAddr) {
 	int err = process_new("init", &p);
 	ASSERT(p == firstProcess && err == 0, err, (uint32)p);
 	process_start(firstProcess);
-}
-
-static void checkBootModeForKlua() {
-	int* bootMode = &TheSuperPage->bootMode;
-	if (*bootMode != BootModeMenu && *bootMode != BootModeKlua) {
-		return;
-	}
-	mmu_mapSectionContiguous(Al, KLuaDebuggerSection, KPageKluaHeap);
-	mmu_finishedUpdatingPageTables();
-
-	if (*bootMode == BootModeMenu) {
-		*bootMode = klua_runBootMenu();
-	}
-	if (*bootMode == BootModeKlua) {
-#ifdef KLUA_DEBUGGER
-		TheSuperPage->marvin = true; // Required for debugger functionality
-		switchToKluaDebuggerMode(KLuaDebuggerStackBase + 0x1000);
-		klua_runIntepreterModule(KLuaDebuggerHeap);
-#else
-		printk("Error: KLUA_DEBUGGER not defined\n");
-		kabort();
-#endif
-	}
-
-	mmu_unmapSection(Al, KLuaDebuggerSection);
 }
 
 //TODO move this stuff
@@ -156,17 +126,6 @@ void NAKED hang() {
 }
 
 #ifdef KLUA_DEBUGGER
-static void NAKED switchToKluaDebuggerMode(uintptr sp) {
-	// for the klua debugger, use a custom stack and run in system mode.
-	// This allows us access to all memory, but also means we can still do SVCs without
-	// corrupting registers. This is required because Lua is still in user config so expects
-	// to be able to do an SVC to print, for example, and System is the only mode that allows
-	// this combination
-	asm("MOV r1, r14");
-	ModeSwitch(KPsrModeSystem | KPsrIrqDisable | KPsrFiqDisable);
-	asm("MOV r13, r0");
-	asm("BX r1");
-}
 
 void iThinkYouOughtToKnowImFeelingVeryDepressed() {
 	uint32 far = getFAR();
@@ -281,14 +240,9 @@ void NAKED svc() {
 	// r8 = svcPsrMode
 	asm("LDRB r8, [r4, %0]" : : "i" (offsetof(SuperPage, svcPsrMode)));
 
-	// Check if we're in klua bootmode, leave the stack as it is
 	// If we've crashed, use the kernel stack
-	asm("CMP r8, #0");
-	asm("BEQ .postStackSet"); // Just leave r13_svc as it is
-	// XXX: The GCC assembler seems to think this should be LDRNEB, even though
-	// the spec and indeed that disassembler confirm it SHOULD be written LDRBNE
-	asm("LDRNEB r9, [r4, %0]" : : "i" (offsetof(SuperPage, marvin)));
-	asm("CMPNE r9, #1");
+	asm("LDRB r9, [r4, %0]" : : "i" (offsetof(SuperPage, marvin)));
+	asm("CMP r9, #1");
 	GetKernelStackTop(EQ, r13);
 	asm("BEQ .postStackSet");
 

@@ -6,7 +6,7 @@
 			[
 				"/usr/local/bin/fish",
 				"-c",
-				"lua ./build/build.lua -m -j 64 pi"
+				"lua ./build/build.lua -m -j 64 pi -m -b 2"
 			],
 			"file_regex": "^(?:bin/luac: |lua: )?([^:]+)(?::([0-9]+)):",
 			"name": "build.lua",

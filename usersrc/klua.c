@@ -1,7 +1,6 @@
 // Support fns for lua when it's being run in the kernel
 // This file is considered a user source, but it also has access to kernel headers
 #include <stddef.h>
-#define LUPI_STDDEF_H // Stop kernel redefining std stuff
 #include <lua.h>
 #include <lualib.h>
 #include <lauxlib.h>
@@ -204,42 +203,6 @@ void klua_runIntepreterModule(uintptr heapBase) {
 	ASSERT(false);
 }
 
-NAKED int klua_runBootMenu() {
-	// This function is odd. We save the stack pointer, switch stacks and do
-	// all our stuff with the boot menu in system mode, then switch back as if
-	// nothing had happened
-
-	asm("MOV r1, r13"); // Save sp
-	asm("MOV r2, r14"); // Save lr
-
-	// Set r13_svc so we don't mess up the stack that called us when we do SVCs
-	asm("LDR r13, .svcStack");
-
-	// Now switch to system mode
-	ModeSwitch(KPsrModeSystem | KPsrIrqDisable | KPsrFiqDisable);
-	// And set r13_usr (system mode r13)
-	asm("LDR r13, .sysStack");
-	asm("PUSH {r1, r2}"); // Save the original SP and LR onto the sys stack
-
-	asm("BL klua_doRunBootMenu");
-
-	// Now return to normal boot (r0 has new boot mode)
-	asm("POP {r1, r2}"); // r1 = old sp, r2 = old lr
-	ModeSwitch(KPsrModeSvc | KPsrIrqDisable | KPsrFiqDisable);
-	asm("MOV r13, r1");
-	asm("BX r2");
-
-	LABEL_WORD(.svcStack, KLuaDebuggerSvcStackBase + 0x1000);
-	LABEL_WORD(.sysStack, KLuaDebuggerStackBase + 0x1000);
-}
-
-int klua_doRunBootMenu() {
-	lua_State* L = initModule(KLuaDebuggerHeap, "bootmenu");
-	lua_getfield(L, -1, "main");
-	lua_call(L, 0, 1);
-	return lua_tointeger(L, -1);
-}
-
 /*
 int klua_dump_reader(const char* name, lua_Reader reader, void* readData, lua_Writer writer, void* writeData) {
 	lua_State* L = luaL_newstate();
@@ -278,6 +241,18 @@ static int memBufGetMem(lua_State* L, uintptr ptr, int size) {
 #endif // HOSTED
 
 #ifdef KLUA_DEBUGGER
+
+void NAKED switchToKluaDebuggerMode(uintptr sp) {
+	// for the klua debugger, use a custom stack and run in system mode.
+	// This allows us access to all memory, but also means we can still do SVCs without
+	// corrupting registers. This is required because Lua is still in user config so expects
+	// to be able to do an SVC to print, for example, and System is the only mode that allows
+	// this combination
+	asm("MOV r1, r14");
+	ModeSwitch(KPsrModeSystem | KPsrIrqDisable | KPsrFiqDisable);
+	asm("MOV r13, r0");
+	asm("BX r1");
+}
 
 #define EXPORT_INT(L, val) lua_pushunsigned(L, val); lua_setglobal(L, #val)
 
@@ -404,6 +379,7 @@ static void WeveCrashedSetupDebuggingStuff(lua_State* L) {
 	// TODO handle arrays...
 	// Servers, for implementation reasons, fill the servers array from the end backwards
 	mbuf_declare_member(L, "SuperPage", "firstServer", offsetof(SuperPage, servers[MAX_SERVERS-1]), sizeof(Server), "Server");
+	MBUF_MEMBER(SuperPage, svcPsrMode);
 
 	MBUF_NEW(SuperPage, TheSuperPage);
 	lua_setglobal(L, "TheSuperPage");
