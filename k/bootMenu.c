@@ -6,6 +6,13 @@
 byte getch();
 void test_atomics();
 
+enum BootMode {
+	BootModeUluaInterpreter = 0,
+	BootModeKlua = 1,
+	BootModeMenu = 2,
+	BootModeAtomicTests = 'a',
+};
+
 static int displayBootMenu() {
 	printk("\
 Boot menu:\n\
@@ -39,7 +46,7 @@ int checkBootMode(int bootMode) {
 		printk("Error: KLUA_DEBUGGER not defined\n");
 		kabort();
 #endif
-	} else if (bootMode == 'a') {
+	} else if (bootMode == BootModeAtomicTests) {
 		test_atomics();
 	}
 	return bootMode;
