@@ -78,7 +78,7 @@ static bool thread_init(Process* p, int index) {
 #ifndef KLUA
 static NORETURN NAKED do_process_start(uint32 sp) {
 	ModeSwitch(KPsrModeUsr|KPsrFiqDisable);
-	// We are in user mode now! So no calling printk(), or doing priviledged stuff
+	// We are in user mode now! So no calling printk(), or doing privileged stuff
 	asm("MOV sp, r0");
 	asm("LDR r1, =newProcessEntryPoint");
 	asm("BLX r1");

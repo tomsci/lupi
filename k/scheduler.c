@@ -146,6 +146,18 @@ void thread_enqueueBefore(Thread* t, Thread* before) {
 	}
 }
 
+/**
+Moves a thread to the end of the ready list. Does not reschedule or change its
+ready state or timeslice.
+*/
+void thread_yield(Thread* t) {
+	// Move to end of ready list
+	SuperPage* s = TheSuperPage;
+	dequeue(t);
+	thread_enqueueBefore(t, s->readyList ? s->readyList->prev : NULL);
+	if (!s->readyList) s->readyList = t;
+}
+
 // This runs in IRQ context remember
 bool tick(void* savedRegs) {
 	SuperPage* const s = TheSuperPage;

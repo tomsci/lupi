@@ -349,8 +349,7 @@ function build_kernel()
 				table.insert(luaModules, "modules/kluadebugger.lua")
 			end
 			if bootMode ~= 0 then
-				table.insert(sources, "k/bootmenu.c")
-				table.insert(sources, "testing/atomic.c")
+				addBootMenuSources(sources, luaModules)
 			end
 			for _, src in ipairs(generateLuaModulesSource()) do
 				table.insert(sources, { path = src, user = true })
@@ -535,7 +534,6 @@ luaSources = {
 luaModules = {
 	"modules/init.lua",
 	"modules/common.lua",
-	"modules/test.lua",
 	"modules/interpreter.lua",
 	"modules/spin.lua",
 	{ path = "modules/membuf.lua", native = "usersrc/membuf.c" },
@@ -559,8 +557,23 @@ mallocSource = {
 		"-DLACKS_SYS_PARAM_H",
 		"-DNO_MALLOC_STATS=1", -- Avoids fprintf dep
 		"-DMALLOC_FAILURE_ACTION=", -- no errno
+		"-DUSE_LOCKS=1",
 	},
 }
+
+function addBootMenuSources(sources, modules)
+	local extraModules = {
+		"modules/test/init.lua",
+		"modules/test/yielda.lua",
+		"modules/test/yieldb.lua",
+	}
+	for _, m in ipairs(extraModules) do
+		table.insert(modules, m)
+	end
+	table.insert(sources, "k/bootmenu.c")
+	table.insert(sources, "testing/atomic.c")
+end
+
 
 function generateLuaModulesSource()
 	local dirs = calculateUniqueDirsFromSources("bin/obj-"..config.name.."/", luaModules)

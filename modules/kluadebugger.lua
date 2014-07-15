@@ -8,7 +8,7 @@ interactive Lua prompt that can view all the kernel data structures. It also
 contains various helper functions to aid debugging.
 
 In terms of implementation, it runs with interrupts disabled in System mode,
-which means it is priviledged and can access the entire address space, but can
+which means it is privileged and can access the entire address space, but can
 still make SVC calls. This is important because it means it can reuse the same
 Lua binary that is used user-side.
 

@@ -16,6 +16,7 @@ void exec_getch_async(AsyncRequest* request);
 void exec_abort();
 void exec_reboot();
 int exec_getInt(ExecGettableValue val);
+void exec_threadYield();
 
 uint32 user_ProcessPid;
 char user_ProcessName[32];
@@ -70,7 +71,7 @@ static int crash(lua_State* L) {
 	return 0;
 }
 
-static int lua_reboot(lua_State* L) {
+static int reboot_lua(lua_State* L) {
 	exec_reboot();
 	return 0;
 }
@@ -79,6 +80,11 @@ static int getInt(lua_State* L) {
 	int result = exec_getInt(lua_tointeger(L, 1));
 	lua_pushinteger(L, result);
 	return 1;
+}
+
+static int yield_lua(lua_State* L) {
+	exec_threadYield();
+	return 0;
 }
 
 lua_State* newLuaStateForModule(const char* moduleName, lua_State* L);
@@ -98,7 +104,7 @@ int newProcessEntryPoint() {
 		{ "getch", getch_lua },
 		{ "getch_async", getch_async },
 		{ "crash", crash },
-		{ "reboot", lua_reboot },
+		{ "reboot", reboot_lua },
 		{ NULL, NULL }
 	};
 	static const luaL_Reg lupi_funcs[] = {
@@ -106,6 +112,7 @@ int newProcessEntryPoint() {
 		{ "createProcess", createProcess },
 		{ "getUptime", getUptime },
 		{ "getInt", getInt },
+		{ "yield", yield_lua },
 		{ NULL, NULL }
 	};
 	lua_rawgeti(L, LUA_REGISTRYINDEX, LUA_RIDX_GLOBALS);

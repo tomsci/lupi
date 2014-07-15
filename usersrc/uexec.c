@@ -71,6 +71,10 @@ void NAKED exec_reboot() {
 	SLOW_EXEC1(KExecReboot);
 }
 
+void NAKED exec_threadYield() {
+	SLOW_EXEC1(KExecThreadYield);
+}
+
 uintptr NAKED exec_newSharedPage() {
 	SLOW_EXEC1(KExecNewSharedPage);
 }

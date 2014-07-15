@@ -96,6 +96,11 @@ int64 handleSvc(int cmd, uintptr arg1, uintptr arg2, uint32 r14_svc) {
 		case KExecReboot:
 			reboot(); // doesn't return
 			break;
+		case KExecThreadYield:
+			saveCurrentRegistersForThread(&r14_svc);
+			thread_yield(t);
+			reschedule();
+			break;
 		case KExecGetch_Async: {
 			if (byteReady()) {
 				KAsyncRequest req = { .thread = t, .userPtr = arg1 };

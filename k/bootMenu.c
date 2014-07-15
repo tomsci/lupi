@@ -18,14 +18,23 @@ static int displayBootMenu() {
 Boot menu:\n\
  Enter, 0: Start interpreter\n\
         1: Start klua debugger\n\
+Test func:\n\
         a: Run atomics unit tests\n\
+    ^X, r: Reboot\n\
+        y: Run yield scheduling tests\n\
 ");
 	for (;;) {
 		int ch = getch();
 		switch (ch) {
 			case '\r': return 0;
 			case '0' ... '9': return ch - '0';
+
+			case 'r': // Drop through
+			case 24: // Ctrl-X
+				return 'r';
+
 			case 'a':
+			case 'y':
 				return ch;
 		}
 	}
@@ -48,6 +57,8 @@ int checkBootMode(int bootMode) {
 #endif
 	} else if (bootMode == BootModeAtomicTests) {
 		test_atomics();
+	} else if (bootMode == 'r') {
+		reboot();
 	}
 	return bootMode;
 }

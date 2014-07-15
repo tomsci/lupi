@@ -220,7 +220,7 @@ void dumpRegisters(uint32* regs, uint32 pc, uint32 dataAbortFar) {
 		r13 = bnked[0];
 		r14 = bnked[1];
 	} else {
-		// Mode is something priviledged - switch back to it briefly to get r13 and 14
+		// Mode is something privileged - switch back to it briefly to get r13 and 14
 		uint32 currentMode;
 		asm("MRS %0, cpsr" : "=r" (currentMode));
 		int zero = 0;

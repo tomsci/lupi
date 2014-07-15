@@ -38,7 +38,6 @@ be able to sucessfully execute code. Therefore this function:
 * Sets `DACR` to something sensible
 */
 void mmu_init();
-void mmu_enable(uintptr returnAddr);
 void mmu_setCache(bool icache, bool dcache);
 void mmu_mapSect0Data(uintptr virtualAddress, uintptr physicalAddress, int npages);
 

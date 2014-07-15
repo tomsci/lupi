@@ -24,6 +24,7 @@
 #define KExecSetTimer			17
 #define KExecReboot				18
 #define KExecGetInt				19
+#define KExecThreadYield		20
 
 typedef enum {
 	EValTotalRam,

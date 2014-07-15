@@ -174,6 +174,7 @@ void thread_requestComplete(KAsyncRequest* request, int result);
 void thread_setBlockedReason(Thread* t, ThreadBlockedReason reason);
 void thread_enqueueBefore(Thread* t, Thread* before);
 void thread_dequeue(Thread* t, Thread** head);
+void thread_yield(Thread* t);
 
 NORETURN reschedule();
 void saveCurrentRegistersForThread(void* savedRegisters);
