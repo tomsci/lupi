@@ -176,6 +176,9 @@ void thread_enqueueBefore(Thread* t, Thread* before);
 void thread_dequeue(Thread* t, Thread** head);
 void thread_yield(Thread* t);
 
+int kern_disableInterrupts();
+void kern_enableInterrupts();
+void kern_restoreInterrupts(int mask);
 NORETURN reschedule();
 void saveCurrentRegistersForThread(void* savedRegisters);
 

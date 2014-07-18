@@ -23,9 +23,8 @@ spsr).
 */
 void saveCurrentRegistersForThread(void* savedRegisters) {
 	Thread* t = TheSuperPage->currentThread;
-	uint32 cpsr, spsr;
-	GetCpsr(cpsr);
-	GetSpsr(spsr);
+	uint32 cpsr = getCpsr();
+	uint32 spsr = getSpsr();
 	t->savedRegisters[16] = spsr;
 	bool irq = (cpsr & KPsrModeMask) == KPsrModeIrq;
 	uint32* splr = &t->savedRegisters[13];
@@ -93,13 +92,18 @@ NORETURN NAKED reschedule() {
 	asm("LDR r1, .TheCurrentThreadAddr");
 	asm("STR r0, [r1]"); // currentThread = NULL
 	DSB(r0);
-	ModeSwitch(KPsrModeSvc | KPsrFiqDisable); // Reenable interrupts
+	kern_enableInterrupts();
 	WFI(r0);
-	ModeSwitch(KPsrModeSvc | KPsrFiqDisable | KPsrIrqDisable); // Disable interrupts again, just to be safe
+	kern_disableInterrupts();
 	asm("B .doReschedule");
 	LABEL_WORD(.TheCurrentThreadAddr, &TheSuperPage->currentThread);
 }
 
+/**
+Call this instead of reschedule() to reschedule when in IRQ mode. Performs
+the appropriate cleanup and mode switching. Does not return, so should only be
+called at the very end of the IRQ handler.
+*/
 NORETURN NAKED reschedule_irq() {
 	// Reset IRQ stack and call reschedule in SVC mode (so nothing else messes stack up again)
 	asm("LDR r13, .irqStack");
@@ -193,4 +197,30 @@ void thread_setState(Thread* t, ThreadState s) {
 		dequeue(t);
 	}
 	t->state = s;
+}
+
+/**
+Disables interrupts if they were enabled, otherwise does nothing. Can be called
+from any privileged mode; the mode will not be changed by calling this
+function. Returns the previous mode which when passed to
+[kern_restoreInterrupts()](#kern_restoreInterrupts) will restore the previous
+mode and interrupt state.
+*/
+int kern_disableInterrupts() {
+	int result = getCpsr() & 0xFF;
+	int newMode = result | KPsrFiqDisable | KPsrIrqDisable;
+	ModeSwitchVar(newMode);
+	return result;
+}
+
+void kern_enableInterrupts() {
+	ModeSwitch(KPsrModeSvc | KPsrFiqDisable);
+}
+
+/**
+Restores the interrupt state which was saved by calling
+[kern_disableInterrupts()](#kern_disableInterrupts).
+*/
+void kern_restoreInterrupts(int mask) {
+	ModeSwitchVar(mask);
 }

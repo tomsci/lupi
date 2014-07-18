@@ -58,13 +58,6 @@ void irq_init() {
 //	PUT32(ARM_TIMER_RLD,4000000-1);
 	}
 
-void NAKED irq_enable() {
-	asm("MRS r0,cpsr");
-	asm("bic r0, r0, %0" : : "i" (KPsrIrqDisable));
-	asm("MSR cpsr_c, r0");
-	asm("bx lr");
-}
-
 bool handleIrq(void* savedRegs) {
 	//printk("IRQ!\n");
 	bool threadTimeExpired = false;

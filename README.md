@@ -299,9 +299,10 @@ kernel code will be once the MMU is enabled, which is `0xF8008000`
 required to be able to continue executing code once the MMU is enabled.
 
 Once this returns and the MMU is minimally configured, the entry-point enables
-the MMU. That done, the early stack is replaced by the real supervisor stack and
-the Pi-specific entry point finshes by calling the more generic `Boot()`
-function, located in `boot.c`.
+the MMU. That done, the early stack pointer is replaced by the MMU-enabled
+address (it uses the same actual physical memory) and the Pi-specific entry
+point finshes by calling the more generic `Boot()` function, located in
+`boot.c`.
 
 `Boot()` first enables the ARM data cache (and instruction cache if I can ever
 get it working!) before initialising the default uart by calling `uart_init()`.

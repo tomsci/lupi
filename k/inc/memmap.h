@@ -80,7 +80,6 @@ Peripherals	20000000-20300000	F2000000-F2300000	(3 MB)
 #define KProcessesPdeSection	0xF8300000u
 #define KProcessesPdeSection_pt	0xF8003000u
 
-
 #define KKernPtForProcPts		0xF8200000u
 #define KKernPtForProcPts_pt	0xF8050000u
 
@@ -120,7 +119,7 @@ I'm feeling generous.
 #define USER_STACK_AREA_SHIFT 15 // 32kB
 
 /**
-The format is of each user stack area is as follows. Note the svc stack for a
+The format of each user stack area is as follows. Note the svc stack for a
 thread is always 4kB, and that the area is rounded up to a power of 2 to make
 calculating the svc stack address simpler.
 
@@ -128,7 +127,7 @@ calculating the svc stack address simpler.
 	guard page			---------------
 	user stack			USER_STACK_SIZE (16kB)
 	guard page			---------------
-	padding				4kB
+	padding				--------------- (4kB)
 */
 
 #endif

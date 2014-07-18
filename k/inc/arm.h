@@ -15,6 +15,7 @@
 
 #define ModeSwitch(cpsr) asm("MSR cpsr_c, %0" : : "i" (cpsr))
 #define ModeSwitchReg(r) asm("MSR cpsr_c, " #r)
+#define ModeSwitchVar(v) asm("MSR cpsr_c, %0" : : "r" (v))
 #define GetCpsr(cpsr)    asm("MRS %0, cpsr" : "=r" (cpsr));
 #define GetSpsr(spsr)    asm("MRS %0, spsr" : "=r" (spsr));
 
@@ -44,5 +45,11 @@
 #define GetKernelStackTop(cond, reg) \
 	asm("MOV" #cond " " #reg ", %0" : : "i" (KSectionZero)); \
 	asm("ADD" #cond " " #reg ", " #reg ", %0" : : "i" (KKernelStackBase + KKernelStackSize - KSectionZero))
+
+
+uint32 getCpsr();
+uint32 getSpsr();
+
+#define ASSERT_MODE(mode) ASSERT((getCpsr() & KPsrModeMask) == mode)
 
 #endif

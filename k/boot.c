@@ -70,7 +70,7 @@ void Boot(uintptr atagsPhysAddr) {
 	TheSuperPage->bootMode = checkBootMode(BOOT_MODE);
 
 	irq_init();
-	irq_enable();
+	kern_enableInterrupts();
 
 	// Start first process (so exciting!)
 	SuperPage* s = TheSuperPage;
@@ -189,6 +189,18 @@ static inline uint32 getDFSR() {
 static inline uint32 getIFSR() {
 	uint32 ret;
 	asm("MRC p15, 0, %0, c5, c0, 1" : "=r" (ret));
+	return ret;
+}
+
+uint32 getCpsr() {
+	uint32 ret;
+	GetCpsr(ret);
+	return ret;
+}
+
+uint32 getSpsr() {
+	uint32 ret;
+	GetSpsr(ret);
 	return ret;
 }
 
