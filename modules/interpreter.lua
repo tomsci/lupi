@@ -191,13 +191,13 @@ function main()
 	cursor = 1
 	printPrompt()
 
-	if getch_async ~= nil then
+	if lupi ~= nil then
 		local rl = runloop.new()
 		local chreq = rl:newAsyncRequest({
 			completionFn = function(req, ch)
 				gotChar(ch)
 			end,
-			requestFn = getch_async,
+			requestFn = lupi.getch_async,
 		})
 		rl:queue(chreq)
 		rl:run()

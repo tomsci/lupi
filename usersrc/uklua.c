@@ -111,6 +111,23 @@ static int getLuaModule_searcherFn(lua_State* L) {
 }
 
 // Returns with env of the module at the top of L's stack
+/**
+Creates a new `lua_State` and require()s `moduleName`. Does not actually call
+require, rather it sets up the stack all ready for the call. This is so the
+caller can make any needed changes to the environment before loading the first
+bit of code.
+
+`L` can be NULL in which case a new state is constructed using `luaL_newstate()`.
+You may pass in an already-construted `lua_State`, if for example you need to use
+a custom allocator.
+
+Usage:
+
+	lua_State* L = newLuaStateForModule("init", NULL);
+	// Do anything you need to L
+	lua_call(L, 1, 1);
+	// The module's _ENV is now on the top of the stack
+*/
 lua_State* newLuaStateForModule(const char* moduleName, lua_State* L) {
 
 	if (L == NULL) L = luaL_newstate();
@@ -140,6 +157,5 @@ lua_State* newLuaStateForModule(const char* moduleName, lua_State* L) {
 	// the module will go via moduleFn above.
 	lua_getglobal(L, "require");
 	lua_pushstring(L, moduleName);
-	lua_call(L, 1, 1); // the module's env will be on the top of the stack
 	return L;
 }

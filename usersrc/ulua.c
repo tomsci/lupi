@@ -102,7 +102,6 @@ int newProcessEntryPoint() {
 	static const luaL_Reg globals[] = {
 		{ "putch", putch_lua },
 		{ "getch", getch_lua },
-		{ "getch_async", getch_async },
 		{ "crash", crash },
 		{ "reboot", reboot_lua },
 		{ NULL, NULL }
@@ -113,16 +112,27 @@ int newProcessEntryPoint() {
 		{ "getUptime", getUptime },
 		{ "getInt", getInt },
 		{ "yield", yield_lua },
+		{ "getch_async", getch_async },
 		{ NULL, NULL }
 	};
 	lua_rawgeti(L, LUA_REGISTRYINDEX, LUA_RIDX_GLOBALS);
 	luaL_setfuncs(L, globals, 0);
+	lua_pop(L, 1); // pops globals
 	lua_newtable(L);
 	luaL_setfuncs(L, lupi_funcs, 0);
-	lua_setfield(L, -2, "lupi");
+	lua_setglobal(L, "lupi");
 
-	lua_pop(L, 1);
+	// The debug table is evil and must be excised, except for debug.traceback
+	// which is dead handy
+	lua_newtable(L);
+	const int newDebugTable = lua_gettop(L);
+	lua_getglobal(L, "debug");
+	lua_getfield(L, -1, "traceback");
+	lua_setfield(L, newDebugTable, "traceback");
+	lua_settop(L, newDebugTable);
+	lua_setglobal(L, "debug");
 
+	lua_call(L, 1, 1); // Loads module, _ENV is now on top
 	lua_getfield(L, -1, "main");
 	if (!lua_isfunction(L, -1)) {
 		luaL_error(L, "Module %s does not have a main function!", moduleName);

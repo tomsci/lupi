@@ -173,6 +173,7 @@ static lua_State* initModule(uintptr heapBase, const char* module) {
 #endif
 	lua_atpanic(L, panicFn);
 	newLuaStateForModule(module, L);
+	lua_call(L, 1, 1);
 	// the interpreter module is now at top of L stack
 	ASSERT(L != NULL);
 
@@ -288,7 +289,7 @@ static int pageStats_getCounts(lua_State* L) {
 	return 1;
 }
 
-static int lua_switch_process(lua_State* L) {
+static int switch_process_lua(lua_State* L) {
 	Process* p;
 	if (lua_isnumber(L, 1)) {
 		p = GetProcess(lua_tointeger(L, 1));
@@ -302,8 +303,7 @@ static int lua_switch_process(lua_State* L) {
 	return 0;
 }
 
-extern void reboot();
-static int lua_reboot(lua_State* L) {
+static int reboot_lua(lua_State* L) {
 	reboot();
 	return 0;
 }
@@ -320,7 +320,7 @@ static void WeveCrashedSetupDebuggingStuff(lua_State* L) {
 	lua_pushcfunction(L, lua_getObj);
 	lua_setglobal(L, "mem");
 
-	lua_pushcfunction(L, lua_reboot);
+	lua_pushcfunction(L, reboot_lua);
 	lua_setglobal(L, "reboot");
 
 #ifndef HOSTED
@@ -439,7 +439,7 @@ static void WeveCrashedSetupDebuggingStuff(lua_State* L) {
 	lua_setglobal(L, "GetProcess");
 	lua_pushcfunction(L, pageStats_getCounts);
 	lua_setglobal(L, "pageStats_getCounts");
-	lua_pushcfunction(L, lua_switch_process);
+	lua_pushcfunction(L, switch_process_lua);
 	lua_setglobal(L, "switch_process");
 
 	EXPORT_INT(L, USER_STACK_SIZE);

@@ -8,6 +8,8 @@ local interp = require "interpreter"
 assert(type(interp) == "table")
 assert(_ENV.interpreter == interp)
 assert(_G.interpreter == nil) -- but that we don't pollute the global namespace every time a module does a require
+assert(debug.traceback ~= nil)
+assert(debug.debug == nil)
 
 require "runloop"
 function main(...)
