@@ -78,6 +78,26 @@ typedef enum ThreadBlockedReason {
 	EBlockedInServerConnect = 3,
 } ThreadBlockedReason;
 
+uint32 atomic_inc(uint32* ptr);
+uint32 atomic_set(uint32* ptr, uint32 val);
+bool atomic_cas(uint32* ptr, uint32 expectedVal, uint32 newVal);
+#ifndef LP64
+static inline Thread* atomic_set_thread(Thread** ptr, Thread* val) {
+	return (Thread*)atomic_set((uint32*)ptr, (uint32)val);
+}
+static inline uintptr atomic_set_uptr(uintptr* ptr, uintptr val) {
+	return (uintptr)atomic_set((uint32*)ptr, (uint32)val);
+}
+
+#endif
+
+uint8 atomic_inc8(uint8* ptr);
+uint8 atomic_set8(uint8* ptr, uint8 val);
+bool atomic_cas8(uint8* ptr, uint8 expectedVal, uint8 newVal);
+static inline bool atomic_setbool(bool* ptr, bool val) {
+	return (bool)atomic_set8((uint8*)ptr, val);
+}
+
 /*
 This structure is one page in size (maximum), and is always page-aligned.
 */

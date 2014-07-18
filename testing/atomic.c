@@ -73,6 +73,7 @@ static NAKED uint32 atomic_inc_interrupted(uint32* ptr) {
 
 
 void test_atomics() {
+	ASSERT_MODE(KPsrModeSvc);
 	kern_disableInterrupts(); // That's a given
 
 	uint32 var = 0x01d;

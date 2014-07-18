@@ -308,6 +308,7 @@ function build_kernel()
 		sources = {
 			{ path = "k/boot.c", copts = { "-DBOOT_MODE="..bootMode } },
 			"k/debug.c",
+			"k/atomic.c",
 			--"k/lock.c",
 			"k/pageAllocator.c",
 			"k/process.c",
