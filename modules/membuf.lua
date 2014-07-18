@@ -115,6 +115,11 @@ function getType(name)
 	return MemBuf._types[name]
 end
 
+function MemBuf:checkType(type)
+	local selfType = self:getType()
+	assert(selfType._type == type, "MemBuf is of type"..selfType._type.." not "..type)
+end
+
 function MemBuf._declareMember(type, memberName, offset, size, memberType)
 	local t = MemBuf._types[type]
 	--# The "type" table t serves two purposes. In its integer keys it stores the members in order.

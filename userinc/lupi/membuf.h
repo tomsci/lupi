@@ -63,5 +63,6 @@ Checks that the value at Lua stack index `idx` is a MemBuf, and returns it.
 Otherwise errors.
 */
 MemBuf* mbuf_checkbuf(lua_State* L, int idx);
+MemBuf* mbuf_checkbuf_type(lua_State* L, int idx, const char* type);
 
 #endif

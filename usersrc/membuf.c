@@ -14,7 +14,7 @@ The maximum permitted size of a MemBuf.
 #define MAX_BUFSIZE 1024*1024
 
 MemBuf* mbuf_checkbuf(lua_State* L, int idx) {
-	return (MemBuf*)luaL_checkudata(L, idx, MemBufMetatable);
+	return mbuf_checkbuf_type(L, idx, NULL);
 }
 
 static MemBuf* checkBuf(lua_State* L) {
@@ -23,6 +23,19 @@ static MemBuf* checkBuf(lua_State* L) {
 
 static void pushMemBuf(lua_State* L) {
 	luaL_getmetatable(L, MemBufMetatable);
+}
+
+MemBuf* mbuf_checkbuf_type(lua_State* L, int idx, const char* type) {
+	MemBuf* buf = (MemBuf*)luaL_checkudata(L, idx, MemBufMetatable);
+	if (type) {
+		ASSERTL(idx > 0, "mbuf_checkbuf_type must be called with an absolute index");
+		pushMemBuf(L);
+		lua_getfield(L, -1, "checkType");
+		lua_pushvalue(L, idx);
+		lua_pushstring(L, type);
+		lua_call(L, 2, 0);
+	}
+	return buf;
 }
 
 static void boundsCheck(lua_State* L, MemBuf* buf, int offset, int typeSize) {

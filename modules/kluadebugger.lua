@@ -102,7 +102,12 @@ function stack(obj)
 	local addr
 	local t = type(obj)
 	if t == "nil" then addr = TheSuperPage.crashRegisters.r13
-	elseif t == "userdata" then addr = obj.savedRegisters.r13 -- assume a thread membuf
+	elseif t == "userdata" then
+		addr = obj.savedRegisters.r13 -- assume a thread membuf
+		local p = processForThread(obj)
+		if TheSuperPage.currentProcess ~= p then
+			print("(Switching process to "..p.name..")")
+		end
 	elseif t == "number" then addr = obj
 	else
 		error("Bad type to stack function")

@@ -294,7 +294,7 @@ static int switch_process_lua(lua_State* L) {
 	if (lua_isnumber(L, 1)) {
 		p = GetProcess(lua_tointeger(L, 1));
 	} else {
-		uintptr ptr = (uintptr)mbuf_checkbuf(L, 1)->ptr;
+		uintptr ptr = (uintptr)mbuf_checkbuf_type(L, 1, "Process")->ptr;
 		ASSERTL((ptr & 0xFFF) == 0);
 		ASSERTL((ptr - (uintptr)GetProcess(0)) >> KPageShift < MAX_PROCESSES);
 		p = (Process*)ptr;
@@ -306,6 +306,12 @@ static int switch_process_lua(lua_State* L) {
 static int reboot_lua(lua_State* L) {
 	reboot();
 	return 0;
+}
+
+static int processForThread_lua(lua_State* L) {
+	Thread* t = (Thread*)mbuf_checkbuf_type(L, 1, "Thread")->ptr;
+	mbuf_push_object(L, (uintptr)processForThread(t), sizeof(Thread));
+	return 1;
 }
 
 static void WeveCrashedSetupDebuggingStuff(lua_State* L) {
@@ -441,6 +447,8 @@ static void WeveCrashedSetupDebuggingStuff(lua_State* L) {
 	lua_setglobal(L, "pageStats_getCounts");
 	lua_pushcfunction(L, switch_process_lua);
 	lua_setglobal(L, "switch_process");
+	lua_pushcfunction(L, processForThread_lua);
+	lua_setglobal(L, "processForThread");
 
 	EXPORT_INT(L, USER_STACK_SIZE);
 	EXPORT_INT(L, USER_STACK_AREA_SHIFT);
