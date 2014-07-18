@@ -118,9 +118,33 @@ used up or until they block. Blocking can only be done in an SVC call, which
 reschedules directly back to user mode when the thread unblocks. This,
 combined with there being no preemption while threads are in supervisor mode,
 means that there is never a need to save a supervisor register set, which
-saves space in the kernel `Thread` objects. There are no kernel threads (it
-isn't even possible with current design because we don't support preemption
-when in supervisor mode).
+saves space in the kernel `Thread` objects. There are no kernel threads except
+for the DFC thread, which is handled as a special case (and cannot block because
+we don't handle preemption of threads running a privileged mode).
+
+### DFCs and interrupts
+
+Interrupts are enabled during SVC calls, as well as during normal user thread
+execution. This means certain operations are done using atomic operations or by
+calling [kern_disableInterrupts()](k/scheduler.html#kern_disableInterrupts).
+Currently due to the lack of working icache, the atomic operations compile down
+to disabling interrupts anyway.
+
+In order to have some level of real-time guarantee on interrupts, and for
+example avoid excessive clock drift, the interrupt handler cannot do anything
+lengthy such as call thread_requestComplete() while in IRQ mode, because that
+will block other IRQs. To handle this we have Deferred Function Calls (DFCs)
+which can be scheduled by IRQ code. Any DFCs scheduled by IRQ code run
+immediately after the interrupt handler completes. Similar to how SVCs are
+currently handled, DFCs run with interrupts enabled, but they cannot be
+preempted. They use a dummy Thread structure without associated Process, and
+execute using a custom stack located at `KDfcThreadStack`.
+
+DFCs can also be scheduled by SVC code, in which case they will get picked up
+after the next interrupts fires. Not ideal but adequate for now.
+
+The 'kernel' stack is only used during boot-up before the first process has
+started, and during rescheduling.
 
 Build process
 -------------

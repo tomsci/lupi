@@ -172,6 +172,22 @@ int64 handleSvc(int cmd, uintptr arg1, uintptr arg2, uint32 r14_svc) {
 			ASSERT(false, cmd);
 			break;
 	}
+
+	kern_disableInterrupts();
+	// Now we're done servicing the SVC, check if rescheduleNeededOnSvcExit
+	// was set meaning our thread's timeslice expired during the SVC (but
+	// because we don't support preempting SVC threads yet it couldn't
+	// reschedule at that point). We disable interrupts here to make sure the
+	// timeslice doesn't expire after we've checked rescheduleNeededOnSvcExit
+	// but before we return.
+	if (atomic_setbool(&TheSuperPage->rescheduleNeededOnSvcExit, false)) {
+		saveCurrentRegistersForThread(&r14_svc);
+		// Save the result also
+		t->savedRegisters[0] = (uint32)result;
+		t->savedRegisters[1] = (result >> 32);
+		reschedule();
+	}
+	// The MOVS to return from SVC mode will reenable interrupts for us
 	return result;
 }
 

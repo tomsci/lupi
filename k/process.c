@@ -210,10 +210,10 @@ static void process_exit(Process* p, int reason) {
 	//printk("Process %s exited with %d", p->name, reason);
 }
 
-void do_thread_exit(Thread* t, int reason) {
-	t->exitReason = reason;
-	thread_setState(t, EDead);
+static void dfc_threadExit(uintptr arg1, uintptr arg2, uintptr arg3) {
+	Thread* t = (Thread*)arg1;
 	freeThreadStacks(t);
+	thread_setState(t, EDead);
 	Process* p = processForThread(t);
 	// Check if the process still has any alive threads - if not call process_exit()
 	bool dead = true;
@@ -224,18 +224,21 @@ void do_thread_exit(Thread* t, int reason) {
 		}
 	}
 	if (dead) {
-		process_exit(p, reason);
+		process_exit(p, t->exitReason);
 	}
 }
 
-NORETURN NAKED thread_exit(Thread* t, int reason) {
-	// We're going to be cleaning up the thread's stack, and since we only ever
-	// call this when t is the current thread, we'd better switch to a stack a
-	// little more permanent. Since we don't return from this function we don't
-	// have to worry about anything already on the stack.
-	GetKernelStackTop(AL, r13);
-	asm("BL do_thread_exit");
-	asm("B reschedule");
+/**
+Call to exit the current thread (which must equal `t`). Does not return.
+*/
+NORETURN thread_exit(Thread* t, int reason) {
+	ASSERT(t == TheSuperPage->currentThread, (uintptr)t);
+	t->exitReason = reason;
+	thread_setState(t, EDying);
+	// We can't free the thread stacks directly because we're using the svc one.
+	// So queue a DFC to do it for us.
+	dfc_queue(dfc_threadExit, (uint32)t, 0, 0);
+	reschedule();
 }
 
 void thread_setBlockedReason(Thread* t, ThreadBlockedReason reason) {

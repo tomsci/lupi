@@ -67,15 +67,16 @@ typedef struct Thread {
 typedef enum ThreadState {
 	EReady = 0,
 	EBlockedFromSvc = 1, // Reason is exitReason
-	EDead = 2,
-	EWaitForRequest = 3,
-	// ???
+	EDying = 2, // Thread has executed its last but hasn't yet been cleaned up by dfc_threadExit
+	EDead = 3, // Stacks has been freed
+	EWaitForRequest = 4,
 } ThreadState;
 
 typedef enum ThreadBlockedReason {
 	EBlockedOnGetch = 1,
 	EBlockedWaitingForServerConnect = 2,
 	EBlockedInServerConnect = 3,
+	EBlockedWaitingForDfcs = 4, // Special reason only used by the DFC thread
 } ThreadBlockedReason;
 
 uint32 atomic_inc(uint32* ptr);
@@ -132,6 +133,15 @@ typedef struct Server {
 	Thread* blockedClientList;
 } Server;
 
+typedef void (*DfcFn)(uintptr arg1, uintptr arg2, uintptr arg3);
+
+typedef struct Dfc {
+	DfcFn fn;
+	uintptr args[3];
+} Dfc;
+
+#define MAX_DFCS 4
+
 typedef struct SuperPage {
 	uint32 totalRam;
 	uint32 boardRev;
@@ -146,7 +156,7 @@ typedef struct SuperPage {
 	bool marvin;
 	bool trapAbort;
 	bool exception; // only used in kdebugger mode
-	byte uartDroppedChars;
+	uint8 uartDroppedChars; // Access only with atomic_*
 	KAsyncRequest uartRequest;
 	KAsyncRequest timerRequest;
 	uint64 timerCompletionTime;
@@ -154,7 +164,11 @@ typedef struct SuperPage {
 	uint32 crashFar;
 	byte uartBuf[66];
 	Server servers[MAX_SERVERS];
+	bool rescheduleNeededOnSvcExit;
 	byte svcPsrMode; // settable so we don't accidentally enable interrupts when crashed
+	uint32 numDfcsPending;
+	Thread dfcThread;
+	Dfc dfcs[MAX_DFCS];
 } SuperPage;
 
 ASSERT_COMPILE(sizeof(SuperPage) <= KPageSize);
@@ -176,7 +190,11 @@ static inline Thread* firstThreadForProcess(Process* p) {
 }
 
 static inline Process* processForThread(Thread* t) {
-	// Threads are always within their process page, so simply mask off and cast
+	if ((uintptr)t < KProcessesSection) {
+		// Special case. The DFC thread doesn't have an associated process
+		return NULL;
+	}
+	// Otherwise, threads are within their process page, so simply mask off and cast
 	return (Process*)(((uintptr)t) & ~(KPageSize - 1));
 }
 
@@ -201,6 +219,9 @@ void kern_enableInterrupts();
 void kern_restoreInterrupts(int mask);
 NORETURN reschedule();
 void saveCurrentRegistersForThread(void* savedRegisters);
+void dfc_queue(DfcFn fn, uintptr arg1, uintptr arg2, uintptr arg3);
+void dfc_requestComplete(KAsyncRequest* request, int result);
+void irq_checkDfcs(void* savedRegisters);
 
 uintptr ipc_mapNewSharedPageInCurrentProcess();
 int ipc_connectToServer(uint32 id, uintptr sharedPage);

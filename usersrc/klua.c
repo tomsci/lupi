@@ -363,6 +363,12 @@ static void WeveCrashedSetupDebuggingStuff(lua_State* L) {
 	MBUF_MEMBER_TYPE(Server, serverRequest, "KAsyncRequest");
 	MBUF_MEMBER(Server, blockedClientList);
 
+	MBUF_TYPE(Dfc);
+	MBUF_MEMBER(Dfc, fn);
+	MBUF_MEMBER(Dfc, args[0]);
+	MBUF_MEMBER(Dfc, args[1]);
+	MBUF_MEMBER(Dfc, args[2]);
+
 	MBUF_TYPE(SuperPage);
 	MBUF_MEMBER(SuperPage, totalRam);
 	MBUF_MEMBER(SuperPage, boardRev);
@@ -385,7 +391,10 @@ static void WeveCrashedSetupDebuggingStuff(lua_State* L) {
 	// TODO handle arrays...
 	// Servers, for implementation reasons, fill the servers array from the end backwards
 	mbuf_declare_member(L, "SuperPage", "firstServer", offsetof(SuperPage, servers[MAX_SERVERS-1]), sizeof(Server), "Server");
+	MBUF_MEMBER(SuperPage, rescheduleNeededOnSvcExit);
 	MBUF_MEMBER(SuperPage, svcPsrMode);
+	MBUF_MEMBER(SuperPage, numDfcsPending);
+	// dfcThread has to be declared after Thread
 
 	MBUF_NEW(SuperPage, TheSuperPage);
 	lua_setglobal(L, "TheSuperPage");
@@ -393,6 +402,7 @@ static void WeveCrashedSetupDebuggingStuff(lua_State* L) {
 	MBUF_TYPE(ThreadState);
 	MBUF_ENUM(ThreadState, EReady);
 	MBUF_ENUM(ThreadState, EBlockedFromSvc);
+	MBUF_ENUM(ThreadState, EDying);
 	MBUF_ENUM(ThreadState, EDead);
 	MBUF_ENUM(ThreadState, EWaitForRequest);
 
@@ -404,6 +414,8 @@ static void WeveCrashedSetupDebuggingStuff(lua_State* L) {
 	MBUF_MEMBER(Thread, timeslice);
 	MBUF_MEMBER(Thread, exitReason);
 	MBUF_MEMBER_TYPE(Thread, savedRegisters, "regset");
+
+	MBUF_MEMBER_TYPE(SuperPage, dfcThread, "Thread");
 
 	MBUF_TYPE(Process);
 	MBUF_MEMBER(Process, pid);
@@ -456,6 +468,7 @@ static void WeveCrashedSetupDebuggingStuff(lua_State* L) {
 	EXPORT_INT(L, MAX_PROCESSES);
 	EXPORT_INT(L, MAX_THREADS);
 	EXPORT_INT(L, MAX_PROCESS_NAME);
+	EXPORT_INT(L, MAX_DFCS);
 	EXPORT_INT(L, THREAD_TIMESLICE);
 	EXPORT_INT(L, KKernelStackBase);
 	EXPORT_INT(L, KKernelStackSize);

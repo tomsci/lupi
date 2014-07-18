@@ -18,7 +18,7 @@ spsr).
 * If mode is IRQ, `savedRegisters` should point to registers {r0-r12, pc} for
   the mode specified by spsr_irq. r13 and r14 are retrieved via `STM ^` if
   spsr_irq is USR (or System), and by a mode switch to SVC mode otherwise.
-* If mode is SVC, `savedRegisters` should point to r14_svc only (ie usr PC) and
+* If mode is SVC, `savedRegisters` should point to r14\_svc only (ie usr PC) and
   spsr_svc really better be Usr or System. r13 and r14 are retreived via `STM ^`.
 */
 void saveCurrentRegistersForThread(void* savedRegisters) {
@@ -61,16 +61,31 @@ Thread* findNextReadyThread() {
 	return NULL;
 }
 
-static NORETURN NAKED doScheduleThread(uint32* savedRegisters, uint32 spsr) {
+static NORETURN NAKED doScheduleUserThread(uint32* savedRegisters, uint32 spsr) {
 	asm("MSR spsr, r1"); // make sure the 'S' returns us to the correct mode
 	asm("LDR r14, [r0, #60]"); // r14 = savedRegisters[15]
 
 	ASM_JFDI("LDM r0, {r0-r14}^");
+	// Make sure any atomic ops know they've been interrupted
+	asm("CLREX");
 	asm("MOVS pc, r14");
 	// And we're done
 }
 
-// For now assume we're in SVC
+// IMPORTANT NOTE: This is an incomplete implementation, which does not support
+// cleanly resuming an arbitrary kernel thread. It requires that
+// savedRegisters[14] is set to the address to branch to, NOT savedRegisters[15]
+// Therefore it can only be used to start execution, not resume it.
+static NORETURN NAKED doScheduleKernThread(uint32* savedRegisters, uint32 spsr) {
+	asm("MSR spsr, r1"); // make sure the 'S' returns us to the correct mode
+	ASM_JFDI("LDM r0, {r0-r14}");
+	// Make sure any atomic ops know they've been interrupted
+	asm("CLREX");
+	asm("MOVS pc, r14");
+	// And we're done
+}
+
+// Enter in SVC
 NORETURN scheduleThread(Thread* t) {
 	Process* p = processForThread(t);
 	switch_process(p);
@@ -78,9 +93,25 @@ NORETURN scheduleThread(Thread* t) {
 	TheSuperPage->currentThread = t;
 	//printk("Scheduling thread %d-%d ts=%d\n", indexForProcess(p), t->index, t->timeslice);
 	//worddump(t->savedRegisters, sizeof(t->savedRegisters));
-	doScheduleThread(t->savedRegisters, t->savedRegisters[16]);
+	uint32 spsr = t->savedRegisters[16];
+	uint32 mode = spsr & KPsrModeMask;
+	if (mode == KPsrModeUsr) {
+		doScheduleUserThread(t->savedRegisters, spsr);
+	} else if (mode == KPsrModeSvc) {
+		//printk("Scheduling kern thread %p\n", t);
+		//worddump(t->savedRegisters, sizeof(t->savedRegisters));
+		doScheduleKernThread(t->savedRegisters, spsr);
+	} else {
+		ASSERT(false, spsr);
+	}
 }
 
+/**
+Perform a reschedule, ie causes a different thread to execute. Does not return.
+Interrupts may or may not be enabled. Must be in SVC mode.
+
+See also: [reschedule_irq()](#reschedule_irq)
+*/
 NORETURN NAKED reschedule() {
 	asm(".doReschedule:");
 	asm("BL findNextReadyThread");
@@ -115,7 +146,7 @@ NORETURN NAKED reschedule_irq() {
 	LABEL_WORD(.irqStack, KIrqStackBase + KPageSize);
 }
 
-static void dequeue(Thread* t) {
+static void dequeueFromReadyList(Thread* t) {
 	thread_dequeue(t, &TheSuperPage->readyList);
 }
 
@@ -157,7 +188,7 @@ ready state or timeslice.
 void thread_yield(Thread* t) {
 	// Move to end of ready list
 	SuperPage* s = TheSuperPage;
-	dequeue(t);
+	dequeueFromReadyList(t);
 	thread_enqueueBefore(t, s->readyList ? s->readyList->prev : NULL);
 	if (!s->readyList) s->readyList = t;
 }
@@ -168,20 +199,33 @@ bool tick(void* savedRegs) {
 	s->uptime++;
 	if (s->uptime == s->timerCompletionTime) {
 		s->timerCompletionTime = UINT64_MAX;
-		thread_requestComplete(&s->timerRequest, 0);
+		dfc_requestComplete(&s->timerRequest, 0);
 	}
 	Thread* t = s->currentThread;
 	if (t && t->state == EReady) {
-		ASSERT(t->timeslice > 0); // Otherwise it shouldn't have been running
-		t->timeslice--;
+		if (t->timeslice > 0) {
+			t->timeslice--;
+		} else {
+			// This is only allowed if the thread is (still!) in an SVC,
+			// which probably shouldn't ever happen
+			uint32 spsr;
+			GetSpsr(spsr);
+			bool threadWasInSvc = (spsr & KPsrModeMask) == KPsrModeSvc;
+			ASSERT(threadWasInSvc);
+		}
 		if (t->timeslice == 0) {
+			thread_yield(t);
 			// Thread is out of time!
-			saveCurrentRegistersForThread(savedRegs);
-			// Move to end of ready list
-			dequeue(t);
-			thread_enqueueBefore(t, s->readyList ? s->readyList->prev : NULL);
-			if (!s->readyList) s->readyList = t;
-			return true;
+			// Check if we can preempt directly or whether to wait for svc exit
+			uint32 spsr = getSpsr();
+			bool threadWasInSvc = (spsr & KPsrModeMask) == KPsrModeSvc;
+			if (threadWasInSvc) {
+				atomic_setbool(&s->rescheduleNeededOnSvcExit, true);
+				return false; // Don't reschedule immediately
+			} else {
+				saveCurrentRegistersForThread(savedRegs);
+				return true; // Reschedule right now
+			}
 		}
 	}
 	return false;
@@ -194,7 +238,7 @@ void thread_setState(Thread* t, ThreadState s) {
 		thread_enqueueBefore(t, TheSuperPage->readyList);
 		TheSuperPage->readyList = t;
 	} else if (t->state == EReady) {
-		dequeue(t);
+		dequeueFromReadyList(t);
 	}
 	t->state = s;
 }
@@ -223,4 +267,103 @@ Restores the interrupt state which was saved by calling
 */
 void kern_restoreInterrupts(int mask) {
 	ModeSwitchVar(mask);
+}
+
+// Stack alignment must be 16 bytes and we push one of these directly onto the
+// stack
+ASSERT_COMPILE((sizeof(TheSuperPage->dfcs) & 0xF) == 0);
+
+static void dfcs_run(int numDfcsPending, Dfc* dfcs);
+
+/**
+Call from end of IRQ handler to check for any pending DFCs to run. Runs in IRQ
+mode, interrupts disabled. Will not return if there are pending DFCs, therefore
+should only be called as the last thing the IRQ handler does (except for
+calling reschedule_irq if tick() returned true).
+
+`savedRegisters` can be NULL if the IRQ handler has called tick and it returned
+true.
+*/
+void irq_checkDfcs(void* savedRegisters) {
+	uint32 numDfcsPending = atomic_set(&TheSuperPage->numDfcsPending, 0);
+	if (numDfcsPending == 0) return;
+	// If we have some DFCs, ready the DFC thread
+	Thread* dfcThread = &TheSuperPage->dfcThread;
+	Thread* currentThread = TheSuperPage->currentThread;
+	if (currentThread == dfcThread) {
+		// We interrupted the DFC thread, aargh
+		ASSERT(false);
+		return;
+	}
+	thread_setState(dfcThread, EReady);
+	// Copy DFCs into dfcThread's stack so that we don't have to access the
+	// SuperPage's copy with interrupts enabled.
+	uintptr sp = KDfcThreadStack + KPageSize - sizeof(TheSuperPage->dfcs);
+	memcpy((void*)sp, TheSuperPage->dfcs, sizeof(TheSuperPage->dfcs));
+	// And massage the register set so that scheduleThread() will do the right thing
+	dfcThread->savedRegisters[0] = numDfcsPending;
+	dfcThread->savedRegisters[1] = sp;
+	dfcThread->savedRegisters[13] = sp;
+	// See doScheduleKernThread for why we set reg[14] not reg[15]
+	dfcThread->savedRegisters[14] = (uintptr)&dfcs_run;
+	uint32 psr;
+	GetCpsr(psr);
+	psr = (psr & ~0xFF) | KPsrModeSvc | KPsrFiqDisable;
+	dfcThread->savedRegisters[16] = psr;
+
+	// Preempt the current thread
+	if (currentThread && savedRegisters) {
+		saveCurrentRegistersForThread(savedRegisters);
+	}
+
+	reschedule_irq();
+	// Doesn't return, and also will not enable interrupts until it has set
+	// currentThread (which is important in ensuring this code works reenterantly)
+}
+
+void dfc_queue(DfcFn fn, uintptr arg1, uintptr arg2, uintptr arg3) {
+	uint32 n = atomic_inc(&TheSuperPage->numDfcsPending);
+	ASSERT(n <= MAX_DFCS);
+	Dfc* dfc = &TheSuperPage->dfcs[n-1];
+	dfc->fn = fn;
+	dfc->args[0] = arg1;
+	dfc->args[1] = arg2;
+	dfc->args[2] = arg3;
+
+	/*
+	if (n == 1 && (getCpsr() & KPsrModeMask) == KPsrModeSvc) {
+		// TODO ready the DFC thread
+	}
+	*/
+}
+
+static void do_request_complete(uintptr arg1, uintptr arg2, uintptr arg3) {
+	KAsyncRequest req = {
+		.thread = (Thread*)arg1,
+		.userPtr = arg2,
+	};
+	ASSERT(req.userPtr, (uintptr)req.thread);
+	thread_requestComplete(&req, (int)arg3);
+}
+
+void dfc_requestComplete(KAsyncRequest* request, int result) {
+	// We want the DFC to take ownership of the request, so null its userPtr
+	// as if it had been completed. Might as well use an atomic.
+	uint32 userPtr = atomic_set_uptr(&request->userPtr, 0);
+	dfc_queue(do_request_complete, (uintptr)request->thread, userPtr, result);
+}
+
+// Run as if it were a normal (albeit kernel-only) thread.
+static void dfcs_run(int numDfcsPending, Dfc* dfcs) {
+	for (int i = 0; i < numDfcsPending; i++) {
+		Dfc* dfc = &dfcs[i];
+		dfc->fn(dfc->args[0], dfc->args[1], dfc->args[2]);
+	}
+	Thread* me = TheSuperPage->currentThread;
+	ASSERT(me == &TheSuperPage->dfcThread);
+	// Have to do disable before messing with the current thread's state
+	kern_disableInterrupts();
+	thread_setState(me, EBlockedFromSvc);
+	thread_setBlockedReason(me, EBlockedWaitingForDfcs);
+	reschedule();
 }

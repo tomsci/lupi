@@ -102,19 +102,18 @@ byte ring_pop(byte* ring, int size) {
 
 void uart_got_char(byte b) {
 	SuperPage* s = TheSuperPage;
-	Thread* t = s->blockedUartReceiveIrqHandler;
+	Thread* t = atomic_set_thread(&s->blockedUartReceiveIrqHandler, NULL);
 	if (t) {
 		t->savedRegisters[0] = b;
 		thread_setState(t, EReady);
-		s->blockedUartReceiveIrqHandler = NULL;
 		// The returning WFI in reschedule() should take care of the rest
 	} else if (s->uartRequest.userPtr) {
-		thread_requestComplete(&s->uartRequest, b);
+		dfc_requestComplete(&s->uartRequest, b);
 	} else if (!ring_full(s->uartBuf, UART_BUF_SIZE)) {
 		ring_push(s->uartBuf, UART_BUF_SIZE, b);
 	} else {
 		//printk("Dropping char %c on the floor\n", b);
-		s->uartDroppedChars++;
+		atomic_inc8(&s->uartDroppedChars);
 	}
 }
 
@@ -125,9 +124,9 @@ bool byteReady() {
 
 byte getch() {
 	SuperPage* s = TheSuperPage;
-	if (s->uartDroppedChars) {
-		printk("|Warning: %d dropped chars|", s->uartDroppedChars);
-		s->uartDroppedChars = 0;
+	uint8 droppedChars = atomic_set8(&s->uartDroppedChars, 0);
+	if (droppedChars) {
+		printk("|Warning: %d dropped chars|", droppedChars);
 	}
 	if (!ring_empty(s->uartBuf, UART_BUF_SIZE)) {
 		return ring_pop(s->uartBuf, UART_BUF_SIZE);

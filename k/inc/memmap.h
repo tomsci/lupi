@@ -27,7 +27,8 @@ Guard		-----------------	F804E000-F804F000	(4k)
 Unused		-----------------	F804F000-F8050000	(4k)
 KKernPtForProcPts_pt			F8050000-F8051000	(4k)
 atags		00000000-00001000	F8051000-F8052000	(12k)
-Unused		-----------------	F8052000-F80C0000
+KDfcThreadStack					F8052000-F8053000	(4k)
+Unused		-----------------	F8053000-F80C0000
 PageAlloctr	0004C000-dontcare	F80C0000-F8100000	(256k)
 -------------------------------------------------
 Processes						F8100000-F8200000	(1 MB)
@@ -69,6 +70,7 @@ Peripherals	20000000-20300000	F2000000-F2300000	(3 MB)
 #define KPageAllocatorMaxSize	0x00040000u
 
 #define KKernelAtagsBase		0xF8051000u
+#define KDfcThreadStack			0xF8052000u
 
 #define KSuperPageAddress		0xF8000000u
 

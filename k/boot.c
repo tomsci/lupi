@@ -57,6 +57,8 @@ void Boot(uintptr atagsPhysAddr) {
 	mmu_createSection(Al, KProcessesPdeSection);
 	// And a section for the PTs for all the processes' user PTs...
 	mmu_createSection(Al, KKernPtForProcPts);
+	// And the DFC thread stack
+	mmu_mapPageInSection(Al, (uint32*)KSectionZeroPt, KDfcThreadStack, KPageSect0);
 
 	// One Process page for first proc
 	Process* firstProcess = GetProcess(0);
@@ -76,7 +78,7 @@ void Boot(uintptr atagsPhysAddr) {
 	SuperPage* s = TheSuperPage;
 	s->nextPid = 1;
 	s->numValidProcessPages = 1;
-	s->svcPsrMode = KPsrModeSvc | KPsrFiqDisable | KPsrIrqDisable;
+	s->svcPsrMode = KPsrModeSvc | KPsrFiqDisable /*| KPsrIrqDisable*/;
 
 	firstProcess->pid = 0;
 	firstProcess->pdePhysicalAddress = 0;
@@ -254,9 +256,9 @@ void NAKED svc() {
 
 	// If we've crashed, use the kernel stack
 	asm("LDRB r9, [r4, %0]" : : "i" (offsetof(SuperPage, marvin)));
-	asm("CMP r9, #1");
-	GetKernelStackTop(EQ, r13);
-	asm("BEQ .postStackSet");
+	asm("CMP r9, #0");
+	GetKernelStackTop(NE, r13);
+	asm("BNE .postStackSet");
 
 	// Reenable interrupts (depending on what svcPsrMode says)
 	ModeSwitchReg(r8);

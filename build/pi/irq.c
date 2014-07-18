@@ -86,6 +86,7 @@ bool handleIrq(void* savedRegs) {
 		// IRQ Pending Reg 2
 		// TODO
 	}
+	irq_checkDfcs(threadTimeExpired ? NULL : savedRegs);
 	return threadTimeExpired;
 }
 
