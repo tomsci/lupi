@@ -193,7 +193,7 @@ void thread_setState(Thread* t, ThreadState s) {
 		// Move to head of ready list
 		thread_enqueueBefore(t, TheSuperPage->readyList);
 		TheSuperPage->readyList = t;
-	} else {
+	} else if (t->state == EReady) {
 		dequeue(t);
 	}
 	t->state = s;
