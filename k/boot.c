@@ -20,12 +20,21 @@ int checkBootMode(int bootMode);
 #endif
 
 void Boot(uintptr atagsPhysAddr) {
+#ifdef ICACHE_IS_STILL_BROKEN
 #ifdef ENABLE_DCACHE
 	mmu_setCache(false, true);
+#endif
 #endif
 	uart_init();
 
 	printk("\n\n" LUPI_VERSION_STRING);
+
+#ifndef ICACHE_IS_STILL_BROKEN
+	// Remove the temporary identity mapping for the first code page
+	printk("Identity mapping going bye-bye\n");
+	*(uint32*)KKernelPdeBase = 0;
+	printk("Identity mapping gone\n");
+#endif
 
 	// Set up data structures that weren't part of mmu_init()
 	mmu_mapSect0Data(KKernelAtagsBase, atagsPhysAddr & ~0xFFF, 1);

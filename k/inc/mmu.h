@@ -22,6 +22,8 @@
 
 #define KERN_PT_FOR_PROCESS_PTS(p) (KKernPtForProcPts | MASKED_PROC_PTR(p))
 
+#define ICACHE_IS_STILL_BROKEN
+
 typedef struct PageAllocator PageAllocator;
 
 /**
@@ -38,7 +40,12 @@ be able to sucessfully execute code. Therefore this function:
 * Sets `DACR` to something sensible
 */
 void mmu_init();
+
+#ifdef ICACHE_IS_STILL_BROKEN
 void mmu_setCache(bool icache, bool dcache);
+#else
+void mmu_enable();
+#endif
 void mmu_mapSect0Data(uintptr virtualAddress, uintptr physicalAddress, int npages);
 
 /**

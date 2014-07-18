@@ -61,6 +61,7 @@ Peripherals	20000000-20300000	F2000000-F2300000	(3 MB)
 
 #define KPhysicalAbortStackBase	0x00004000u
 #define KPhysicalIrqStackBase	0x00005000u
+#define KTemporaryIdMappingPt	KPhysicalIrqStackBase
 
 #define KAbortStackBase			0xF8049000u
 #define KIrqStackBase			0xF804B000u

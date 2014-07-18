@@ -33,6 +33,7 @@ void NAKED _start() {
 #endif
 
 	asm("BL mmu_init");
+#ifdef ICACHE_IS_STILL_BROKEN
 	asm("BL makeCrForMmuEnable"); // r0 is now CR
 	/* This next instruction fetches the virtual address (ie where we told the linker we were
 	 * going to put stuff when we built the kernel) of the next instruction. When we enable the
@@ -41,6 +42,11 @@ void NAKED _start() {
 	 */
 	asm("LDR r1, =.mmuEnableReturn");
 	asm("BL mmu_setControlRegister");
+#else
+	asm("LDR r14, =.mmuEnableReturn");
+	asm("B mmu_enable");
+#endif
+
 	asm(".mmuEnableReturn:");
 	// From this point on, we are running with MMU on, and code is actually located where
 	// the linker thought it was (ie KKernelCodeBase not KPhysicalCodeBase)

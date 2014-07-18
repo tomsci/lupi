@@ -34,10 +34,34 @@
 // c7 c5 - p211
 #define ISB(reg)				asm("MCR p15, 0, " #reg ", c7, c5, 4") // AKA prefetch flush, IMB()
 #define ISB_inline(var)			asm("MCR p15, 0, %0, c7, c5, 4" : : "r" (var))
-#define InvalidateIcache(reg)	asm("MCR p15, 0, " #reg ", c7, c5, 0") // Also flushes BTAC
+//#define InvalidateIcache(reg)	asm("MCR p15, 0, " #reg ", c7, c5, 0") // Also flushes BTAC
 #define FlushBTAC(reg)			asm("MCR p15, 0, " #reg ", c7, c5, 6")
+#define FlushDcache(reg)		asm("MCR p15, 0, " #reg ", c7, c6, 0")
 
-#define InvalidateTLB(reg)		asm("MCR p15, 0, " #reg ", c8, c5, 0");
+#ifdef ARM_HAS_ERRATA_411920
+// Oh god I hate you so much right now ARM
+#define FlushIcache(reg) \
+	asm("MCR p15, 0, " #reg ", c7, c5, 0"); \
+	asm("MCR p15, 0, " #reg ", c7, c5, 0"); \
+	asm("MCR p15, 0, " #reg ", c7, c5, 0"); \
+	asm("MCR p15, 0, " #reg ", c7, c5, 0"); \
+	asm("NOP"); \
+	asm("NOP"); \
+	asm("NOP"); \
+	asm("NOP"); \
+	asm("NOP"); \
+	asm("NOP"); \
+	asm("NOP"); \
+	asm("NOP"); \
+	asm("NOP"); \
+	asm("NOP"); \
+	asm("NOP"); \
+	asm("NOP")
+#else
+#define FlushIcache(reg)		asm("MCR p15, 0, " #reg ", c7, c5, 0")
+#endif
+
+#define FlushTLB(reg)			asm("MCR p15, 0, " #reg ", c8, c7, 0")
 
 
 #define WFI(reg)				asm("MCR p15, 0, " #reg ", c7, c4, 0")

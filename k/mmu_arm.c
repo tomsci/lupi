@@ -79,6 +79,7 @@ static bool mmu_createUserSection(PageAllocator* pa, Process* p, int sectionIdx)
 
 static void invalidateTLBEntry(uintptr virtualAddress, Process* p);
 
+#ifdef ICACHE_IS_STILL_BROKEN
 uint32 makeCrForMmuEnable() {
 	uint32 cr;
 	asm("MRC p15, 0, %0, c1, c0, 0" : "=r" (cr));
@@ -95,12 +96,13 @@ void NAKED mmu_setControlRegister(uint32 controlRegister, uintptr returnAddr) {
 	asm("MOV r2, #0"); // r2 = 0
 
 	DSB(r2);
-	InvalidateTLB(r2); // Invalidate TLB
+	FlushTLB(r2);
 	asm("MCR p15, 0, r0, c1, c0, 0"); // Boom!
 
 	asm("BX r1");
 	ISB(r2); // Prevent prefetch from when MMU was disabled from going beyond this point. Probably.
 }
+#endif
 
 // Macro for when we're too early to call zeroPage()
 #define init_zeroPages(ptr, n) \
@@ -108,6 +110,7 @@ void NAKED mmu_setControlRegister(uint32 controlRegister, uintptr returnAddr) {
 		*p = 0; \
 	}
 
+#ifdef ICACHE_IS_STILL_BROKEN
 void NAKED mmu_setCache(bool icache, bool dcache) {
 	/* Doesn't work...
 	if (icache) {
@@ -138,6 +141,7 @@ void NAKED mmu_setCache(bool icache, bool dcache) {
 	*/
 	asm("BX lr");
 }
+#endif
 
 /*
 Enter and exit with MMU disabled
@@ -173,6 +177,16 @@ void mmu_init() {
 		sectPte[PTE_IDX(KKernelCodeBase) + i] = phys | KPteKernelCode;
 	}
 
+#ifndef ICACHE_IS_STILL_BROKEN
+	// Also set up a temporary identity mapping for the first page of code, this
+	// is needed when enabling the MMU. We steal the IRQ stack briefly for this
+	// purpose.
+	pde[KPhysicalCodeBase >> KAddrToPdeIndexShift] = KTemporaryIdMappingPt | KPdePageTable;
+	uint32* idPte = (uint32*)KTemporaryIdMappingPt;
+	init_zeroPages(idPte, 1);
+	idPte[PTE_IDX(KPhysicalCodeBase)] = KPhysicalCodeBase | KPteKernelCode;
+#endif
+
 	// Map the kern PDEs themselves
 	for (int i = 0; i < 4; i++) {
 		uint32 phys = KPhysicalPdeBase + (i << KPageShift);
@@ -189,6 +203,51 @@ void mmu_init() {
 	uint32 clientMeUp = 0x1;
 	asm("MCR p15, 0, %0, c3, c0, 0" : : "r" (clientMeUp));
 }
+
+#ifndef ICACHE_IS_STILL_BROKEN
+// r14 contains virtual address to return to.
+// We are free to nuke anything except r5 (and r13)
+// KTemporaryIdMappingPt must be set up
+// Enter with MMU and interrupts disabled
+void NAKED mmu_enable() {
+	asm("MOV r0, #0");
+
+	asm("MRC p15, 0, r1, c1, c0, 0"); // r1 = CR
+	asm("BIC r1, %0" : : "i" (CR_I)); // Make sure icache disabled
+	asm("BIC r1, %0" : : "i" (CR_C)); // Make sure dcache disabled
+	asm("ORR r1, %0" : : "i" (CR_XP));
+
+	asm("ORR r2, r1, %0" : : "i" (CR_M)); // r2 = CR + enableMMU no caching
+	asm("ORR r3, r2, %0" : : "i" (CR_C));
+	asm("ORR r3, r3, %0" : : "i" (CR_I)); // r3 = CR + enableMMU with caching
+
+	// Heh the way we've arranged the memmap, the offset from phys->virt can
+	// be loaded in a single MOV instruction
+	asm("MOV r4, %0" : : "i" (KKernelCodeBase - KPhysicalCodeBase));
+
+	asm("MCR p15, 0, r1, c1, c0, 0"); // Disable icache (seems superfluous...)
+
+	FlushIcache(r0);
+	FlushDcache(r0);
+	DSB(r0);
+
+	DSB(r0);
+	asm("MCR p15, 0, r2, c1, c0, 0"); // Enable MMU with no caching
+	ISB(r0);
+	asm("ADD pc, pc, r4"); // PC is two ahead so this'll jump an instruction
+	asm("NOP"); // ... which might as well be a nop
+
+	//TODO remove temp mapping
+
+	FlushTLB(r0);
+	ISB(r0);
+
+	asm("MCR p15, 0, r3, c1, c0, 0"); // Now enable caching
+	DSB(r0);
+	ISB(r0);
+	asm("BX lr");
+}
+#endif
 
 #if 0
 void mmu_identity_init() {
