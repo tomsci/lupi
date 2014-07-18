@@ -14,6 +14,8 @@ function main()
 		-- prints interleaved
 		lupi.createProcess("test.yielda")
 		lupi.createProcess("test.yieldb")
+	elseif bootMode == string.byte('t') then
+		lupi.createProcess("test.init")
 	end
 	--lupi.createProcess("test")
 	return require("interpreter").main()

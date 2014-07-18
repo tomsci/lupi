@@ -11,6 +11,7 @@ enum BootMode {
 	BootModeKlua = 1,
 	BootModeMenu = 2,
 	BootModeAtomicTests = 'a',
+	BootModeTestInitLua = 't',
 };
 
 static int displayBootMenu() {
@@ -21,6 +22,7 @@ Boot menu:\n\
 Test func:\n\
         a: Run atomics unit tests\n\
     ^X, r: Reboot\n\
+        t: Run test/init.lua tests\n\
         y: Run yield scheduling tests\n\
 ");
 	for (;;) {
@@ -34,6 +36,7 @@ Test func:\n\
 				return 'r';
 
 			case 'a':
+			case 't':
 			case 'y':
 				return ch;
 		}
