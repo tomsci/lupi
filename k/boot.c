@@ -143,7 +143,7 @@ void iThinkYouOughtToKnowImFeelingVeryDepressed() {
 		TheSuperPage->trapAbort = false;
 		//printk("Returning from abort\n");
 		return;
-	} else if (far == TheSuperPage->crashFar) {
+	} else if (TheSuperPage->crashFar && far == TheSuperPage->crashFar) {
 		printk("Crash handler appears to be in a loop, gonna hang now...\n");
 		hang();
 	} else {
