@@ -42,7 +42,7 @@ NORETURN reboot();
 
 #define ASSERT(cond, args...) \
 	if (unlikely(!(cond))) { \
-		printk("assert %s at %s:%d\n", #cond, __FILE__, __LINE__); \
+		printk("ASSERTION FAILURE %s at %s:%d\n", #cond, __FILE__, __LINE__); \
 		uint32 argsArray[] = {args}; \
 		kabortn(sizeof(argsArray)/sizeof(uint32), argsArray); \
 	}
