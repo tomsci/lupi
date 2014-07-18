@@ -25,6 +25,9 @@ local function scanFileForInlineDocs(file)
 		elseif l == "/**" or l == "--[[**" then
 			-- Found docs
 			if not mdf then
+				if build.verbose then
+					print("Extracting markdown from "..file)
+				end
 				mdFile = build.objForSrc(file, ".md")
 				mkdirForFile(mdFile)
 				mdf = assert(io.open(mdFile, "w"))
@@ -33,7 +36,7 @@ local function scanFileForInlineDocs(file)
 		elseif next(docLines) then
 			-- We're waiting for the first line after the docs, which should be the function
 			-- signature - unless it's a documentation in Lua of a native function, in which
-			-- case it will be the last line of the doc instead
+			-- case it will be a comment starting "--native"
 			local header = l:match("(.*)%s*[{;\\]") or l -- Chop the { if there is one
 			header = header:gsub("%-%-native", "") -- Chop native comment
 			local id = header:match("function ([%w_.:]+)") or header:match("([%w_]+)%(")
@@ -128,6 +131,9 @@ local function doBuild()
 	table.insert(mdSources, indexFile)
 
 	for _, file in ipairs(mdSources) do
+		if build.verbose then
+			print("Marking down "..file)
+		end
 		local f = assert(io.open(file))
 		local src = assert(f:read("*a"))
 		f:close()
