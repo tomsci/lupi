@@ -7,6 +7,7 @@
 #define ARMV6
 #define ARM1176
 #define BCM2835
+#define ARM_HAS_ERRATA_411920
 
 #define NON_SECURE // Ie we do drop to NS mode
 #define ENABLE_DCACHE
@@ -51,6 +52,11 @@
 #define KGpioFunctionSelectOutput (1)
 #define PIN_SHIFT(n) (((n) < 10 ? (n) : (n)-10)*3)
 #define SetGpioFunctionForPin(reg, pin, val) reg = (((reg) & ~(KGpioFunctionSelectPinMask << PIN_SHIFT(pin))) | (((val) & KGpioFunctionSelectPinMask) << PIN_SHIFT(pin)))
+
+// See GPPUD in BCM-2835-ARM-Peripherals p100
+#define KGpioDisablePullUpDown 0
+#define KGpioEnablePullDown	1
+#define KGpioEnablePullUp	2
 
 #define KGpioModeInput		0
 #define KGpioModeOutput		1
