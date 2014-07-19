@@ -95,6 +95,11 @@ end
 local function roundDown(addr, size)
 	-- With integer division (which is the only type we have atm) this should do the trick
 	local n = addr / size
+	-- Ugh because Lua is compiled with 32-bit signed ints only, if addr is
+	-- greater than 0x8000000, then the above divide which rounds towards zero,
+	-- will actually round *up* when the number is considered as unsigned
+	-- Therefore, subtract one from n in this case
+	if addr < 0 then n = n - 1 end
 	return n * size
 end
 
@@ -102,11 +107,12 @@ function stack(obj)
 	local addr
 	local t = type(obj)
 	if t == "nil" then addr = TheSuperPage.crashRegisters.r13
-	elseif t == "userdata" then
-		addr = obj.savedRegisters.r13 -- assume a thread membuf
+	elseif t == "userdata" and obj:checkType("Thread") then
+		addr = obj.savedRegisters.r13
 		local p = processForThread(obj)
-		if TheSuperPage.currentProcess ~= p then
+		if p and TheSuperPage.currentProcess ~= p then
 			print("(Switching process to "..p.name..")")
+			switch_process(p)
 		end
 	elseif t == "number" then addr = obj
 	else
@@ -115,7 +121,7 @@ function stack(obj)
 
 	-- Figure out what type of stack addr is, and thus how big it is
 	local stackTop
-	if addr <= 0x4000000 then
+	if addr <= 0x4000000 and addr > 0 then
 		-- Check if it's a user stack or an svc stack
 		local stackAreaStart = roundDown(addr+100, bit32.lshift(1, USER_STACK_AREA_SHIFT))
 		local svc = addr >= stackAreaStart - 100 and addr < stackAreaStart + KPageSize
@@ -124,12 +130,11 @@ function stack(obj)
 		else
 			stackTop = stackAreaStart + 2 * KPageSize + USER_STACK_SIZE
 		end
-	elseif addr >= KKernelStackBase - 100 and addr <= KKernelStackBase + KKernelStackSize then
-		stackTop = roundDown(addr, KKernelStackSize) + KKernelStackSize
 	else
 		stackTop = roundDown(addr, KPageSize) + KPageSize
 	end
 
+	print(string.format("(Calcuating stack from %x to %x)", addr, stackTop))
 	local stackMem = newmem(addr, stackTop - addr)
 	print(stackMem:words())
 end

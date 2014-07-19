@@ -118,6 +118,7 @@ end
 function MemBuf:checkType(type)
 	local selfType = self:getType()
 	assert(selfType._type == type, "MemBuf is of type"..selfType._type.." not "..type)
+	return true
 end
 
 function MemBuf._declareMember(type, memberName, offset, size, memberType)
