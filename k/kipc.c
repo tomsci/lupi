@@ -155,6 +155,13 @@ void ipc_processExited(PageAllocator* pa, Process* p) {
 	for (int i = 0; i < MAX_SHARED_PAGES; i++) {
 		Server* server = serverForSharedPage(i);
 		Process* owner = ownerForSharedPage(i);
+		/*
+		printk("Got server %s and owner %s for shared page %d while exiting process %s\n",
+			server ? (char*)&server->id : "(NULL)",
+			owner ? owner->name : "(NULL)",
+			i, p->name);
+		*/
+
 		bool changed = false;
 		if (owner == p) {
 			owner = NULL;
