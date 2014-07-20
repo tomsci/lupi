@@ -54,11 +54,17 @@ Functions
                         word-sized values on a little-endian machine are
                         displayed correctly.
 
+    s(addr)             If the kernel was built with symbols enabled, equivalent
+                        of symbols.addressDescription(addr).
+
 Variables
 ---------
 
     TheSuperPage, sp    the SuperPage
     Al                  the PageAllocator
+    symbols             if the kernel was built with symbols enabled, the
+                        symbolParser module will be set up and the symbols
+                        loaded. If not, this will be nil.
 
 Syntax
 ------
@@ -88,6 +94,17 @@ function help()
 	print("The klua debugger.")
 	print(helpText:sub(7, #helpText)) -- Skip documentation comment bit
 end
+
+local function loadSymbols()
+	local symbolParser = require("symbolParser")
+	local ok = pcall(symbolParser.loadSymbolsFromSymbolsModule)
+	if ok then
+		symbols = symbolParser
+		s = symbols.addressDescription
+	end
+end
+
+loadSymbols()
 
 --local band, bnot = bit32.band, bit32.bnot
 --local function roundPageDown(addr) return band(addr, bnot(KPageSize-1)) end
@@ -136,7 +153,15 @@ function stack(obj)
 
 	print(string.format("(Calcuating stack from %x to %x)", addr, stackTop))
 	local stackMem = newmem(addr, stackTop - addr)
-	print(stackMem:words())
+	if symbols then
+		for offset = 0, stackMem:getLength()-4, 4 do
+			local stackData = stackMem:getInt(offset)
+			print(string.format("%08X: %08x %s", addr+offset,
+				stackData, symbols.addressDescription(stackData)))
+		end
+	else
+		print(stackMem:words())
+	end
 end
 
 function ustack()
