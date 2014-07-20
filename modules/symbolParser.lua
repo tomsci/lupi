@@ -55,9 +55,6 @@ end
 function findSymbol(addr)
 	local function lowerBoundSearch(i, j)
 		if debug then print(string.format("lowerBoundSearch(%d, %d)", i, j)) end
-		if j - i == 0 then
-			return symbols[i].addr == addr and symbols[i]
-		end
 		-- When we're running in OS we don't have math library, but equally
 		-- in that case division is always integer so we don't need it
 		local floor = math and math.floor or function(n) return n end
@@ -84,7 +81,8 @@ end
 
 function addressDescription(addr)
 	local sym = findSymbol(addr)
-	if sym then
+	if sym and addr - sym.addr < 1024*2024 then
+		-- No point if the symbol is miles away from the addres
 		return string.format("%s + %d", sym.name, addr - sym.addr)
 	else
 		return ""

@@ -101,6 +101,7 @@ local function loadSymbols()
 	if ok then
 		symbols = symbolParser
 		s = symbols.addressDescription
+		membuf.setPointerDescriptionFunction(symbols.addressDescription)
 	end
 end
 

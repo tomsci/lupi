@@ -3,7 +3,7 @@
 
 #include <std.h>
 
-#define LUPI_VERSION_STRING "LuPi 0.18"
+#define LUPI_VERSION_STRING "LuPi 0.19"
 
 /*
 Limiting to 256 running processes makes the maths quite nice - the ProcessList fits into a page,

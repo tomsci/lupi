@@ -120,6 +120,10 @@ function getType(name)
 	return MemBuf._types[name]
 end
 
+function setPointerDescriptionFunction(fn)
+	MemBuf.pointerDescFn = fn
+end
+
 function MemBuf:checkType(type)
 	local selfType = self:getType()
 	assert(selfType._type == type, "MemBuf is of type"..selfType._type.." not "..type)
@@ -182,10 +186,11 @@ function MemBuf:_descriptionForMember(m)
 		elseif m.size == MemBuf._PTR_SIZE then
 			-- See if it's a pointer to an object we know about
 			local ptr = MemBuf._objects[val]
+			local desc = MemBuf.pointerDescFn and MemBuf.pointerDescFn(val) or ""
 			if ptr then
-				str = string.format("%08X (%s*)", val, ptr:getType()._type)
+				str = string.format("%08X (%s*) %s", val, ptr:getType()._type, desc)
 			else
-				str = string.format("%08x", val)
+				str = string.format("%08x %s", val, desc)
 			end
 		else
 			str = string.format("%08x", val)
