@@ -38,6 +38,11 @@ Like [getInt()](#getInt) but returns an [Int64](int64.html).
 ]]
 --native function MemBuf:getInt64(offset)
 
+--[[**
+Returns the length of the buffer.
+]]
+--native function MemBuf:getLength()
+
 local function min(x,y)
 	return x < y and x or y
 end

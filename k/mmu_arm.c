@@ -464,7 +464,7 @@ void mmu_unmapPagesInProcess(PageAllocator* pa, Process* p, uintptr virtualAddre
 	ASSERT(virtualAddress <= KMaxUserAddress - numPages * KPageSize, virtualAddress, numPages);
 	int sectionIdx = virtualAddress >> KSectionShift;
 	uint32* pde = (uint32*)PDE_FOR_PROCESS(p);
-	ASSERT(pde[sectionIdx]); // PT must be created
+	ASSERT(pde[sectionIdx], virtualAddress); // PT must be created
 	uint32* pt = PT_FOR_PROCESS(p, sectionIdx);
 	uint32* pte = pt + PTE_IDX(virtualAddress);
 	uint32* endPte = pte + numPages;

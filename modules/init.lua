@@ -17,6 +17,5 @@ function main()
 	elseif bootMode == string.byte('t') then
 		lupi.createProcess("test.init")
 	end
-	--lupi.createProcess("test")
 	return require("interpreter").main()
 end

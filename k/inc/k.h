@@ -68,7 +68,7 @@ typedef enum ThreadState {
 	EReady = 0,
 	EBlockedFromSvc = 1, // Reason is exitReason
 	EDying = 2, // Thread has executed its last but hasn't yet been cleaned up by dfc_threadExit
-	EDead = 3, // Stacks has been freed
+	EDead = 3, // Stacks have been freed
 	EWaitForRequest = 4,
 } ThreadState;
 

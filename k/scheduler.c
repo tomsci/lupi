@@ -16,10 +16,10 @@ in, and the mode the current thread is in (as indicated by the current value of
 spsr).
 
 * If mode is IRQ, `savedRegisters` should point to registers {r0-r12, pc} for
-  the mode specified by spsr_irq. r13 and r14 are retrieved via `STM ^` if
-  spsr_irq is USR (or System), and by a mode switch to SVC mode otherwise.
+  the mode specified by spsr\_irq. r13 and r14 are retrieved via `STM ^` if
+  spsr\_irq is USR (or System), and by a mode switch to SVC mode otherwise.
 * If mode is SVC, `savedRegisters` should point to r14\_svc only (ie usr PC) and
-  spsr_svc really better be Usr or System. r13 and r14 are retreived via `STM ^`.
+  spsr\_svc really better be Usr or System. r13 and r14 are retreived via `STM ^`.
 */
 void saveCurrentRegistersForThread(void* savedRegisters) {
 	Thread* t = TheSuperPage->currentThread;
