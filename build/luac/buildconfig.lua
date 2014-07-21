@@ -7,6 +7,9 @@ config = {
 
 	sources = {
 		{ path = "lua/luac.c", user = true },
+		-- In order to be consistant between how luac parses constants and
+		-- how they are done at runtime, use the same version of strtol in both
+		{ path = "usersrc/strtol.c", user = true },
 	},
 
 	lua = true,

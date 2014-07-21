@@ -38,9 +38,10 @@ function getSymbolsFromReadElf(elfFile)
 	return syms
 end
 
--- Compiled constants get clamped to 0x7FFFFFFF so have to make this a runtime check.
--- TODO fix this in luac. Good job we're not compiling symbols.lua!
-local sizeFail = (tonumber("80000000", 16) < 0)
+local sizeFail = (0x80000000 < 0)
+
+-- Make sure compiled constants are being handled same as runtime
+assert((tonumber("80000000", 16) < 0) == (0x80000000 < 0))
 
 function lt(a, b)
 	if not sizeFail then return a < b end

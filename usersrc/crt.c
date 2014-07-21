@@ -5,6 +5,7 @@
 
 #include <ctype.h>
 #include <setjmp.h>
+#include <stdlib.h>
 
 void* memset(void* ptr, byte val, int len) {
 	// TODO a more efficient version
@@ -71,35 +72,6 @@ const char* strpbrk(const char *s1, const char *s2) {
 		}
 	}
 	return NULL;
-}
-
-long strtol(const char * restrict str, char const ** restrict endptr, int base) {
-	long result = 0;
-	bool neg = false;
-	const char* s;
-	for (s = str; *s != 0; s++) {
-		char ch = *s;
-		if (isspace(ch)) continue;
-		if (ch == '-') {
-			neg = true;
-			continue;
-		} else if (ch == '+') {
-			continue;
-		}
-		if ((base == 0 || base == 16) && *str == '0' && s == str+1 && (ch == 'x' || ch == 'X')) {
-			base = 16;
-			continue;
-		}
-		if (!isalnum(ch)) break;
-		int val = (isdigit(ch) ? (ch - '0') : isupper(ch) ? (ch + 10 - 'A') : (ch + 10 - 'a'));
-		if (base == 0 && val > 0 && val < 10) base = 10;
-		if (val < 0 || (val && val >= base)) break;
-		result = (result * base) + val;
-	}
-	if (endptr) {
-		*endptr = s;
-	}
-	return neg ? -result : result;
 }
 
 #ifdef ARM
@@ -191,7 +163,7 @@ int sprintf(char * restrict outstr, const char * restrict fmt, ...) {
 			}
 			if (isdigit(formatChar)) {
 				fmt--;
-				const char* end;
+				char* end;
 				width = (int)strtol(fmt, &end, 10);
 				fmt = end;
 				formatChar = *fmt++;
