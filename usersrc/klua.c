@@ -472,6 +472,7 @@ static void WeveCrashedSetupDebuggingStuff(lua_State* L) {
 	EXPORT_INT(L, THREAD_TIMESLICE);
 	EXPORT_INT(L, KKernelStackBase);
 	EXPORT_INT(L, KKernelStackSize);
+	EXPORT_INT(L, KUserHeapBase);
 	EXPORT_INT(L, KUserStacksBase);
 	EXPORT_INT(L, KPageAllocatorAddr);
 

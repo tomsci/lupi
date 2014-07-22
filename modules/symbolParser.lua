@@ -6,6 +6,7 @@ Note this module is unusual in that it is also used by the build system.
 
 symbols = nil
 debug = false
+local symbolCache
 
 function setSymbols(arg)
 	symbols = arg
@@ -82,12 +83,26 @@ end
 
 function addressDescription(addr)
 	local sym = findSymbol(addr)
-	if sym and addr - sym.addr < 1024*2024 then
+	if sym and addr - sym.addr < 64*1024 then
+		if KUserHeapBase and addr > KUserHeapBase and sym.addr < KUserHeapBase then
+			-- Then it's not a useful symbol
+			return ""
+		end
 		-- No point if the symbol is miles away from the addres
 		return string.format("%s + %d", sym.name, addr - sym.addr)
 	else
 		return ""
 	end
+end
+
+function findSymbolByName(name)
+	if not symbolCache then
+		symbolCache = {}
+		for _, sym in ipairs(symbols) do
+			symbolCache[sym.name] = sym
+		end
+	end
+	return symbolCache[name]
 end
 
 function dumpSymbolsTable()
