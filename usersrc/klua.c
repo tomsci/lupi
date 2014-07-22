@@ -256,6 +256,10 @@ void NAKED switchToKluaDebuggerMode(uintptr sp) {
 }
 
 #define EXPORT_INT(L, val) lua_pushunsigned(L, val); lua_setglobal(L, #val)
+#define DECLARE_FN(L, fn, name) \
+	lua_pushcfunction(L, fn); \
+	lua_setglobal(L, name)
+#define FORCE_OUTOFLINE_COPY(fn) GET32((uintptr)&fn)
 
 static int GetProcess_lua(lua_State* L) {
 	int idx = luaL_checkint(L, 1);
@@ -320,14 +324,9 @@ static void WeveCrashedSetupDebuggingStuff(lua_State* L) {
 	lua_pushliteral(L, "membuf");
 	lua_call(L, 1, 0);
 
-	lua_pushcfunction(L, lua_newMemBuf);
-	lua_setglobal(L, "newmem");
-
-	lua_pushcfunction(L, lua_getObj);
-	lua_setglobal(L, "mem");
-
-	lua_pushcfunction(L, reboot_lua);
-	lua_setglobal(L, "reboot");
+	DECLARE_FN(L, lua_newMemBuf, "newmem");
+	DECLARE_FN(L, lua_getObj, "mem");
+	DECLARE_FN(L, reboot_lua, "reboot");
 
 #ifndef HOSTED
 	mbuf_set_accessor(L, memBufGetMem); // Handles aborts
@@ -452,14 +451,16 @@ static void WeveCrashedSetupDebuggingStuff(lua_State* L) {
 	MBUF_ENUM(PageType, KPageSharedPage);
 	MBUF_ENUM(PageType, KPageThreadSvcStack);
 
-	lua_pushcfunction(L, GetProcess_lua);
-	lua_setglobal(L, "GetProcess");
-	lua_pushcfunction(L, pageStats_getCounts);
-	lua_setglobal(L, "pageStats_getCounts");
-	lua_pushcfunction(L, switch_process_lua);
-	lua_setglobal(L, "switch_process");
-	lua_pushcfunction(L, processForThread_lua);
-	lua_setglobal(L, "processForThread");
+	DECLARE_FN(L, GetProcess_lua, "GetProcess");
+	DECLARE_FN(L, pageStats_getCounts, "pageStats_getCounts");
+	DECLARE_FN(L, switch_process_lua, "switch_process");
+	DECLARE_FN(L, processForThread_lua, "processForThread");
+
+	// Force out of line copies of a few inline fns so that they're callable
+	// via the symbol table should we want to
+	FORCE_OUTOFLINE_COPY(firstThreadForProcess);
+	FORCE_OUTOFLINE_COPY(processForThread);
+	FORCE_OUTOFLINE_COPY(processForServer);
 
 	EXPORT_INT(L, USER_STACK_SIZE);
 	EXPORT_INT(L, USER_STACK_AREA_SHIFT);
