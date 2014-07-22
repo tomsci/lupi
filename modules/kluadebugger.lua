@@ -57,6 +57,13 @@ Functions
     s(addr)             If the kernel was built with symbols enabled, equivalent
                         of symbols.addressDescription(addr).
 
+    c.FUNC(args...)     If symbols are enabled, you can (attempt to) execute any
+                        FUNC which appears in the symbol table, takes 0-3 32-bit
+                        arguments and returns a 32-bit value. Any argument or
+                        return which is a pointer to a known MemBuf will be
+                        converted as appropriate. For example:
+                        c.processForThread(TheSuperPage.currentThread)
+
 Variables
 ---------
 
@@ -106,6 +113,38 @@ local function loadSymbols()
 end
 
 loadSymbols()
+
+local function getUintArg(arg)
+	if type(arg) == "userdata" then
+		-- Assume it's a MemBuf
+		return arg:getAddress()
+	else
+		return tonumber(arg)
+	end
+end
+
+function executableCFunction(addr)
+	local f = function(arg1, arg2, arg3)
+		local ret = executeFn(addr, getUintArg(arg1), getUintArg(arg2), getUintArg(arg3))
+		-- See if this is an object ptr
+		local obj = mem(ret)
+		return obj or ret
+	end
+	return f
+end
+
+c = {}
+local cmt = {}
+cmt.__index = function(c, fnName)
+	if symbols then
+		local s = symbols.findSymbolByName(fnName)
+		if not s then error("Can't find symbol "..fnName) end
+		return executableCFunction(s.addr)
+	else
+		error("Can't use dynamic execution functionality unless symbols are included")
+	end
+end
+setmetatable(c, cmt)
 
 --local band, bnot = bit32.band, bit32.bnot
 --local function roundPageDown(addr) return band(addr, bnot(KPageSize-1)) end

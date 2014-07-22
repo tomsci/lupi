@@ -318,6 +318,23 @@ static int processForThread_lua(lua_State* L) {
 	return 1;
 }
 
+typedef uint32 (*GenericFunction)(uint32 arg1, uint32 arg2, uint32 arg3);
+
+static int executeFn(lua_State* L) {
+	uintptr fn = luaL_checkunsigned(L, 1);
+	uint32 arg1 = luaL_optunsigned(L, 2, 0);
+	uint32 arg2 = luaL_optunsigned(L, 3, 0);
+	uint32 arg3 = luaL_optunsigned(L, 4, 0);
+
+	// Casting to GenericFunction should mean we can execute the function
+	// with a reasonable degree of success thanks to AAPCS. We don't have too
+	// many functions (if any) whose calling sequence isn't simply to stuff the
+	// args into r0-r3
+	uint32 ret = ((GenericFunction)fn)(arg1, arg2, arg3);
+	lua_pushunsigned(L, ret);
+	return 1;
+}
+
 static void WeveCrashedSetupDebuggingStuff(lua_State* L) {
 	// Interpreter module at top of stack
 	lua_getfield(L, -1, "require");
@@ -327,6 +344,7 @@ static void WeveCrashedSetupDebuggingStuff(lua_State* L) {
 	DECLARE_FN(L, lua_newMemBuf, "newmem");
 	DECLARE_FN(L, lua_getObj, "mem");
 	DECLARE_FN(L, reboot_lua, "reboot");
+	DECLARE_FN(L, executeFn, "executeFn");
 
 #ifndef HOSTED
 	mbuf_set_accessor(L, memBufGetMem); // Handles aborts
