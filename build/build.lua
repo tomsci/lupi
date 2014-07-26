@@ -340,7 +340,7 @@ function build_kernel()
 		}
 	end
 	if machineIs("arm") then
-		table.insert(sources, "k/mmu_arm.c")
+		table.insert(sources, 2, "k/mmu_arm.c") -- Put right after boot.c
 	end
 
 	for _, src in ipairs(config.sources or {}) do
@@ -442,25 +442,25 @@ function build_kernel()
 
 	if config.klua then
 		table.insert(sources, { path = "usersrc/kluaHeap.c", user = true })
-		--# klua.c is a special case as it sits between kernel and user code, and needs to access bits of both. It is primarily user (has user includes) but also has access to the platform -include file
-		local includes = { }
+		-- klua.c is a special case as it sits between kernel and user code,
+		-- and needs to access bits of both. It is primarily user (has user
+		-- includes) but additionally has access to kernel headers
+		local kluaCopts = {}
 		if config.ulua then
-			table.insert(includes, "-DULUA_PRESENT")
-			table.insert(includes, "-DKLUA_DEBUGGER")
+			table.insert(kluaCopts, "-DULUA_PRESENT")
+			table.insert(kluaCopts, "-DKLUA_DEBUGGER")
 		end
 		if config.include then
-			table.insert(includes, "-include "..qrp("build/"..config.name.."/"..config.include))
+			table.insert(kluaCopts, "-include "..qrp("build/"..config.name.."/"..config.include))
 		end
-		table.insert(includes, "-isystem "..qrp("userinc"))
-		table.insert(includes, "-I "..qrp("luaconf"))
-		table.insert(includes, "-isystem "..qrp("lua"))
-		table.insert(includes, "-isystem "..qrp("k/inc"))
+		table.insert(kluaCopts, "-isystem "..qrp("k/inc"))
 
-		local obj = compilec({
+		table.insert(sources, {
 			path = "usersrc/klua.c",
+			user = true,
+			copts = kluaCopts,
+		})
 
-		}, includes)
-		table.insert(objs, obj);
 	end
 
 	for i, source in ipairs(sources) do
