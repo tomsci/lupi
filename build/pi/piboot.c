@@ -131,7 +131,6 @@ void NAKED dummy() {
 NOINLINE NAKED uint32 GET32(uint32 addr) {
 	asm("ldr r0,[r0]");
 	asm("bx lr");
-	return addr; // Shuts up stupid compiler warning - why doesn't nekkid handle this?
 }
 
 NOINLINE NAKED void PUT32(uint32 addr, uint32 val) {
@@ -142,7 +141,6 @@ NOINLINE NAKED void PUT32(uint32 addr, uint32 val) {
 NOINLINE NAKED byte GET8(uintptr ptr) {
 	asm("LDRB r0, [r0]");
 	asm("BX lr");
-	return 0; // aargh stupid compiler
 }
 
 void NAKED fiq() {
