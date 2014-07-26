@@ -212,6 +212,7 @@ static void process_exit(Process* p, int reason) {
 
 static void dfc_threadExit(uintptr arg1, uintptr arg2, uintptr arg3) {
 	Thread* t = (Thread*)arg1;
+	switch_process(processForThread(t));
 	freeThreadStacks(t);
 	thread_setState(t, EDead);
 	Process* p = processForThread(t);
