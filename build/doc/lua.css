@@ -90,8 +90,12 @@ h3 code {
 }
 */
 
-pre, code {
+code {
 	font-size: 12pt ;
+}
+
+pre {
+	margin-left: 3em ;
 }
 
 p+h1, ul+h1 {

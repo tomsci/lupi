@@ -207,20 +207,20 @@ The difference however is that the comments must be written in [markdown][], and
 that the syntax has been extended to support Lua-style comment syntax as well as
 C-style. C files and headers use the following syntax:
 
-		/**
-		Comment describing the following function definition/declaration goes
-		here. All the usual _markdown_ can be used.
-		*/
-		void someFunction() {
-			// ...
-		}
+	/**
+	Comment describing the following function definition/declaration goes
+	here. All the usual _markdown_ can be used.
+	*/
+	void someFunction() {
+		// ...
+	}
 
-		/**
-		Standalone snippets of documentation are ok too, providing they are
-		followed by an empty line (to distinguish them from function docs).
-		*/
+	/**
+	Standalone snippets of documentation are ok too, providing they are
+	followed by an empty line (to distinguish them from function docs).
+	*/
 
-		// More code here etc...
+	// More code here etc...
 
 Lua code can be documented in exactly the same way, except that the comment
 delimeter is `--[[** ]]` instead of `/** */`. Note that in either language,
@@ -230,18 +230,18 @@ code by using a placeholder of the form `--native function foo()`. Functions
 defined in the module's C code that aren't exposed to the Lua side can be
 documented in the C file just like any other C function.
 
-		--[[**
-		Documentation for a Lua function.
-		]]
-		function someLuaFunction()
-			-- ...
-		end
+	--[[**
+	Documentation for a Lua function.
+	]]
+	function someLuaFunction()
+		-- ...
+	end
 
-		--[[**
-		Documentation for a function that is defined in C - note this
-		documentation goes in the .lua file not the .c file!
-		]]
-		--native function someNativeFunction()
+	--[[**
+	Documentation for a function that is defined in C - note this
+	documentation goes in the .lua file not the .c file!
+	]]
+	--native function someNativeFunction()
 
 Documentation may contain links to other areas of the docs. An anchor is created
 for all documented symbols, the format of which is the symbol name without

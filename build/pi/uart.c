@@ -54,10 +54,10 @@ void uart_init() {
 }
 
 void putbyte(byte c) {
-    while (1) {
-        if (GET32(AUX_MU_LSR_REG) & 0x20) break;
-    }
-    PUT32(AUX_MU_IO_REG, c);
+	while (1) {
+		if (GET32(AUX_MU_LSR_REG) & 0x20) break;
+	}
+	PUT32(AUX_MU_IO_REG, c);
 }
 
 #define UART_BUF_SIZE (sizeof(TheSuperPage->uartBuf) - 2)
