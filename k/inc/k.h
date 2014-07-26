@@ -217,6 +217,7 @@ void thread_yield(Thread* t);
 int kern_disableInterrupts();
 void kern_enableInterrupts();
 void kern_restoreInterrupts(int mask);
+void kern_sleep(int ms);
 NORETURN reschedule();
 void saveCurrentRegistersForThread(void* savedRegisters);
 void dfc_queue(DfcFn fn, uintptr arg1, uintptr arg2, uintptr arg3);

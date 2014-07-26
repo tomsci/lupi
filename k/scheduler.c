@@ -269,6 +269,22 @@ void kern_restoreInterrupts(int mask) {
 	ModeSwitchVar(mask);
 }
 
+/**
+Sleep for a number of milliseconds. Uses the system timer so may sleep up to 1ms
+longer. Can only be called from SVC mode with interrupts enabled (otherwise
+timers can't fire).
+*/
+void kern_sleep(int msec) {
+	ASSERT((getCpsr() & 0xFF) == (KPsrModeSvc | KPsrFiqDisable));
+	// Use volatile to prevent compiler inlining the while check below
+	volatile uint64* uptime = &TheSuperPage->uptime;
+	uint64 target = *uptime + msec + 1;
+	uint32 zero = 0;
+	while (*uptime < target) {
+		WFI_inline(zero);
+	}
+}
+
 // Stack alignment must be 16 bytes and we push one of these directly onto the
 // stack
 ASSERT_COMPILE((sizeof(TheSuperPage->dfcs) & 0xF) == 0);
