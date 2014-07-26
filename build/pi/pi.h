@@ -42,30 +42,6 @@
 #define AUX_MU_STAT_REG	(KPeripheralBase + 0x00215064)
 #define AUX_MU_BAUD_REG	(KPeripheralBase + 0x00215068)
 
-// See BCM-2835-ARM-Peripherals p90
-#define GPFSEL1			(KPeripheralBase + 0x00200004)
-#define GPSET0			(KPeripheralBase + 0x0020001C)
-#define GPCLR0			(KPeripheralBase + 0x00200028)
-#define GPPUD			(KPeripheralBase + 0x00200094)
-#define GPPUDCLK0		(KPeripheralBase + 0x00200098)
-#define KGpioFunctionSelectPinMask (7)
-#define KGpioFunctionSelectOutput (1)
-#define PIN_SHIFT(n) (((n) < 10 ? (n) : (n)-10)*3)
-#define SetGpioFunctionForPin(reg, pin, val) reg = (((reg) & ~(KGpioFunctionSelectPinMask << PIN_SHIFT(pin))) | (((val) & KGpioFunctionSelectPinMask) << PIN_SHIFT(pin)))
-
-// See GPPUD in BCM-2835-ARM-Peripherals p100
-#define KGpioDisablePullUpDown 0
-#define KGpioEnablePullDown	1
-#define KGpioEnablePullUp	2
-
-#define KGpioModeInput		0
-#define KGpioModeOutput		1
-#define KGpioAlt0			4
-#define KGpioAlt1			5
-#define KGpioAlt2			6
-#define KGpioAlt3			7
-#define KGpioAlt4			3
-#define KGpioAlt5			2
 
 // See BCM-2835-ARM-Peripherals p112
 #define IRQ_BASIC			(KPeripheralBase + 0xB200)
@@ -88,5 +64,8 @@
 #define AUX_MU_ClearTransmitFIFO		(1 << 2)
 #define AUX_MU_IIR_ReceiveInterrupt		(1 << 2)
 
+#define AUXENB_MiniUartEnable			1
+#define AUXENB_Spi1Enable				2
+#define AUXENB_Spi2Enable				4
 
 #endif // LUPI_BUILD_PI_H

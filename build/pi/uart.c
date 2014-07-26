@@ -1,4 +1,5 @@
 #include <k.h>
+#include "gpio.h"
 
 extern void dummy ( unsigned int );
 
@@ -26,8 +27,9 @@ reg  = ((system_clock_freq / 8) / baud) - 1
 //
 //-------------------------------------------------------------------------
 
+
 void uart_init() {
-	PUT32(AUX_ENABLES,1);
+	PUT32(AUX_ENABLES, AUXENB_MiniUartEnable);
 	PUT32(AUX_MU_CNTL_REG,0);
 	PUT32(AUX_MU_LCR_REG,3);
 	PUT32(AUX_MU_MCR_REG,0);
@@ -43,11 +45,7 @@ void uart_init() {
 	SetGpioFunctionForPin(ra, 15, KGpioAlt5);
 	PUT32(GPFSEL1, ra);
 
-	PUT32(GPPUD, KGpioDisablePullUpDown);
-	for(ra=0;ra<150;ra++) dummy(ra);
-	PUT32(GPPUDCLK0,(1<<14)|(1<<15));
-	for(ra=0;ra<150;ra++) dummy(ra);
-	PUT32(GPPUDCLK0,0);
+	gpio_setPull(KGpioDisablePullUpDown, GPPUDCLK0, (1<<14)|(1<<15));
 
 	PUT32(AUX_MU_CNTL_REG,3);
 
