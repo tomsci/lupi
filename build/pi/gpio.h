@@ -41,4 +41,29 @@ void gpio_setPull(int upDownStatus, uintptr clkReg, uint32 bitmask);
 
 void gpio_set(int pin, bool value);
 
+
+/// SPI stuff
+
+
+#define SPI_CS			(KPeripheralBase + 0x00204000)
+#define SPI_FIFO		(KPeripheralBase + 0x00204004)
+#define SPI_CLK			(KPeripheralBase + 0x00204008)
+
+#define SPI_CS_TXD		(1<<18) // TX FIFO can accept data
+#define SPI_CS_RXD		(1<<17) // RX FIFO contains data
+#define SPI_CS_DONE		(1<<16) // Everything quiet
+#define SPI_CS_INTR		(1<<10)
+#define SPI_CS_INTD		(1<<9)
+#define SPI_CS_TA		(1<<7)	// Transfer active
+#define SPI_CS_CSPOL	(1<<6)
+#define SPI_CS_CPOL		(1<<3)
+#define SPI_CS_CPHA		(1<<2)
+
+#define SPI_CS_CLEAR_TX	(1<<4)
+#define SPI_CS_CLEAR_RX	(1<<5)
+
+void spi_beginTransaction(int cs);
+void spi_endTransaction();
+void spi_write_poll(uint8* buf, int length);
+
 #endif
