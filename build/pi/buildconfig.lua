@@ -16,6 +16,7 @@ config = {
 		"build/pi/gpio.c",
 		"build/pi/uart.c",
 		"build/pi/irq.c",
+		"build/pi/pitft.c",
 	},
 
 	extraStdInc = "build/pi/stdinc",

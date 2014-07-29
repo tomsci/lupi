@@ -8,6 +8,7 @@
 
 void uart_init();
 void irq_init();
+void tft_init();
 void dump_atags();
 void parseAtags(uint32* atagsPtr, AtagsParams* params);
 static inline uint32 getFAR();
@@ -82,6 +83,8 @@ void Boot(uintptr atagsPhysAddr) {
 
 	irq_init();
 	kern_enableInterrupts();
+
+	tft_init(); // Must be after irq_init and enableInterrupts because it uses kern_sleep
 
 	// Start first process (so exciting!)
 	SuperPage* s = TheSuperPage;

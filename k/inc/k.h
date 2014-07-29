@@ -1,7 +1,9 @@
 #ifndef LUPI_K_H
 #define LUPI_K_H
 
+#ifndef LUPI_STD_H
 #include <std.h>
+#endif
 
 #define LUPI_VERSION_STRING "LuPi 0.19"
 
@@ -46,6 +48,8 @@ NORETURN reboot();
 		uint32 argsArray[] = {args}; \
 		kabortn(sizeof(argsArray)/sizeof(uint32), argsArray); \
 	}
+
+#define NUMVARARGS(...)  (sizeof((int[]){__VA_ARGS__})/sizeof(int))
 
 #define IS_POW2(val) ((val & (val-1)) == 0)
 
