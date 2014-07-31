@@ -28,7 +28,7 @@ local function safeputch(ch)
 	end
 end
 
-local function printPrompt()
+function printPrompt()
 	local ok, p = pcall(tostring, prompt)
 	if not ok then p = "You think you're so clever don't you? >" end
 	for i = 1, #p do
@@ -159,24 +159,28 @@ local function handleResult(ok, ...)
 	end
 end
 
+function executeLine(lineString)
+	saveLineToHistory(lineString) -- even if it didn't compile, it still goes in the history
+	-- Like the standard Lua interpreter, support "=" as a synonym for "return"
+	lineString = lineString:gsub("^=", "return ")
+	if lineString:match("%)$") and not lineString:match("=") and not lineString:match("^return ") then
+		-- Assume it's a function call and prepend an implicit return statement
+		lineString = "return "..lineString
+	end
+	local fn, err = load(lineString, "<stdin>", nil, _ENV)
+	if fn then
+		handleResult(pcall(fn))
+	else
+		print("Error: "..err)
+	end
+	printPrompt()
+end
+
 local function gotChar(ch)
 	if string.char(ch) == "\r" then
 		print("")
 		local lineString = table.concat(line)
-		saveLineToHistory(lineString) -- even if it didn't compile, it still goes in the history
-		-- Like the standard Lua interpreter, support "=" as a synonym for "return"
-		lineString = lineString:gsub("^=", "return ")
-		if lineString:match("%)$") and not lineString:match("=") and not lineString:match("^return ") then
-			-- Assume it's a function call and prepend an implicit return statement
-			lineString = "return "..lineString
-		end
-		local fn, err = load(lineString, "<stdin>", nil, _ENV)
-		if fn then
-			handleResult(pcall(fn))
-		else
-			print("Error: "..err)
-		end
-		printPrompt()
+		executeLine(lineString)
 	elseif ch == 8 then
 		backspace()
 	elseif ch == 27 then
