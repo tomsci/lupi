@@ -29,12 +29,13 @@ typedef _Bool bool;
 #define WORD(x) asm(".word %a0" : : "i" (x))
 #define LABEL_WORD(label, x) asm(#label ":"); WORD(x)
 
-#define ATTRIBUTE_PRINTF(str, check) __attribute__((format(printf, str, check)))
-#define NAKED                        __attribute__((naked))
+#define ATTRIBUTE_PRINTF(str, check)	__attribute__((format(printf, str, check)))
+#define NAKED							__attribute__((naked))
 
 #define ASSERT_COMPILE(x) extern int __compiler_assert(int[(x)?1:-1])
 #define ASSERTL(cond, args...) ((cond) || luaL_error(L, "Assertion failure: " #cond args))
 #define PRINTL(args...) do { lua_getglobal(L, "print"); lua_pushfstring(L, args); lua_call(L, 1, 0); } while(0)
+#define FOURCC(str) ((str[0]<<24)|(str[1]<<16)|(str[2]<<8)|(str[3]))
 
 typedef __builtin_va_list va_list;
 #define _VA_LIST

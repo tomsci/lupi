@@ -50,7 +50,7 @@ NORETURN reboot();
 	}
 
 #define NUMVARARGS(...)  (sizeof((int[]){__VA_ARGS__})/sizeof(int))
-
+#define FOURCC(str) ((str[0]<<24)|(str[1]<<16)|(str[2]<<8)|(str[3]))
 #define IS_POW2(val) ((val & (val-1)) == 0)
 
 typedef struct Process Process;

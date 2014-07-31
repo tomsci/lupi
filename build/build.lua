@@ -386,6 +386,7 @@ function build_kernel()
 			table.insert(sources, { path = "usersrc/crt.c", user = true })
 			table.insert(sources, { path = "usersrc/strtol.c", user = true })
 			table.insert(sources, { path = "usersrc/uklua.c", user = true })
+			table.insert(sources, { path = "modules/bitmap/bitmap.c", user = true })
 		end
 		if config.ulua then
 			table.insert(sources, mallocSource)
@@ -594,6 +595,7 @@ luaModules = {
 	{ path = "modules/timerserver/init.lua" },
 	{ path = "modules/timerserver/server.lua", native = "modules/timerserver/timers.c" },
 	"modules/symbolParser.lua",
+	{ path = "modules/bitmap/init.lua", native = "modules/bitmap/bitmap_lua.c" },
 }
 
 mallocSource = {
