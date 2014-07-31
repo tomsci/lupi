@@ -7,6 +7,9 @@
 uint32 GET32(uint32 addr);
 void PUT32(uint32 addr, uint32 val);
 
+#define WIDTH 240
+#define HEIGHT 320
+
 // From ILI9340.pdf
 #define SWRESET 					0x01
 #define SLEEP_OUT					0x11
@@ -99,9 +102,9 @@ void tft_init() {
 	kern_sleep(5);
 
 	// And fill the window with some arbitrary colour
-	tft_beginUpdate(0, 0, 240, 320);
+	tft_beginUpdate(0, 0, WIDTH, HEIGHT);
 	uint8 data[] = {0xE0, 0x1F}; // Purple
-	for (int i = 0; i < 240*320; i++) {
+	for (int i = 0; i < WIDTH * HEIGHT; i++) {
 		spi_write_poll(data, 2);
 	}
 	spi_endTransaction();
@@ -144,4 +147,23 @@ void tft_beginUpdate(int xStart, int yStart, int xEnd, int yEnd) {
 	write(COLUMN_ADDRESS_SET, xStart >> 8, xStart & 0xFF, xEnd >> 8, xEnd & 0xFF);
 	write(PAGE_ADDRESS_SET, yStart >> 8, yStart & 0xFF, yEnd >> 8, yEnd & 0xFF);
 	doWrite(true, 1, MEMORY_WRITE);
+}
+
+#define CrashBorderWidth 5
+#define BlitN(colour, n) for (int i = 0; i < n; i++) { spi_write_poll(colour, 2); }
+void tft_drawCrashed() {
+	uint8 red[] = {0xF8, 0x00};
+	// Top
+	tft_beginUpdate(0, 0, WIDTH, CrashBorderWidth);
+	BlitN(red, WIDTH * CrashBorderWidth);
+	// Left
+	tft_beginUpdate(0, 0, CrashBorderWidth, HEIGHT);
+	BlitN(red, CrashBorderWidth * HEIGHT);
+	// Right
+	tft_beginUpdate(WIDTH - CrashBorderWidth, 0, WIDTH, HEIGHT);
+	BlitN(red, CrashBorderWidth * HEIGHT);
+	// Bottom
+	tft_beginUpdate(0, HEIGHT - CrashBorderWidth, WIDTH, HEIGHT);
+	BlitN(red, WIDTH * CrashBorderWidth);
+	spi_endTransaction();
 }

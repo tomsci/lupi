@@ -9,6 +9,8 @@
 #define BCM2835
 #define ARM_HAS_ERRATA_411920
 
+#define HAVE_PITFT
+
 #define NON_SECURE // Ie we do drop to NS mode
 #define ENABLE_DCACHE
 

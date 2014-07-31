@@ -8,7 +8,10 @@
 
 void uart_init();
 void irq_init();
+#ifdef HAVE_PITFT
 void tft_init();
+void tft_drawCrashed();
+#endif
 void dump_atags();
 void parseAtags(uint32* atagsPtr, AtagsParams* params);
 static inline uint32 getFAR();
@@ -84,7 +87,9 @@ void Boot(uintptr atagsPhysAddr) {
 	irq_init();
 	kern_enableInterrupts();
 
+#ifdef HAVE_PITFT
 	tft_init(); // Must be after irq_init and enableInterrupts because it uses kern_sleep
+#endif
 
 	// Start first process (so exciting!)
 	SuperPage* s = TheSuperPage;
@@ -144,6 +149,9 @@ void NAKED hang() {
 void iThinkYouOughtToKnowImFeelingVeryDepressed() {
 	uint32 far = getFAR();
 	if (!TheSuperPage->marvin) {
+#ifdef HAVE_PITFT
+		tft_drawCrashed();
+#endif
 		if (!mmu_mapSectionContiguous(Al, KLuaDebuggerSection, KPageKluaHeap)) {
 			printk("Failed to allocate memory for klua debugger heap, sorry.\n");
 			hang();
