@@ -143,7 +143,8 @@ static void doWrite(bool openEndedTransaction, int n, ...) {
 
 /**
 Call this before writing framebuffer data to the SPI link. After you're
-finished, you must call `spi_endTransaction()`.
+finished, you must call `spi_endTransaction()`. Note that `xend` and `yend` are
+inclusive, ie they refer to the index of last pixel you will be writing to.
 */
 void tft_beginUpdate(int xStart, int yStart, int xEnd, int yEnd) {
 	write(COLUMN_ADDRESS_SET, xStart >> 8, xStart & 0xFF, xEnd >> 8, xEnd & 0xFF);
@@ -156,16 +157,16 @@ void tft_beginUpdate(int xStart, int yStart, int xEnd, int yEnd) {
 void tft_drawCrashed() {
 	uint8 red[] = {0xF8, 0x00};
 	// Top
-	tft_beginUpdate(0, 0, WIDTH, CrashBorderWidth);
+	tft_beginUpdate(0, 0, WIDTH-1, CrashBorderWidth-1);
 	BlitN(red, WIDTH * CrashBorderWidth);
 	// Left
-	tft_beginUpdate(0, 0, CrashBorderWidth, HEIGHT);
+	tft_beginUpdate(0, 0, CrashBorderWidth-1, HEIGHT-1);
 	BlitN(red, CrashBorderWidth * HEIGHT);
 	// Right
-	tft_beginUpdate(WIDTH - CrashBorderWidth, 0, WIDTH, HEIGHT);
+	tft_beginUpdate(WIDTH - CrashBorderWidth, 0, WIDTH-1, HEIGHT-1);
 	BlitN(red, CrashBorderWidth * HEIGHT);
 	// Bottom
-	tft_beginUpdate(0, HEIGHT - CrashBorderWidth, WIDTH, HEIGHT);
+	tft_beginUpdate(0, HEIGHT - CrashBorderWidth, WIDTH-1, HEIGHT-1);
 	BlitN(red, WIDTH * CrashBorderWidth);
 	spi_endTransaction();
 }
@@ -189,12 +190,12 @@ static DRIVER_FN(tft_handleSvc) {
 
 	if (w == bwidth) {
 		// No need to worry about stride, can blit whole lot at once
-		tft_beginUpdate(screenx, screeny, screenx + w, screeny + h);
+		tft_beginUpdate(screenx, screeny, screenx + w - 1, screeny + h - 1);
 		spi_write_poll((uint8*)(data + y*bwidth + x), 2*w*h);
 		spi_endTransaction();
 	} else {
 		for (int yidx = 0; yidx < h; yidx++) {
-			tft_beginUpdate(screenx, screeny + yidx, screenx + w, screeny + yidx + 1);
+			tft_beginUpdate(screenx, screeny + yidx, screenx + w + 1, screeny + yidx);
 			spi_write_poll((uint8*)(data + (y+yidx)*bwidth + x), 2*w);
 		}
 		spi_endTransaction();
