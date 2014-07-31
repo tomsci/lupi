@@ -3,13 +3,17 @@
 
 typedef struct AsyncRequest AsyncRequest;
 
-#define SLOW_EXEC1(code) \
-	asm("MOV r1, r0"); \
-	asm("MOV r0, %0" : : "i" (code)); \
+#define DO_EXEC() \
 	asm("PUSH {r4-r12}"); \
 	asm("SVC 0"); \
 	asm("POP {r4-r12}"); \
 	asm("BX lr")
+
+
+#define SLOW_EXEC1(code) \
+	asm("MOV r1, r0"); \
+	asm("MOV r0, %0" : : "i" (code)); \
+	DO_EXEC()
 
 #define SLOW_EXEC2(code) \
 	asm("MOV r2, r1"); \
@@ -101,4 +105,12 @@ void NAKED exec_setTimer(AsyncRequest* request, uint64* time) {
 
 int NAKED exec_getInt(ExecGettableValue val) {
 	SLOW_EXEC1(KExecGetInt);
+}
+
+int NAKED exec_driverConnect(uint32 driverId) {
+	SLOW_EXEC1(KExecDriverConnect);
+}
+
+int NAKED exec_driverCmd(uint32 driverHandle, uint32 arg1, uint32 arg2) {
+	DO_EXEC();
 }

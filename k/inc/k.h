@@ -146,6 +146,18 @@ typedef struct Dfc {
 
 #define MAX_DFCS 4
 
+typedef struct Driver Driver;
+// Let's see if CaseyM's favourite syntax makes me retch
+#define DRIVER_FN(fn) int fn(Driver* driver, uintptr arg1, uintptr arg2)
+typedef DRIVER_FN((*DriverExecFn));
+#define MAX_DRIVERS 4
+void kern_registerDriver(uint32 id, DriverExecFn fn);
+
+struct Driver {
+	uint32 id; // a fourcc
+	DriverExecFn execFn;
+};
+
 typedef struct SuperPage {
 	uint32 totalRam;
 	uint32 boardRev;
@@ -173,6 +185,7 @@ typedef struct SuperPage {
 	uint32 numDfcsPending;
 	Thread dfcThread;
 	Dfc dfcs[MAX_DFCS];
+	Driver drivers[MAX_DRIVERS];
 } SuperPage;
 
 ASSERT_COMPILE(sizeof(SuperPage) <= KPageSize);

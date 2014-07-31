@@ -2,6 +2,7 @@
 // width=240, height=320
 
 #include <k.h>
+#include <exec.h>
 #include "gpio.h"
 
 uint32 GET32(uint32 addr);
@@ -108,8 +109,9 @@ void tft_init() {
 		spi_write_poll(data, 2);
 	}
 	spi_endTransaction();
-
 	write(DISPLAY_ON);
+
+	kern_registerDriver(FOURCC("pTFT"), tft_handleSvc);
 }
 
 #define MAX_VARGS 16
@@ -166,4 +168,36 @@ void tft_drawCrashed() {
 	tft_beginUpdate(0, HEIGHT - CrashBorderWidth, WIDTH, HEIGHT);
 	BlitN(red, WIDTH * CrashBorderWidth);
 	spi_endTransaction();
+}
+
+static DRIVER_FN(tft_handleSvc) {
+	ASSERT(arg1 == KExecDriverTftBlit, arg1);
+
+	// Format of *arg2 is { dataPtr, bitmapWidth, screenx, screeny, x, y, w, h }
+
+	ASSERT(arg2 < KUserMemLimit && !(arg2 & 3), arg2);
+	uint32* op = (uint32*)arg2;
+	uint16* data = (uint16*)op[0];
+	ASSERT((uintptr)data < KUserMemLimit && !((uintptr)data & 3), (uintptr)data);
+	int bwidth = op[1];
+	int screenx = op[2];
+	int screeny = op[3];
+	int x = op[4];
+	int y = op[5];
+	int w = op[6];
+	int h = op[7];
+
+	if (w == bwidth) {
+		// No need to worry about stride, can blit whole lot at once
+		tft_beginUpdate(screenx, screeny, screenx + w, screeny + h);
+		spi_write_poll((uint8*)(data + y*bwidth + x), 2*w*h);
+		spi_endTransaction();
+	} else {
+		for (int yidx = 0; yidx < h; yidx++) {
+			tft_beginUpdate(screenx, screeny + yidx, screenx + w, screeny + yidx + 1);
+			spi_write_poll((uint8*)(data + (y+yidx)*bwidth + x), 2*w);
+		}
+		spi_endTransaction();
+	}
+	return 0;
 }

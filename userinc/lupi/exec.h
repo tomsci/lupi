@@ -2,6 +2,7 @@
 #define LUPI_EXEC_H
 
 #define KFastExec 				0x00800000
+#define KDriverHandle			0x00400000
 
 #define KExecSbrk				1
 #define KExecPrintString		2
@@ -26,9 +27,13 @@
 #define KExecGetInt				19
 #define KExecThreadYield		20
 
+#define KExecDriverConnect		21
+
 typedef enum {
 	EValTotalRam,
 	EValBootMode,
 } ExecGettableValue;
+
+#define KExecDriverTftBlit		0
 
 #endif

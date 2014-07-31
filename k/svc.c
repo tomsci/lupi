@@ -168,9 +168,27 @@ int64 handleSvc(int cmd, uintptr arg1, uintptr arg2, uint32 r14_svc) {
 		case KExecGetInt:
 			result = getInt(arg1);
 			break;
-		default:
-			ASSERT(false, cmd);
+		case KExecDriverConnect: {
+			uint32 id = arg1;
+			// Find the driver
+			int i;
+			for (i = 0; i < MAX_DRIVERS; i++) {
+				if (TheSuperPage->drivers[i].id == id) {
+					break;
+				}
+			}
+			ASSERT(i < MAX_DRIVERS, id);
+			result = i | KDriverHandle;
 			break;
+		}
+		default: {
+			ASSERT(cmd & KDriverHandle, cmd);
+			int driverIdx = cmd & 0xFF;
+			ASSERT(driverIdx < MAX_DRIVERS, cmd);
+			Driver* d = &TheSuperPage->drivers[driverIdx];
+			result = d->execFn(d, arg1, arg2);
+			break;
+		}
 	}
 
 	kern_disableInterrupts();
@@ -200,4 +218,17 @@ static int getInt(int arg) {
 	default:
 		ASSERT(false, arg);
 	}
+}
+
+void kern_registerDriver(uint32 id, DriverExecFn fn) {
+	Driver* driver = NULL;
+	for (int i = 0; i < MAX_DRIVERS; i++) {
+		if (TheSuperPage->drivers[i].id == 0) {
+			driver = &TheSuperPage->drivers[i];
+			break;
+		}
+	}
+	ASSERT(driver); // Otherwise no room at the inn
+	driver->id = id;
+	driver->execFn = fn;
 }

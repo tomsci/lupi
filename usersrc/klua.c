@@ -386,6 +386,10 @@ static void WeveCrashedSetupDebuggingStuff(lua_State* L) {
 	MBUF_MEMBER(Dfc, args[1]);
 	MBUF_MEMBER(Dfc, args[2]);
 
+	MBUF_TYPE(Driver);
+	MBUF_MEMBER_TYPE(Driver, id, "char[]");
+	MBUF_MEMBER(Driver, execFn);
+
 	MBUF_TYPE(SuperPage);
 	MBUF_MEMBER(SuperPage, totalRam);
 	MBUF_MEMBER(SuperPage, boardRev);
@@ -444,6 +448,12 @@ static void WeveCrashedSetupDebuggingStuff(lua_State* L) {
 	for (int i = 0; i < TheSuperPage->numValidProcessPages; i++) {
 		MBUF_NEW(Process, GetProcess(i));
 		lua_pop(L, 1);
+	}
+	for (int i = 0; i < MAX_DRIVERS; i++) {
+		if (TheSuperPage->drivers[i].id) {
+			MBUF_NEW(Driver, &TheSuperPage->drivers[i]);
+			lua_pop(L, 1);
+		}
 	}
 
 	MBUF_TYPE(Server);
