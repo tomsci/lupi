@@ -15,21 +15,21 @@ SuperPage						F8000000-F8001000	(4k)
 Sect0 PT	00003000-00004000	F8001000-F8002000	(4k)
 KProcessesSection_pt			F8002000-F8003000	(4k)
 KProcessesPdeSection_pt			F8003000-F8004000	(4k)
-KKernelPdeB	00048000-0004C000	F8004000-F8008000	(16k)
-Code		00008000-00048000	F8008000-F8048000	(256k)
-Guard		-----------------	F8048000-F8049000	(4k)
-Abort stack	00004000-00005000	F8049000-F804A000	(4k)
-Guard		-----------------	F804A000-F804B000	(4k)
-IRQ stack	00005000-00006000	F804B000-F804C000	(4k)
-Guard		-----------------	F804C000-F804D000	(4k)
-Kern stack	00006000-00007000	F804D000-F804E000	(8k)
-Guard		-----------------	F804E000-F804F000	(4k)
-Unused		-----------------	F804F000-F8050000	(4k)
-KKernPtForProcPts_pt			F8050000-F8051000	(4k)
-atags		00000000-00001000	F8051000-F8052000	(12k)
-KDfcThreadStack					F8052000-F8053000	(4k)
-Unused		-----------------	F8053000-F80C0000
-PageAlloctr	0004C000-dontcare	F80C0000-F8100000	(256k)
+KKernelPdeB	00088000-0008C000	F8004000-F8008000	(16k)
+Code		00008000-00088000	F8008000-F8088000	(512k)
+Guard		-----------------	F8088000-F8089000	(4k)
+Abort stack	00004000-00005000	F8089000-F808A000	(4k)
+Guard		-----------------	F808A000-F808B000	(4k)
+IRQ stack	00005000-00006000	F808B000-F808C000	(4k)
+Guard		-----------------	F808C000-F808D000	(4k)
+Kern stack	00006000-00007000	F808D000-F808E000	(8k)
+Guard		-----------------	F808E000-F808F000	(4k)
+Unused		-----------------	F808F000-F8090000	(4k)
+KKernPtForProcPts_pt			F8090000-F8091000	(4k)
+atags		00000000-00001000	F8091000-F8092000	(12k)
+KDfcThreadStack					F8092000-F8093000	(4k)
+Unused		-----------------	F8093000-F80C0000
+PageAlloctr	0008C000-dontcare	F80C0000-F8100000	(256k)
 -------------------------------------------------
 Processes						F8100000-F8200000	(1 MB)
 Kern PTs for user proc PTs		F8200000-F8300000	(1 MB)
@@ -48,30 +48,30 @@ Peripherals	20000000-20300000	F2000000-F2300000	(3 MB)
 #define KPhysicalSect0Pt		0x00003000u
 #define KSectionZeroPt			0xF8001000u
 
-#define KPhysicalPdeBase		0x00048000u
+#define KPhysicalPdeBase		0x00088000u
 #define KKernelPdeBase			0xF8004000u
 
 #define KPhysicalStackBase		0x00006000u
-#define KKernelStackBase		0xF804D000u
+#define KKernelStackBase		0xF808D000u
 #define KKernelStackSize		0x00001000u // 4kB
 
 #define KPhysicalCodeBase		0x00008000u
 #define KKernelCodeBase			0xF8008000u
-#define KKernelCodesize			0x00040000u
+#define KKernelCodesize			0x00080000u
 
 #define KPhysicalAbortStackBase	0x00004000u
 #define KPhysicalIrqStackBase	0x00005000u
 #define KTemporaryIdMappingPt	KPhysicalIrqStackBase
 
-#define KAbortStackBase			0xF8049000u
-#define KIrqStackBase			0xF804B000u
+#define KAbortStackBase			0xF8089000u
+#define KIrqStackBase			0xF808B000u
 
-#define KPhysPageAllocator		0x0004C000u
+#define KPhysPageAllocator		0x0008C000u
 #define KPageAllocatorAddr		0xF80C0000u
 #define KPageAllocatorMaxSize	0x00040000u
 
-#define KKernelAtagsBase		0xF8051000u
-#define KDfcThreadStack			0xF8052000u
+#define KKernelAtagsBase		0xF8091000u
+#define KDfcThreadStack			0xF8092000u
 
 #define KSuperPageAddress		0xF8000000u
 
@@ -84,7 +84,7 @@ Peripherals	20000000-20300000	F2000000-F2300000	(3 MB)
 #define KProcessesPdeSection_pt	0xF8003000u
 
 #define KKernPtForProcPts		0xF8200000u
-#define KKernPtForProcPts_pt	0xF8050000u
+#define KKernPtForProcPts_pt	0xF8090000u
 
 #define KProcessPtBase			0x90000000u
 
@@ -113,6 +113,7 @@ Thread stacks					0FE00000-10000000
 #define KSharedPagesBase		0x0F000000u
 #define KSharedPagesSize		0x00100000u
 #define KUserStacksBase			0x0FE00000u
+#define KUserMemLimit			0x10000000u
 
 /**
 I'm feeling generous.
