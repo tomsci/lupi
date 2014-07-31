@@ -69,8 +69,8 @@ static int getWidth(lua_State* L) {
 }
 
 static int create(lua_State* L) {
-	int w = luaL_checkint(L, 1);
-	int h = luaL_checkint(L, 2);
+	int w = luaL_optint(L, 1, 0);
+	int h = luaL_optint(L, 2, 0);
 	Bitmap* b = bitmap_create(w, h);
 	ASSERTL(b, "Couldn't create bitmap");
 	Bitmap** bud = (Bitmap**)lua_newuserdata(L, sizeof(Bitmap*));

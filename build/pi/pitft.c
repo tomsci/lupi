@@ -32,6 +32,8 @@ void PUT32(uint32 addr, uint32 val);
 #define NEGATIVE_GAMMA_CORRECT		0xE1
 
 #define MAC_CTL_MX					0x40
+#define MAC_CTL_MY					0x80
+#define MAC_CTL_MV					0x20
 #define MAC_CTL_BGR					0x08
 
 static void doWrite(bool openEndedTransaction, int n, ...);
@@ -44,6 +46,9 @@ void tft_beginUpdate(int xStart, int yStart, int xEnd, int yEnd);
 #define TFT_SPI_CS_POLL 0 // CSPOLn=0, LEN=0, INTR=0, INTD=0, CSPOL=0, CPOL=0, CPHA=0, CS=0
 
 void tft_init() {
+	TheSuperPage->screenWidth = WIDTH;
+	TheSuperPage->screenHeight = HEIGHT;
+
 	// Configure GPIOs for SPI pins
 	uint32 gfpsel0 = GET32(GPFSEL0);
 	uint32 gfpsel1 = GET32(GPFSEL1);
@@ -89,7 +94,10 @@ void tft_init() {
 	write(VCOM_CONTROL_1, 0x3E, 0x28); // 0x3E = VCOMH voltage 4.25V, 0x28 = VCOML -1.5V
 	write(VCOM_CONTROL_2, 0x86); // My head hurts
 
-	write(MEMORY_ACCESS_CONTROL, MAC_CTL_MX | MAC_CTL_BGR);
+	write(MEMORY_ACCESS_CONTROL, MAC_CTL_MX | MAC_CTL_MY | MAC_CTL_MV | MAC_CTL_BGR);
+	// Screen is now landscape
+	TheSuperPage->screenWidth = HEIGHT;
+	TheSuperPage->screenHeight = WIDTH;
 	write(PIXEL_FORMAT_SET, 0x55); // 16-bit
 	write(FRAME_RATE_CONTROL_1, 0x00, 0x1B); // 18 = 79Hz?? 1B would be 70Hz default which would be much more sensible
 	write(DISPLAY_FUNCTION_CONTROL, 0x08, 0x82, 0x27); // Stuff.
@@ -103,7 +111,7 @@ void tft_init() {
 	kern_sleep(5);
 
 	// And fill the window with some arbitrary colour
-	tft_beginUpdate(0, 0, WIDTH, HEIGHT);
+	tft_beginUpdate(0, 0, TheSuperPage->screenWidth-1, TheSuperPage->screenHeight-1);
 	uint8 data[] = {0xE0, 0x1F}; // Purple
 	for (int i = 0; i < WIDTH * HEIGHT; i++) {
 		spi_write_poll(data, 2);
@@ -156,18 +164,20 @@ void tft_beginUpdate(int xStart, int yStart, int xEnd, int yEnd) {
 #define BlitN(colour, n) for (int i = 0; i < n; i++) { spi_write_poll(colour, 2); }
 void tft_drawCrashed() {
 	uint8 red[] = {0xF8, 0x00};
+	int w = TheSuperPage->screenWidth;
+	int h = TheSuperPage->screenHeight;
 	// Top
-	tft_beginUpdate(0, 0, WIDTH-1, CrashBorderWidth-1);
-	BlitN(red, WIDTH * CrashBorderWidth);
+	tft_beginUpdate(0, 0, w-1, CrashBorderWidth-1);
+	BlitN(red, w * CrashBorderWidth);
 	// Left
-	tft_beginUpdate(0, 0, CrashBorderWidth-1, HEIGHT-1);
-	BlitN(red, CrashBorderWidth * HEIGHT);
+	tft_beginUpdate(0, 0, CrashBorderWidth-1, h-1);
+	BlitN(red, CrashBorderWidth * h);
 	// Right
-	tft_beginUpdate(WIDTH - CrashBorderWidth, 0, WIDTH-1, HEIGHT-1);
-	BlitN(red, CrashBorderWidth * HEIGHT);
+	tft_beginUpdate(w - CrashBorderWidth, 0, w-1, h-1);
+	BlitN(red, CrashBorderWidth * h);
 	// Bottom
-	tft_beginUpdate(0, HEIGHT - CrashBorderWidth, WIDTH-1, HEIGHT-1);
-	BlitN(red, WIDTH * CrashBorderWidth);
+	tft_beginUpdate(0, h - CrashBorderWidth, w-1, h-1);
+	BlitN(red, w * CrashBorderWidth);
 	spi_endTransaction();
 }
 

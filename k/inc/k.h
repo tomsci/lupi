@@ -161,6 +161,8 @@ struct Driver {
 typedef struct SuperPage {
 	uint32 totalRam;
 	uint32 boardRev;
+	int screenWidth;
+	int screenHeight;
 	int bootMode;
 	uint32 nextPid;
 	Process* currentProcess;

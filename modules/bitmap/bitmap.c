@@ -6,7 +6,12 @@
 #define BLACK 0
 #define WHITE 0xFFFFu
 
+int exec_getInt(ExecGettableValue val);
+
 Bitmap* bitmap_create(int width, int height) {
+	if (!width) width = exec_getInt(EValScreenWidth);
+	if (!height) height = exec_getInt(EValScreenHeight);
+
 	void* mem = malloc(offsetof(Bitmap, data) + width * height * 2);
 	if (!mem) return NULL;
 	Bitmap* b = (Bitmap*)mem;
