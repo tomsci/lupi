@@ -53,8 +53,9 @@ rect will be set to the background colour.
 --native function Bitmap:drawText(x, y, text)
 
 --[[**
-Blit the bitmap to the screen device. If parameters are specified, blits a
-subset of the bitmap, otherwise blits the whole bitmap.
+Blit the bitmap to the screen device. If no parameters are supplied, only blits
+the invalidated region. The invalidated region is the union of all rects that
+have been drawn to since the last call to `blit()`.
 ]]
 --native function Bitmap:blit([x [,y [,w [,h]]]])
 

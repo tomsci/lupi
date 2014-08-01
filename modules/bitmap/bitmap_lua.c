@@ -17,7 +17,8 @@ static int drawRect(lua_State* L) {
 	int y = luaL_checkint(L, 3);
 	int w = luaL_checkint(L, 4);
 	int h = luaL_checkint(L, 5);
-	bitmap_drawRect(b, x, y, w, h);
+	Rect r = rect_make(x, y, w, h);
+	bitmap_drawRect(b, &r);
 	return 0;
 }
 
@@ -58,13 +59,13 @@ static int getBackgroundColour(lua_State* L) {
 
 static int getHeight(lua_State* L) {
 	Bitmap* b = bitmap_check(L, 1);
-	lua_pushinteger(L, b->height);
+	lua_pushinteger(L, bitmap_getHeight(b));
 	return 1;
 }
 
 static int getWidth(lua_State* L) {
 	Bitmap* b = bitmap_check(L, 1);
-	lua_pushinteger(L, b->width);
+	lua_pushinteger(L, bitmap_getWidth(b));
 	return 1;
 }
 
@@ -81,11 +82,16 @@ static int create(lua_State* L) {
 
 static int blit(lua_State* L) {
 	Bitmap* b = bitmap_check(L, 1);
-	int x = luaL_optint(L, 2, 0);
-	int y = luaL_optint(L, 3, 0);
-	int w = luaL_optint(L, 4, b->width - x);
-	int h = luaL_optint(L, 5, b->height - y);
-	bitmap_blitToScreen(b, x, y, w, h);
+	if (lua_isnoneornil(L, 2)) {
+		bitmap_blitDirtyToScreen(b);
+	} else {
+		int x = luaL_optint(L, 2, 0);
+		int y = luaL_optint(L, 3, 0);
+		int w = luaL_optint(L, 4, bitmap_getWidth(b) - x);
+		int h = luaL_optint(L, 5, bitmap_getHeight(b) - y);
+		Rect r = rect_make(x, y, w, h);
+		bitmap_blitToScreen(b, &r);
+	}
 	return 0;	
 }
 

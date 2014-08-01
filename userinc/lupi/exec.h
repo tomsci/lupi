@@ -32,6 +32,8 @@
 typedef enum {
 	EValTotalRam,
 	EValBootMode,
+	EValScreenWidth,
+	EValScreenHeight,
 } ExecGettableValue;
 
 #define KExecDriverTftBlit		0
