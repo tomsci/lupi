@@ -124,6 +124,7 @@ void bitmap_drawText(Bitmap* b, uint16 x, uint16 y, const char* text) {
 	 // Text is allowed to go offscreen, but must start onscreen
 	if (x >= bitmap_getWidth(b) || y >= bitmap_getHeight(b)) return;
 	const char* chptr = text;
+	const int xstart = x;
 	const uint16 bwidth = bitmap_getWidth(b);
 	for (;;) {
 		char ch = *chptr++;
@@ -133,7 +134,7 @@ void bitmap_drawText(Bitmap* b, uint16 x, uint16 y, const char* text) {
 		drawch(b, x, y, charIdx);
 		x += CHAR_WIDTH;
 	}
-	Rect r = rect_make(x, y, (chptr - text) * CHAR_WIDTH, CHAR_HEIGHT);
+	Rect r = rect_make(xstart, y, (chptr - text - 1) * CHAR_WIDTH, CHAR_HEIGHT);
 	rect_union(&b->dirtyRect, &r);
 }
 
@@ -144,8 +145,8 @@ void bitmap_blitToScreen(Bitmap* b, const Rect* r) {
 	if (!b->screenDriverHandle) {
 		b->screenDriverHandle = exec_driverConnect(FOURCC("pTFT"));
 	}
-	uint32 op[] = { (uint32)&b->data, b->bounds.w, b->bounds.x, b->bounds.y,
-		r->x, r->y, r->w, r->h };
+	uint32 op[] = { (uint32)&b->data, b->bounds.w, b->bounds.x + r->x,
+		b->bounds.y + r->y, r->x, r->y, r->w, r->h };
 	exec_driverCmd(b->screenDriverHandle, KExecDriverTftBlit, (uint32)&op);
 }
 

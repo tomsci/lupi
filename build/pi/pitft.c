@@ -205,7 +205,7 @@ static DRIVER_FN(tft_handleSvc) {
 		spi_endTransaction();
 	} else {
 		for (int yidx = 0; yidx < h; yidx++) {
-			tft_beginUpdate(screenx, screeny + yidx, screenx + w + 1, screeny + yidx);
+			tft_beginUpdate(screenx, screeny + yidx, screenx + w - 1, screeny + yidx);
 			spi_write_poll((uint8*)(data + (y+yidx)*bwidth + x), 2*w);
 		}
 		spi_endTransaction();
