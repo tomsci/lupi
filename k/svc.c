@@ -215,6 +215,10 @@ static int getInt(int arg) {
 		return TheSuperPage->totalRam;
 	case EValBootMode:
 		return TheSuperPage->bootMode;
+	case EValScreenWidth:
+		return TheSuperPage->screenWidth;
+	case EValScreenHeight:
+		return TheSuperPage->screenHeight;
 	default:
 		ASSERT(false, arg);
 	}

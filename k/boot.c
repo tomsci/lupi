@@ -149,6 +149,10 @@ void NAKED hang() {
 void iThinkYouOughtToKnowImFeelingVeryDepressed() {
 	uint32 far = getFAR();
 	if (!TheSuperPage->marvin) {
+		TheSuperPage->marvin = true;
+		// Make sure IRQs remain disabled in subsequent SVC calls by the klua debugger
+		TheSuperPage->svcPsrMode |= KPsrIrqDisable;
+		TheSuperPage->rescheduleNeededOnSvcExit = false;
 #ifdef HAVE_PITFT
 		tft_drawCrashed();
 #endif
@@ -156,9 +160,6 @@ void iThinkYouOughtToKnowImFeelingVeryDepressed() {
 			printk("Failed to allocate memory for klua debugger heap, sorry.\n");
 			hang();
 		}
-		TheSuperPage->marvin = true;
-		// Make sure IRQs remain disabled in subsequent SVC calls by the klua debugger
-		TheSuperPage->svcPsrMode |= KPsrIrqDisable;
 	}
 	if (TheSuperPage->trapAbort) {
 		TheSuperPage->exception = true;
@@ -345,6 +346,9 @@ void NAKED kabort4(uint32 r0, uint32 r1, uint32 r2, uint32 r3) {
 	asm("STR r0, [r4], #4"); // r15 not stored
 	asm("MRS r2, cpsr");
 	asm("STR r2, [r4], #4");
+
+	// Write fault address register to be r14
+	asm("MCR p15, 0, r14, c6, c0, 0");
 
 	// marvin expects us to be in abort mode
 	ModeSwitch(KPsrModeAbort | KPsrIrqDisable | KPsrFiqDisable);
