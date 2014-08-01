@@ -19,6 +19,7 @@ Bitmap* bitmap_create(uint16 width, uint16 height) {
 	b->screenDriverHandle = 0;
 	b->colour = BLACK;
 	b->bgcolour = WHITE;
+	b->autoBlit = false;
 	rect_zero(&b->dirtyRect);
 	return b;
 }
@@ -92,6 +93,7 @@ void bitmap_drawRect(Bitmap* b, const Rect* r) {
 		}
 	}
 	rect_union(&b->dirtyRect, &bounds);
+	if (b->autoBlit) bitmap_blitDirtyToScreen(b);
 }
 
 #define CHAR_WIDTH (font_width/8) // 8 chars per line. Currently = 7
@@ -136,6 +138,7 @@ void bitmap_drawText(Bitmap* b, uint16 x, uint16 y, const char* text) {
 	}
 	Rect r = rect_make(xstart, y, (chptr - text - 1) * CHAR_WIDTH, CHAR_HEIGHT);
 	rect_union(&b->dirtyRect, &r);
+	if (b->autoBlit) bitmap_blitDirtyToScreen(b);
 }
 
 int exec_driverConnect(uint32 driverId);

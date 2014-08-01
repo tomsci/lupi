@@ -101,6 +101,12 @@ static int gc(lua_State* L) {
 	return 0;
 }
 
+static int setAutoBlit(lua_State* L) {
+	Bitmap* b = bitmap_check(L, 1);
+	bitmap_setAutoBlit(b, lua_toboolean(L, 2));
+	return 0;
+}
+
 int init_module_bitmap_init(lua_State* L) {
 	luaL_newmetatable(L, BitmapMetatable);
 	luaL_Reg fns[] = {
@@ -114,6 +120,7 @@ int init_module_bitmap_init(lua_State* L) {
 		{ "getBackgroundColour", getBackgroundColour},
 		{ "create", create },
 		{ "blit", blit },
+		{ "setAutoBlit", setAutoBlit },
 		{ "__gc", gc },
 		{ NULL, NULL },
 	};

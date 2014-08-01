@@ -10,7 +10,7 @@ typedef struct Rect {
 } Rect;
 
 static inline void rect_zero(Rect* r) {
-	r->x = 0; r->y = 0; r->x = 0; r->y = 0;
+	r->x = 0; r->y = 0; r->w = 0; r->h = 0;
 }
 
 static inline void rect_set(Rect* r, uint16 x, uint16 y, uint16 w, uint16 h) {
@@ -37,6 +37,7 @@ typedef struct Bitmap {
 	uint16 colour; // Current pen colour
 	uint16 bgcolour; // Background colour, when drawing text
 	Rect dirtyRect;
+	bool autoBlit; // Flush every draw operation straight to the screen (debug)
 	uint16 data[1]; // Extends beyond the struct
 } Bitmap;
 
@@ -58,4 +59,5 @@ void bitmap_drawText(Bitmap* b, uint16 x, uint16 y, const char* text);
 void bitmap_blitToScreen(Bitmap* b, const Rect* r);
 void bitmap_blitDirtyToScreen(Bitmap* b);
 
+static inline void bitmap_setAutoBlit(Bitmap* b, bool flag) { b->autoBlit = flag; }
 #endif

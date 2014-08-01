@@ -39,6 +39,7 @@ void PUT32(uint32 addr, uint32 val);
 static void doWrite(bool openEndedTransaction, int n, ...);
 #define write(args...) doWrite(false, NUMVARARGS(args), args)
 void tft_beginUpdate(int xStart, int yStart, int xEnd, int yEnd);
+static DRIVER_FN(tft_handleSvc);
 
 #define GPIO_DC 25 // Data/command signal, aka D/CX on the LCD controller
 
@@ -189,7 +190,7 @@ static DRIVER_FN(tft_handleSvc) {
 	ASSERT(arg2 < KUserMemLimit && !(arg2 & 3), arg2);
 	uint32* op = (uint32*)arg2;
 	uint16* data = (uint16*)op[0];
-	ASSERT((uintptr)data < KUserMemLimit && !((uintptr)data & 3), (uintptr)data);
+	ASSERT((uintptr)data < KUserMemLimit && !((uintptr)data & 1), (uintptr)data);
 	int bwidth = op[1];
 	int screenx = op[2];
 	int screeny = op[3];
