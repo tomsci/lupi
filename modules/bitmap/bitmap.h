@@ -54,6 +54,7 @@ void bitmap_setPosition(Bitmap* b, uint16 x, uint16 y);
 static inline uint16 bitmap_getWidth(Bitmap* b) { return rect_getWidth(&b->bounds); }
 static inline uint16 bitmap_getHeight(Bitmap* b) { return rect_getHeight(&b->bounds); }
 
+void bitmap_drawLine(Bitmap* b, uint16 x0, uint16 y0, uint16 x1, uint16 y1);
 void bitmap_drawRect(Bitmap* b, const Rect* r);
 void bitmap_drawText(Bitmap* b, uint16 x, uint16 y, const char* text);
 void bitmap_blitToScreen(Bitmap* b, const Rect* r);

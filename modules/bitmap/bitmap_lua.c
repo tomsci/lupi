@@ -19,6 +19,7 @@ static int drawRect(lua_State* L) {
 	int h = luaL_checkint(L, 5);
 	Rect r = rect_make(x, y, w, h);
 	bitmap_drawRect(b, &r);
+	// PRINTL("dirtyRect = %d,%d,%dx%d", b->dirtyRect.x, b->dirtyRect.y, b->dirtyRect.w, b->dirtyRect.h);
 	return 0;
 }
 
@@ -28,6 +29,18 @@ static int drawText(lua_State* L) {
 	int y = luaL_checkint(L, 3);
 	const char* text = luaL_checkstring(L, 4);
 	bitmap_drawText(b, x, y, text);
+	// PRINTL("dirtyRect = %d,%d,%dx%d", b->dirtyRect.x, b->dirtyRect.y, b->dirtyRect.w, b->dirtyRect.h);
+	return 0;
+}
+
+static int drawLine(lua_State* L) {
+	Bitmap* b = bitmap_check(L, 1);
+	int x0 = luaL_checkint(L, 2);
+	int y0 = luaL_checkint(L, 3);
+	int x1 = luaL_checkint(L, 4);
+	int y1 = luaL_checkint(L, 5);
+	bitmap_drawLine(b, x0, y0, x1, y1);
+	// PRINTL("dirtyRect = %d,%d,%dx%d", b->dirtyRect.x, b->dirtyRect.y, b->dirtyRect.w, b->dirtyRect.h);
 	return 0;
 }
 
@@ -112,6 +125,7 @@ int init_module_bitmap_init(lua_State* L) {
 	luaL_Reg fns[] = {
 		{ "drawRect", drawRect },
 		{ "drawText", drawText },
+		{ "drawLine", drawLine },
 		{ "getHeight", getHeight },
 		{ "getWidth", getWidth },
 		{ "setColour", setColour },

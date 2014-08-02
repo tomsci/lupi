@@ -53,6 +53,11 @@ rect will be set to the background colour.
 --native function Bitmap:drawText(x, y, text)
 
 --[[**
+Draw a line in current foreground colour.
+]]
+--native function Bitmap:drawLine(x0, y0, x1, y1)
+
+--[[**
 Blit the bitmap to the screen device. If no parameters are supplied, only blits
 the invalidated region. The invalidated region is the union of all rects that
 have been drawn to since the last call to `blit()`.

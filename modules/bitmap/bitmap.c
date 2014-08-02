@@ -141,6 +141,74 @@ void bitmap_drawText(Bitmap* b, uint16 x, uint16 y, const char* text) {
 	if (b->autoBlit) bitmap_blitDirtyToScreen(b);
 }
 
+#define plot(b,x,y) b->data[y*b->bounds.w + x] = b->colour
+
+void bitmap_drawLine(Bitmap* b, uint16 x0, uint16 y0, uint16 x1, uint16 y1) {
+	// Prof Bresenham, we salute you
+	// Ok I'm too stupid, this is copied from the internets
+	const int dx = (int)x1 - (int)x0;
+	const int dy = (int)y1 - (int)y0;
+	// "scan" is the axis we iterate over (x in quadrant 0)
+	// "inc" is the axis we conditionally add to (y in quadrant 0)
+	int inc, incr;
+	int scan, scanStart, scanEnd, scanIncr;
+	int* x; int* y;
+	int dscan, dinc;
+	if (abs(dx) > abs(dy)) {
+		x = &scan;
+		y = &inc;
+		dscan = dx;
+		dinc = dy;
+		inc = y0;
+		scanStart = x0 + 1;
+		scanEnd = x1;
+	} else {
+		x = &inc;
+		y = &scan;
+		dscan = dy;
+		dinc = dx;
+		inc = x0;
+		scanStart = y0 + 1;
+		scanEnd = y1;
+	}
+
+	if (dinc < 0) {
+		incr = -1;
+		dinc = -dinc;
+	} else {
+		incr = 1;
+	}
+	if (dscan < 0) {
+		scanIncr = -1;
+		dscan = -dscan;
+	} else {
+		scanIncr = 1;
+	}
+	// Hoist these as they're constants
+	const int TwoDinc = 2 * dinc;
+	const int TwoDincMinusTwoDscan = 2 * dinc - 2 * dscan;
+
+	int D = TwoDinc - dscan;
+	plot(b, x0, y0);
+
+	for (scan = scanStart; scan != scanEnd; scan += scanIncr) {
+		//PRINTL("scan=%d inc=%d D=%d", (int)scan, (int)inc, D);
+		if (D > 0) {
+			inc = inc + incr;
+			plot(b, *x, *y);
+			D = D + TwoDincMinusTwoDscan;
+		} else {
+			plot(b, *x, *y);
+			D = D + TwoDinc;
+		}
+	}
+
+	Rect r = rect_make(min(x0,x1), min(y0,y1), abs(dx) + 1, abs(dy) + 1);
+	//rect_clipToParent(&r, &b->bounds);
+	rect_union(&b->dirtyRect, &r);
+	if (b->autoBlit) bitmap_blitDirtyToScreen(b);
+}
+
 int exec_driverConnect(uint32 driverId);
 int exec_driverCmd(uint32 driverHandle, uint32 arg1, uint32 arg2);
 
