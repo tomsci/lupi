@@ -11,12 +11,28 @@ Bitmap* bitmap_check(lua_State* L, int idx) {
 	return *(Bitmap**)ptr;
 }
 
+static int getxy(lua_State* L, int idx, int* x, int* y) {
+	if (lua_type(L, idx) == LUA_TTABLE) {
+		// Assume arg is a table {x,y}
+		lua_rawgeti(L, idx, 1);
+		*x = luaL_checkint(L, -1);
+		lua_rawgeti(L, idx, 2);
+		*y = luaL_checkint(L, -1);
+		lua_pop(L, 2);
+		return idx + 1;
+	} else {
+		*x = luaL_checkint(L, idx);
+		*y = luaL_checkint(L, idx+1);
+		return idx + 2;
+	}
+}
+
 static int drawRect(lua_State* L) {
 	Bitmap* b = bitmap_check(L, 1);
-	int x = luaL_checkint(L, 2);
-	int y = luaL_checkint(L, 3);
-	int w = luaL_checkint(L, 4);
-	int h = luaL_checkint(L, 5);
+	int x, y;
+	int nextArg = getxy(L, 2, &x, &y);
+	int w = luaL_checkint(L, nextArg);
+	int h = luaL_checkint(L, nextArg+1);
 	Rect r = rect_make(x, y, w, h);
 	bitmap_drawRect(b, &r);
 	// PRINTL("dirtyRect = %d,%d,%dx%d", b->dirtyRect.x, b->dirtyRect.y, b->dirtyRect.w, b->dirtyRect.h);
@@ -25,9 +41,9 @@ static int drawRect(lua_State* L) {
 
 static int drawText(lua_State* L) {
 	Bitmap* b = bitmap_check(L, 1);
-	int x = luaL_checkint(L, 2);
-	int y = luaL_checkint(L, 3);
-	const char* text = luaL_checkstring(L, 4);
+	int x, y;
+	int textIdx = getxy(L, 2, &x, &y);
+	const char* text = luaL_checkstring(L, textIdx);
 	bitmap_drawText(b, x, y, text);
 	// PRINTL("dirtyRect = %d,%d,%dx%d", b->dirtyRect.x, b->dirtyRect.y, b->dirtyRect.w, b->dirtyRect.h);
 	return 0;
@@ -35,10 +51,9 @@ static int drawText(lua_State* L) {
 
 static int drawLine(lua_State* L) {
 	Bitmap* b = bitmap_check(L, 1);
-	int x0 = luaL_checkint(L, 2);
-	int y0 = luaL_checkint(L, 3);
-	int x1 = luaL_checkint(L, 4);
-	int y1 = luaL_checkint(L, 5);
+	int x0, y0, x1, y1;
+	int nextIdx = getxy(L, 2, &x0, &y0);
+	getxy(L, nextIdx, &x1, &y1);
 	bitmap_drawLine(b, x0, y0, x1, y1);
 	// PRINTL("dirtyRect = %d,%d,%dx%d", b->dirtyRect.x, b->dirtyRect.y, b->dirtyRect.w, b->dirtyRect.h);
 	return 0;

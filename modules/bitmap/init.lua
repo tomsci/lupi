@@ -48,12 +48,21 @@ Draw a solid rectangle using the current foreground colour.
 
 --[[**
 Draw text in the current foreground colour. The non-text pixels within the text
-rect will be set to the background colour.
+rect will be set to the background colour. Instead of passing x and y as
+separate parameters, you may pass an array with two entries, for example:
+
+	local pos = { x, y }
+	bmp:drawText(pos, text)
 ]]
 --native function Bitmap:drawText(x, y, text)
 
 --[[**
-Draw a line in current foreground colour.
+Draw a line in current foreground colour. You may also pass arrays for the two
+points, for example:
+
+	local start = { x0, y0 }
+	local end = { x1, y1 }
+	bmp:drawLine(start, end)
 ]]
 --native function Bitmap:drawLine(x0, y0, x1, y1)
 

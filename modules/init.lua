@@ -22,6 +22,8 @@ function main()
 		lupi.createProcess("test.yieldb")
 	elseif bootMode == string.byte('t') then
 		lupi.createProcess("test.init")
+	elseif bootMode == string.byte('b') then
+		require("bitmap.tests").main()
 	end
 	local interpreter = require("interpreter")
 	local hadPreCmd = false

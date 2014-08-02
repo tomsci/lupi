@@ -21,6 +21,7 @@ Boot menu:\n\
         1: Start klua debugger\n\
 Test func:\n\
         a: Run atomics unit tests\n\
+        b: Run bitmap tests\n\
     ^X, r: Reboot\n\
         t: Run test/init.lua tests\n\
         y: Run yield scheduling tests\n\
@@ -36,6 +37,7 @@ Test func:\n\
 				return 'r';
 
 			case 'a':
+			case 'b':
 			case 't':
 			case 'y':
 				return ch;
