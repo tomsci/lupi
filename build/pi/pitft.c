@@ -36,15 +36,56 @@ void PUT32(uint32 addr, uint32 val);
 #define MAC_CTL_MV					0x20
 #define MAC_CTL_BGR					0x08
 
+// From CD00226473.pdf
+#define REG_READ	0x80
+
+#define SYS_CTRL2	0x04
+#define INT_CTRL 	0x09
+#define INT_EN		0x0A
+#define INT_STA		0x0B
+#define ADC_CTRL1	0x20
+#define ADC_CTRL2	0x21
+#define TSC_CTRL	0x40
+#define TSC_CFG		0x41
+
+// SYS_CTRL2
+#define GPIO_OFF				(1<<2)
+// TSC_CTRL
+#define TSC_TRACKING_NONE		0
+#define TSC_OP_MOD_XY			(0x1 << 1)
+#define TSC_ENABLE				1
+// TSC_CFG
+#define TSC_SETTLING_500US		(2)
+#define TSC_TOUCH_DET_DELAY_1MS	(0x4 << 3)
+#define TSC_AVERAGE_CTL_8		(0x3 << 6)
+// INT_CTRL
+#define TSC_INT_EDGE			(1<<1)
+#define TSC_INT_ENABLE			1
+// INT_EN
+#define TSC_INT_TOUCH_DET		1
+#define TSC_INT_FIFO_TH			(1<<1)
+// ADC_CTRL1
+#define ADC_SAMPLE_80			(4<<4)
+#define ADC_12BIT				(1<<3)
+// ADC_CTRL2
+#define ADC_FREQ_6_5_MHZ		2
+
 static void doWrite(bool openEndedTransaction, int n, ...);
 #define write(args...) doWrite(false, NUMVARARGS(args), args)
 void tft_beginUpdate(int xStart, int yStart, int xEnd, int yEnd);
+uint32 tsc_register_read(uint8 reg, int regSize);
+void tsc_register_write(uint8 reg, uint8 val);
 static DRIVER_FN(tft_handleSvc);
 
 #define GPIO_DC 25 // Data/command signal, aka D/CX on the LCD controller
 
-#define TFT_SPI_CDIV				16 // 250Mhz/16 = 16MHz
+// TFT = the display, TSC = touch screen controller
+#define TFT_SPI_CDIV	16 // 250Mhz/16 = 16MHz
+#define TSC_SPI_CDIV	1024 // 250Mhz/500 = 500kHz
 #define TFT_SPI_CS_POLL 0 // CSPOLn=0, LEN=0, INTR=0, INTD=0, CSPOL=0, CPOL=0, CPHA=0, CS=0
+#define TSC_SPI_CS 		1 // As above except CS=1
+#define begin_tftOperation() spi_beginTransaction(TFT_SPI_CS_POLL, TFT_SPI_CDIV)
+#define begin_tscOperation() spi_beginTransaction(TSC_SPI_CS, TSC_SPI_CDIV)
 
 void tft_init() {
 	TheSuperPage->screenWidth = WIDTH;
@@ -65,17 +106,19 @@ void tft_init() {
 	PUT32(GPFSEL1, gfpsel1);
 	PUT32(GPFSEL2, gfpsel2);
 
-	// Pit 24 is some kind of interrupt for the touch screen
-	// requires further configuration (TODO)
+	// Pin 24 is a GPIO input connected to the interrupt for the touch screen
+	// It requires a pull-up for reliable operation (apparently) and should be
+	// configured for detecting falling edge
+	gpio_setPull(KGpioEnablePullUp, GPPUDCLK0, 1<<24);
+	uint32 gpfen = GET32(GPFEN0); // falling edge detect enabled
+	PUT32(GPFEN0, gpfen | (1<<24));
+
+	// And enable the gpio_int[0] interrupt
+	uint32 irqen2 = GET32(IRQ_ENABLE_2);
+	PUT32(IRQ_ENABLE_2, irqen2 | (1 << (GPIO0_INT - 32)));
 
 	// Pin 25 is DC, data/command signal, and it's OUT_INIT_LOW
-	//gpio_setPull(KGpioDisablePullUpDown, GPPUDCLK0, (1<<24)|(1<<25));
-	//gpio_setPull(KGpioEnablePullDown, GPPUDCLK0, (1<<24));
-	//gpio_setPull(KGpioEnablePullUp, GPPUDCLK0, 1<<25); // Fire in the hole!
 	gpio_set(GPIO_DC, 0);
-
-	// Minimal configuration of SPI bus
-	PUT32(SPI_CLK, TFT_SPI_CDIV);
 
 	write(SWRESET);
 	kern_sleep(5);
@@ -99,8 +142,9 @@ void tft_init() {
 	// Screen is now landscape
 	TheSuperPage->screenWidth = HEIGHT;
 	TheSuperPage->screenHeight = WIDTH;
+
 	write(PIXEL_FORMAT_SET, 0x55); // 16-bit
-	write(FRAME_RATE_CONTROL_1, 0x00, 0x1B); // 18 = 79Hz?? 1B would be 70Hz default which would be much more sensible
+	write(FRAME_RATE_CONTROL_1, 0x00, 0x1B); // 1B = 70Hz default
 	write(DISPLAY_FUNCTION_CONTROL, 0x08, 0x82, 0x27); // Stuff.
 	write(0xF2, 0x00); // Undocumented: disable gamma?
 	write(GAMMA_SET, 0x01);
@@ -120,6 +164,24 @@ void tft_init() {
 	spi_endTransaction();
 	write(DISPLAY_ON);
 
+	// fiddle with touchscreen
+	uint32 id = tsc_register_read(0, 2);
+	printk("TSC chip id = %X\n", id);
+	printk("TSC chip ver = %X\n", tsc_register_read(0x02, 1));
+
+	// Enable TSC and ADC clocks - have to do this before setting eg TSC_CTRL
+	tsc_register_write(SYS_CTRL2, GPIO_OFF);
+	tsc_register_write(TSC_CTRL, TSC_TRACKING_NONE | TSC_OP_MOD_XY);
+	tsc_register_write(TSC_CFG,
+		TSC_SETTLING_500US | TSC_TOUCH_DET_DELAY_1MS | TSC_AVERAGE_CTL_8);
+	tsc_register_write(INT_CTRL, TSC_INT_EDGE | TSC_INT_ENABLE);
+	tsc_register_write(INT_EN, TSC_INT_TOUCH_DET | TSC_INT_FIFO_TH);
+	tsc_register_write(ADC_CTRL1, ADC_SAMPLE_80 | ADC_12BIT);
+	tsc_register_write(ADC_CTRL2, ADC_FREQ_6_5_MHZ);
+
+	// Finally, enable touchscreen by ORing TSC_ENABLE
+	tsc_register_write(TSC_CTRL, TSC_TRACKING_NONE | TSC_OP_MOD_XY | TSC_ENABLE);
+
 	kern_registerDriver(FOURCC("pTFT"), tft_handleSvc);
 }
 
@@ -136,7 +198,7 @@ static void doWrite(bool openEndedTransaction, int n, ...) {
 	va_end(args);
 
 	gpio_set(GPIO_DC, 0);
-	spi_beginTransaction(TFT_SPI_CS_POLL);
+	begin_tftOperation();
 	spi_write_poll(&buf[0], 1); // Command byte
 
 	gpio_set(GPIO_DC, 1);
@@ -159,6 +221,31 @@ void tft_beginUpdate(int xStart, int yStart, int xEnd, int yEnd) {
 	write(COLUMN_ADDRESS_SET, xStart >> 8, xStart & 0xFF, xEnd >> 8, xEnd & 0xFF);
 	write(PAGE_ADDRESS_SET, yStart >> 8, yStart & 0xFF, yEnd >> 8, yEnd & 0xFF);
 	doWrite(true, 1, MEMORY_WRITE);
+}
+
+uint32 tsc_register_read(uint8 reg, int regSize) {
+	begin_tscOperation();
+	uint32 ret;
+	if (regSize == 1) {
+		uint8 cmd[] = { reg | REG_READ, 0 };
+		spi_readwrite_poll(cmd, 2, true);
+		ret = cmd[1];
+	} else if (regSize == 2) {
+		uint8 cmd[] = { reg | REG_READ, (reg+1) | REG_READ, 0 };
+		spi_readwrite_poll(cmd, 3, true);
+		ret = (((uint32)(cmd[1])) << 8) | (cmd[2]);
+	} else {
+		ASSERT(false, regSize);
+	}
+	spi_endTransaction();
+	return ret;
+}
+
+void tsc_register_write(uint8 reg, uint8 val) {
+	begin_tscOperation();
+	uint8 cmd[] = { reg, val };
+	spi_write_poll(cmd, sizeof(cmd));
+	spi_endTransaction();
 }
 
 #define CrashBorderWidth 5
@@ -198,6 +285,7 @@ static DRIVER_FN(tft_handleSvc) {
 	int y = op[5];
 	int w = op[6];
 	int h = op[7];
+	//printk("Blitting %d,%d,%dx%d to %d,%d\n", x, y, w, h, screenx, screeny);
 
 	if (w == bwidth) {
 		// No need to worry about stride, can blit whole lot at once

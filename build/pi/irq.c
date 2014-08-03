@@ -1,5 +1,6 @@
 #include <k.h>
 #include <arm.h>
+#include "gpio.h"
 
 //#define SLOW_TIME
 
@@ -84,7 +85,14 @@ bool handleIrq(void* savedRegs) {
 	}
 	if (irqBasicPending & (1 << 9)) {
 		// IRQ Pending Reg 2
-		// TODO
+		uint32 pending2 = GET32(IRQ_PEND2);
+		printk("IRQ pending2: %X\n", pending2);
+		if (pending2 & (1 << (GPIO0_INT - 32))) {
+			// TODO
+
+			// And clear the interrupt
+			PUT32(GPEDS0, 0xFFFFFFFF); // You clear them by setting ones not zeros
+		}
 	}
 	irq_checkDfcs(threadTimeExpired ? NULL : savedRegs);
 	return threadTimeExpired;

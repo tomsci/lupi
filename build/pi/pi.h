@@ -58,6 +58,10 @@
 #define IRQ_DISABLE_BASIC	(KPeripheralBase + 0xB224)
 
 #define AUX_INT				29
+#define GPIO0_INT			49
+#define GPIO1_INT			50
+#define GPIO2_INT			51
+#define GPIO3_INT			52
 #define UART_INT			57
 
 // BCM-2835-ARM-Peripherals p12 says you set bit 1 to enable receive. It's actually bit 0.

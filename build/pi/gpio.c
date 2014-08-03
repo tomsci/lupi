@@ -50,9 +50,12 @@ void gpio_set(int pin, bool value) {
 /**
 Call at the beginning of communication with a SPI device. This sets chip_select
 and starts the SPI clock running. `cs` must be the appropriate BCM2835 CS
-register configuration for the device you'll be talking to.
+register configuration for the device you'll be talking to, and `cdiv` the clock
+divider value for this device.
 */
-void spi_beginTransaction(int cs) {
+void spi_beginTransaction(uint32 cs, uint32 cdiv) {
+	PUT32(SPI_CLK, cdiv);
+
 	cs |= SPI_CS_TA; // This is what kicks the bus into motion
 	PUT32(SPI_CS, cs);
 }
@@ -65,19 +68,23 @@ void spi_endTransaction() {
 
 /**
 Writes data to the SPI bus, polling for completion. Interrupts are not used and
-need not be enabled.
+need not be enabled. If `writeBack` is true, `buf` is replaced with whatever
+data the SPI bus returned.
 */
-void spi_write_poll(uint8* buf, int length) {
+void spi_readwrite_poll(uint8* buf, int length, bool writeBack) {
 	//printk("Starting SPI write cmd=%X len=%d ", (uint)buf[0], length);
 	for (int i = 0; i < length; i++) {
 		// Wait for fifo to be ready
 		//printk("T");
 		WaitForBit(SPI_CS_TXD);
 		PUT32(SPI_FIFO, buf[i]);
-		// Wait for the corresponding read byte (which we ignore for now)
+		// Wait for the corresponding read byte
 		//printk("R");
 		WaitForBit(SPI_CS_RXD);
-		GET32(SPI_FIFO); // Have to do this to keep the SPI FIFO happy
+		uint32 ret = GET32(SPI_FIFO);
+		if (writeBack) {
+			buf[i] = (uint8)ret;
+		}
 	}
 	//printk("D");
 	WaitForBit(SPI_CS_DONE);

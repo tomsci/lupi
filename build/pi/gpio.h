@@ -15,6 +15,12 @@
 #define GPSET1			(KPeripheralBase + 0x00200020)
 #define GPCLR0			(KPeripheralBase + 0x00200028)
 #define GPCLR1			(KPeripheralBase + 0x0020002C)
+#define GPLEV0			(KPeripheralBase + 0x00200034)
+#define GPLEV1			(KPeripheralBase + 0x00200038)
+#define GPEDS0			(KPeripheralBase + 0x00200040)
+#define GPEDS1			(KPeripheralBase + 0x00200044)
+#define GPFEN0			(KPeripheralBase + 0x00200058)
+#define GPFEN1			(KPeripheralBase + 0x0020005C)
 #define GPPUD			(KPeripheralBase + 0x00200094)
 #define GPPUDCLK0		(KPeripheralBase + 0x00200098)
 #define KGpioFunctionSelectPinMask (7)
@@ -62,8 +68,9 @@ void gpio_set(int pin, bool value);
 #define SPI_CS_CLEAR_TX	(1<<4)
 #define SPI_CS_CLEAR_RX	(1<<5)
 
-void spi_beginTransaction(int cs);
+void spi_beginTransaction(uint32 cs, uint32 cdiv);
 void spi_endTransaction();
-void spi_write_poll(uint8* buf, int length);
+void spi_readwrite_poll(uint8* buf, int length, bool writeBack);
+#define spi_write_poll(buf, length) spi_readwrite_poll(buf, length, false)
 
 #endif
