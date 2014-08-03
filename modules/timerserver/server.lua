@@ -1,10 +1,10 @@
-require "common"
+require "misc"
 require "runloop"
 require "ipc"
 require "timerserver"
 require "int64"
 
-local iter, array = common.iter, common.array
+local iter, array = misc.iter, misc.array
 local dbg = false
 
 -- sorted array of { time = int64, msg = msg }

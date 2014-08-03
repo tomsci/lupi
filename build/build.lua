@@ -585,7 +585,7 @@ luaSources = {
 
 luaModules = {
 	"modules/init.lua",
-	"modules/common.lua",
+	"modules/misc.lua",
 	"modules/interpreter.lua",
 	"modules/spin.lua",
 	{ path = "modules/membuf.lua", native = "usersrc/membuf.c" },

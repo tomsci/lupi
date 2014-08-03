@@ -4,7 +4,7 @@ is a function that removes the current value without messing up the iteration.
 Usage:
 
 		local tbl = { "a", "b", "c" }
-		for i, val, remove in common.iter(tbl) do
+		for i, val, remove in misc.iter(tbl) do
 			if val == "b" then
 				remove()
 				-- Table is now { "a", "c" } and the next time

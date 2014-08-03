@@ -1,4 +1,4 @@
-require "common"
+require "misc"
 
 -- AsyncRequest and RunLoop objects setup by native code
 
@@ -74,7 +74,7 @@ function RunLoop:run()
 	while true do
 		local numReqs = self:waitForAnyRequest()
 		-- Now search the list and complete exactly numReqs requests
-		for i, req, removeReqFromTable in common.iter(self.pendingRequests) do
+		for i, req, removeReqFromTable in misc.iter(self.pendingRequests) do
 			if numReqs == 0 then
 				break
 			end
