@@ -4,6 +4,12 @@ Contains functions for looking up symbol names and addresses.
 Note this module is unusual in that it is also used by the build system.
 ]]
 
+local misc
+if not pcall(function() misc = require("misc") end) then
+	misc = require("modules/misc")
+end
+local lt = misc.lessThanUnsigned
+
 symbols = nil
 debug = false
 local symbolCache
@@ -37,21 +43,6 @@ function getSymbolsFromReadElf(elfFile)
 	syms.n = n
 	symbols = syms
 	return syms
-end
-
-local sizeFail = (0x80000000 < 0)
-
--- Make sure compiled constants are being handled same as runtime
-assert((tonumber("80000000", 16) < 0) == (0x80000000 < 0))
-
-function lt(a, b)
-	if not sizeFail then return a < b end
-
-	-- Otherwise, the curse of signed 32-bit integers strikes again
-	local abig, bbig = a < 0 and 1 or 0, b < 0 and 1 or 0
-	local aa, bb = bit32.band(a, 0x7FFFFFF), bit32.band(b, 0x7FFFFFF)
-	--if debug then print(string.format("a=%x b=%x abig=%d bbig=%d aa=%x bb=%x", a, b, abig, bbig, aa, bb)) end
-	return abig < bbig or aa < bb
 end
 
 function findSymbol(addr)

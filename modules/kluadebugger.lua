@@ -88,6 +88,7 @@ any returned values, so "GetProcess(0)" is equivalent to print(GetProcess(0)).
 
 local require = require -- Make sure we keep this even after we've changed _ENV
 local membuf = require("membuf")
+local misc = require("misc")
 
 -- We're not a module, just a collection of helper fns that should be global
 _ENV = _G
@@ -146,19 +147,7 @@ cmt.__index = function(c, fnName)
 end
 setmetatable(c, cmt)
 
---local band, bnot = bit32.band, bit32.bnot
---local function roundPageDown(addr) return band(addr, bnot(KPageSize-1)) end
-
-local function roundDown(addr, size)
-	-- With integer division (which is the only type we have atm) this should do the trick
-	local n = addr / size
-	-- Ugh because Lua is compiled with 32-bit signed ints only, if addr is
-	-- greater than 0x8000000, then the above divide which rounds towards zero,
-	-- will actually round *up* when the number is considered as unsigned
-	-- Therefore, subtract one from n in this case
-	if addr < 0 then n = n - 1 end
-	return n * size
-end
+local roundDown = misc.roundDownUnsigned
 
 function stack(obj)
 	local addr

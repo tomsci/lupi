@@ -62,3 +62,44 @@ function array(arg)
 	setmetatable(result, arrayMt)
 	return result
 end
+
+--[[**
+Rounds `val` down to the nearest multiple of `size`, considering `val` as if it
+were unsigned (ie values with the top bit set are considered large positive).
+]]
+function roundDownUnsigned(val, size)
+	-- With integer division (which is the only type we have atm) this should do the trick
+	local n = val / size
+	-- Ugh because Lua is compiled with 32-bit signed ints only, if val is
+	-- greater than 0x8000000, then the above divide which rounds towards zero,
+	-- will actually round *up* when the number is considered as unsigned
+	-- Therefore, subtract one from n in this case
+	if val < 0 then n = n - 1 end
+	return n * size
+end
+
+local sizeFail = (0x80000000 < 0)
+
+-- Make sure compiled constants are being handled same as runtime
+assert((tonumber("80000000", 16) < 0) == (0x80000000 < 0))
+
+--[[**
+Helper function that returns true if a is strictly less than b, considering
+both to be unsigned.
+]]
+function lessThanUnsigned(a, b)
+	if not sizeFail then return a < b end
+
+	-- Otherwise, the curse of signed 32-bit integers strikes again
+	local abig, bbig = a < 0 and 1 or 0, b < 0 and 1 or 0
+	local aa, bb = bit32.band(a, 0x7FFFFFF), bit32.band(b, 0x7FFFFFF)
+	--if debug then print(string.format("a=%x b=%x abig=%d bbig=%d aa=%x bb=%x", a, b, abig, bbig, aa, bb)) end
+	return abig < bbig or aa < bb
+end
+
+-- Because we're used by the build system too, indirectly via symbolParser.lua,
+-- we have to adhere by the Lua 5.2 module convention
+return {
+	lessThanUnsigned = lessThanUnsigned,
+	roundDownUnsigned = roundDownUnsigned,
+}
