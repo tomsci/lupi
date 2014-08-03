@@ -620,6 +620,7 @@ function addBootMenuSources(sources, modules)
 		"modules/test/init.lua",
 		"modules/test/yielda.lua",
 		"modules/test/yieldb.lua",
+		"modules/bitmap/tests.lua",
 	}
 	for _, m in ipairs(extraModules) do
 		table.insert(modules, m)
