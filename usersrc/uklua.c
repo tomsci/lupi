@@ -68,29 +68,49 @@ static int loaderFn(lua_State* L) {
 	return 1;
 }
 
-static int getLuaModule_searcherFn(lua_State* L) {
+const char KNoCompiledModuleFmtString[] = "\n\tno compiled module " LUA_QS;
+
+static const LuaModule* getLuaModuleForName(lua_State* L) {
+	// arg at index 1 assumed to be moduleName
 	const char* moduleName = lua_tostring(L, 1);
-	// Slightly crazy we can call a (nominally kernel) function from user-side, but we can
-	// so we do, since it doesn't access any private kernel memory
 	const LuaModule* module = getLuaModule(moduleName);
-	if (!module) {
-		lua_pushfstring(L, "\n\tno compiled module " LUA_QS, moduleName);
+	if (module) return module;
+	// Otherwise...
+	lua_pushfstring(L, KNoCompiledModuleFmtString, moduleName);
+	// Try <moduleName>.<moduleName>
+	lua_pushvalue(L, 1);
+	lua_pushliteral(L, ".");
+	lua_pushvalue(L, 1);
+	lua_concat(L, 3);
+	const char* module_module = lua_tostring(L, -1);
+	module = getLuaModule(module_module);
+	if (module) {
+		lua_pop(L, 2); // module_module, error string
+		return module;
 	}
-	if (!module) {
-		// Try <moduleName>.init
-		lua_pushvalue(L, 1);
-		lua_pushliteral(L, ".init");
-		lua_concat(L, 2);
-		const char* module_init = lua_tostring(L, -1);
-		module = getLuaModule(module_init);
-		if (!module) {
-			lua_pushfstring(L, "\n\tno compiled module " LUA_QS, module_init);
-			lua_remove(L, -2); // module_init
-			lua_concat(L, 2);
-		} else {
-			lua_pop(L, 1); // module_init
-		}
+	// otherwise...
+	lua_pushfstring(L, KNoCompiledModuleFmtString, module_module);
+	lua_remove(L, -2); // module_module
+	lua_concat(L, 2);
+	// Finally, try <moduleName>.init
+	lua_pushvalue(L, 1);
+	lua_pushliteral(L, ".init");
+	lua_concat(L, 2);
+	const char* module_init = lua_tostring(L, -1);
+	module = getLuaModule(module_init);
+	if (module) {
+		lua_pop(L, 2); // module_init, error string
+		return module;
 	}
+	// otherwise...
+	lua_pushfstring(L, KNoCompiledModuleFmtString, module_init);
+	lua_remove(L, -2); // module_init
+	lua_concat(L, 2);
+	return NULL;
+}
+
+static int getLuaModule_searcherFn(lua_State* L) {
+	const LuaModule* module = getLuaModuleForName(L);
 	if (!module) {
 		return 1;
 	}
@@ -99,7 +119,7 @@ static int getLuaModule_searcherFn(lua_State* L) {
 	} else {
 		lua_pushnil(L);
 	}
-	int ret = lua_load(L, readerFn, &module, moduleName, NULL);
+	int ret = lua_load(L, readerFn, &module, module->name, NULL);
 	if (ret != LUA_OK) {
 		lua_pushfstring(L, "\n\tError loading compiled module %s: %s", module->name, lua_tostring(L, -1));
 		return 1;

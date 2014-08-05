@@ -397,6 +397,19 @@ floating-point computation available to Lua modules, and division will always
 round to the nearest integer. 64-bit integers are supported in C code, and in
 Lua in a limited fashion via the `int64` module.
 
+One problem with using 32-bit signed integers occurs when you need to represent
+32-bit unsigned values. A custom implementation of `strtol` is used to ensure
+that `tonumber("0x80000000")` returns -1 (ie `0x80000000`) rather than the
+standard-mandated `INT_MAX`, ie `0x7FFFFFFF`. This means that even though it
+will wrap to be a negative number, it will at least contain the correct bit
+pattern. The unfortunate side effect of this is that a statement like
+`0x80000000 < 0x7FFFFFFF` will evaluate to `true`. As a result there are some
+helper functions defined in the misc module - see [roundDownUnsigned][] and
+[lessThanUnsigned][].
+
+[roundDownUnsigned]: modules/misc.html#roundDownUnsigned
+[lessThanUnsigned]: modules/misc.html#lessThanUnsigned
+
 ### No io or os
 
 The `io` and `os` tables are not available. They rely on a lot of standard C
@@ -441,10 +454,34 @@ Modules that require native code should set `native = "path/to/nativecode.c"` in
 their entry in `luaModules`.
 
 A C function with signature `int init_module_MODULENAME(lua_State* L)` must
-exist in the file that `native` refers to. This function will be called whenever
-the module is `require`d. It is called as a `lua_CFunction`, with one argument
-which is the `_ENV` for the module. It is called after the `_ENV` table has been
-constructed, but before any of the code in MODULENAME.lua has run. It should not
-return anything. The normal use of such an init function is to populate the
-module's `_ENV` with some native functions, usually via a call to
-`luaL_setfuncs(lua_State* L, const luaL_Reg* l, int nup)`.
+exist in the file that `native` refers to. This function will be called the
+first time a module is `require`d in a given process. It is called as a
+`lua_CFunction`, with one argument which is the `_ENV` for the module. It is
+called after the `_ENV` table has been constructed, but before any of the code
+in MODULENAME.lua has run. It should not return anything. The normal use of such
+an init function is to populate the module's `_ENV` with some native functions,
+usually via a call to `luaL_setfuncs(lua_State* L, const luaL_Reg* l, int nup)`.
+
+The `modules` directory may contain subdirectories, for example to group a
+module with its native C code or associated resources:
+
+	modules/
+	    timerserver/
+            init.lua
+            server.lua
+            timers.c
+
+To load a module, take the path of the lua file relative to the modules
+directory, replace the directory separators with a dot and remove the '.lua'
+suffix. For example given the above structure, to load `init.lua` you would say
+`require "timerserver.init"`. As a convenience, you may simply write
+`require "timerserver"` which will look for the following files in order,
+stopping when it finds one:
+
+* modules/timerserver.lua
+* modules/timerserver/timerserver.lua
+* modules/timerserver/init.lua
+
+Only if none of these files exist will the require throw an error. Since in this
+example the only matching file is `modules/timerserver/init.lua`, this is the
+module that would be loaded by `require "timerserver"`.
