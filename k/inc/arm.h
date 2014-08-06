@@ -75,6 +75,24 @@
 uint32 getCpsr();
 uint32 getSpsr();
 
+static inline uint32 getFAR() {
+	uint32 ret;
+	asm("MRC p15, 0, %0, c6, c0, 0" : "=r" (ret));
+	return ret;
+}
+
+static inline uint32 getDFSR() {
+	uint32 ret;
+	asm("MRC p15, 0, %0, c5, c0, 0" : "=r" (ret));
+	return ret;
+}
+
+static inline uint32 getIFSR() {
+	uint32 ret;
+	asm("MRC p15, 0, %0, c5, c0, 1" : "=r" (ret));
+	return ret;
+}
+
 #define ASSERT_MODE(mode) ASSERT((getCpsr() & KPsrModeMask) == mode)
 
 #endif

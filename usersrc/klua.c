@@ -489,6 +489,9 @@ static void WeveCrashedSetupDebuggingStuff(lua_State* L) {
 	FORCE_OUTOFLINE_COPY(firstThreadForProcess);
 	FORCE_OUTOFLINE_COPY(processForThread);
 	FORCE_OUTOFLINE_COPY(processForServer);
+	FORCE_OUTOFLINE_COPY(getFAR);
+	FORCE_OUTOFLINE_COPY(getDFSR);
+	FORCE_OUTOFLINE_COPY(getIFSR);
 
 	EXPORT_INT(L, USER_STACK_SIZE);
 	EXPORT_INT(L, USER_STACK_AREA_SHIFT);
