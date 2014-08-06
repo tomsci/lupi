@@ -33,23 +33,20 @@ void hexdump(const char* addr, int len);
 void worddump(const void* addr, int len);
 void dumpRegisters(uint32* regs, uint32 pc, uint32 dataAbortFar);
 NORETURN kabort4(uint32 r0, uint32 r1, uint32 r2, uint32 r3);
+NORETURN NAKED assertionFail(int nextras, const char* condition, const char* file, int line, ...);
 NORETURN hang();
 NORETURN reboot();
 
+#define NUMVARARGS(...)  (sizeof((int[]){__VA_ARGS__})/sizeof(int))
 #define KRegisterNotSaved 0xA11FADE5
-#define kabort() kabort4(KRegisterNotSaved, KRegisterNotSaved, KRegisterNotSaved, KRegisterNotSaved)
-#define argn(i, nargs, args) (i < nargs ? args[i] : KRegisterNotSaved)
-#define kabort1(arg) kabort4(arg, KRegisterNotSaved, KRegisterNotSaved, KRegisterNotSaved)
-#define kabortn(n, args) kabort4(argn(0, n, args), argn(1, n, args), argn(2, n, args), argn(3, n, args))
 
 #define ASSERT(cond, args...) \
 	if (unlikely(!(cond))) { \
-		printk("ASSERTION FAILURE %s at %s:%d\n", #cond, __FILE__, __LINE__); \
-		uint32 argsArray[] = {args}; \
-		kabortn(sizeof(argsArray)/sizeof(uint32), argsArray); \
+		assertionFail(NUMVARARGS(args), #cond, __FILE__, __LINE__, ## args); \
 	}
+#define kabort() assertionFail(0, "(kabort)", __FILE__, __LINE__)
+#define kabort1(arg) assertionFail(1, "(kabort)", __FILE__, __LINE__, arg)
 
-#define NUMVARARGS(...)  (sizeof((int[]){__VA_ARGS__})/sizeof(int))
 #define FOURCC(str) ((str[0]<<24)|(str[1]<<16)|(str[2]<<8)|(str[3]))
 #define IS_POW2(val) ((val & (val-1)) == 0)
 

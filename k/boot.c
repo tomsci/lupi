@@ -333,19 +333,53 @@ void NAKED dataAbort() {
 	asm("SUBS pc, r14, #4");
 }
 
-void NAKED kabort4(uint32 r0, uint32 r1, uint32 r2, uint32 r3) {
-	asm("PUSH {r4}");
-	asm("MOV r4, %0" : : "i" (KSuperPageAddress));
-	asm("ADD r4, r4, %0" : : "i" (offsetof(SuperPage, crashRegisters)));
+const char KAssertionFailed[] = "ASSERTION FAILURE %s at %s:%d\n";
 
-	asm("STMIA r4!, {r0-r3}");
-	asm("STR r13, [r4], #4"); // Saves r4 itself which was pushed onto stack
-	asm("STMIA r4!, {r5-r14}");
+// Some careful crafting here so the top of the stack and registers are nice and
+// clean-looking in the debugger. This works quite nicely with the fixed args in
+// registers r0-r3 and the variadic extras spilling onto the stack. The order
+// of the arguments means that r1-r3 are already correct for the call to printk.
+void NAKED assertionFail(int nextras, const char* condition, const char* file, int line, ...) {
+	// Make sure we preserve r14 across the call to printk
+	asm("PUSH {r0, r14}");
+	asm("LDR r0, =KAssertionFailed");
+	asm("BL printk");
 
-	asm("LDR r0, .notSavedValue");
-	asm("STR r0, [r4], #4"); // r15 not stored
-	asm("MRS r2, cpsr");
-	asm("STR r2, [r4], #4");
+	asm("POP {r0, r14}"); // r0 = nextras
+	// We can't handle more than 4 extras. Any more get left on the stack
+	asm("CMP r0, #4");
+	asm("MOVGT r0, #4");
+
+	// On stack now are zero or more extra args (as given by nextras)
+	// We want to end with sp unwound to pointing above the extra args (ie how
+	// it was before calling assertionFail)
+
+	asm("MOV r1, %0" : : "i" (KSuperPageAddress));
+	asm("ADD r1, r1, %0" : : "i" (offsetof(SuperPage, crashRegisters)));
+	// r1 = &crashRegisters
+	asm("RSB r2, r0, #4"); // r2 = numNotSaved, ie 4-nextras
+
+	// r3 = scratch
+	asm(".saveReg:");
+	asm("CMP r0, #0");
+	asm("LDRNE r3, [sp], #4");
+	asm("STRNE r3, [r1], #4");
+	asm("SUBNE r0, #1");
+	asm("BNE .saveReg");
+
+	// r3 = KRegisterNotSaved
+	asm("LDR r3, .notSavedValue");
+	asm(".notSaved:");
+	asm("CMP r2, #0");
+	asm("STRNE r3, [r1], #4");
+	asm("SUBNE r2, #1");
+	asm("BNE .notSaved");
+
+	asm("STMIA r1!, {r4-r14}");
+	asm("STR r3, [r1], #4"); // For r15, which is not saved
+	// Finally, save CPSR
+	asm("MRS r3, cpsr");
+	asm("STR r3, [r1], #4");
 
 	// Write fault address register to be r14
 	asm("MCR p15, 0, r14, c6, c0, 0");
