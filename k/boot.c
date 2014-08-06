@@ -275,11 +275,11 @@ void NAKED svc() {
 	// r8 = svcPsrMode
 	asm("LDRB r8, [r4, %0]" : : "i" (offsetof(SuperPage, svcPsrMode)));
 
-	// If we've crashed, use the kernel stack
+	// If we've crashed, we must be being called from the debugger so use the
+	// debugger svc stack
 	asm("LDRB r9, [r4, %0]" : : "i" (offsetof(SuperPage, marvin)));
 	asm("CMP r9, #0");
-	GetKernelStackTop(NE, r13);
-	asm("BNE .postStackSet");
+	asm("BNE .loadDebuggerStack");
 
 	// Reenable interrupts (depending on what svcPsrMode says)
 	ModeSwitchReg(r8);
@@ -315,6 +315,11 @@ void NAKED svc() {
 	asm("MOV r3, #0");
 
 	asm("MOVS pc, r4"); // r4 is where we stashed the user return address
+
+	asm(".loadDebuggerStack:");
+	asm("LDR r13, .debuggerStackTop");
+	asm("B .postStackSet");
+	LABEL_WORD(.debuggerStackTop, KLuaDebuggerSvcStackBase + 0x1000);
 }
 
 void NAKED dataAbort() {
