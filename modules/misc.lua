@@ -100,6 +100,8 @@ end
 -- Because we're used by the build system too, indirectly via symbolParser.lua,
 -- we have to adhere by the Lua 5.2 module convention
 return {
+	array = array,
+	iter = iter,
 	lessThanUnsigned = lessThanUnsigned,
 	roundDownUnsigned = roundDownUnsigned,
 }

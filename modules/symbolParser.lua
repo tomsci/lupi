@@ -107,4 +107,8 @@ function dumpSymbolsTable()
 	return table.concat(tbl)
 end
 
-return _ENV -- Gah
+-- These are the only fns that build.lua needs
+return {
+	getSymbolsFromReadElf = getSymbolsFromReadElf,
+	dumpSymbolsTable = dumpSymbolsTable,
+}

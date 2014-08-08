@@ -1,5 +1,97 @@
 #!/usr/local/bin/lua
 
+luaSources = {
+	"lua/lapi.c",
+	"lua/lcode.c",
+	"lua/lctype.c",
+	"lua/ldebug.c",
+	"lua/ldo.c",
+	"lua/ldump.c",
+	"lua/lfunc.c",
+	"lua/lgc.c",
+	"lua/llex.c",
+	"lua/lmem.c",
+	"lua/lobject.c",
+	"lua/lopcodes.c",
+	"lua/lparser.c",
+	"lua/lstate.c",
+	"lua/lstring.c",
+	"lua/ltable.c",
+	"lua/ltm.c",
+	"lua/lundump.c",
+	"lua/lvm.c",
+	"lua/lzio.c",
+	"lua/lauxlib.c",
+	"lua/lbaselib.c",
+	"lua/lbitlib.c",
+	"lua/lcorolib.c",
+	"lua/ldblib.c",
+	--"lua/liolib.c",
+	--"lua/lmathlib.c",
+	--"lua/loslib.c",
+	"lua/lstrlib.c",
+	"lua/ltablib.c",
+	"lua/loadlib.c",
+	"lua/linit.c",
+}
+
+luaModules = {
+	"modules/init.lua",
+	"modules/misc.lua",
+	"modules/interpreter.lua",
+	"modules/spin.lua",
+	{ path = "modules/membuf.lua", native = "usersrc/membuf.c" },
+	{ path = "modules/int64.lua", native = "usersrc/int64.c" },
+	{ path = "modules/runloop.lua", native = "usersrc/runloop.c" },
+	{ path = "modules/ipc.lua", native = "usersrc/ipc.c" },
+	{ path = "modules/timerserver/init.lua" },
+	{ path = "modules/timerserver/server.lua", native = "modules/timerserver/timers.c" },
+	"modules/symbolParser.lua",
+	"modules/passwordManager/textui.lua",
+	{ path = "modules/bitmap/init.lua", native = "modules/bitmap/bitmap_lua.c" },
+	{ path = "modules/input/input.lua", native = "modules/input/input.c" },
+}
+
+mallocSource = {
+	path = "usersrc/malloc.c",
+	user = true,
+	copts = {
+		"-DHAVE_MMAP=0",
+		"-DHAVE_MREMAP=0",
+		"-DHAVE_MORECORE=1",
+		"-DMORECORE=sbrk",
+		"-DUSE_BUILTIN_FFS=1",
+		"-DLACKS_UNISTD_H",
+		"-DLACKS_SYS_PARAM_H",
+		"-DNO_MALLOC_STATS=1", -- Avoids fprintf dep
+		"-DMALLOC_FAILURE_ACTION=", -- no errno
+		"-DUSE_LOCKS=1",
+	},
+}
+
+-- Note, doesn't include boot.c or mmu_*.c, those are added programmatically
+kernelSources = {
+	"k/debug.c",
+	"k/atomic.c",
+	"k/pageAllocator.c",
+	"k/process.c",
+	"k/scheduler.c",
+	"k/svc.c",
+	"k/kipc.c",
+}
+
+bootMenuModules = {
+	"modules/test/init.lua",
+	"modules/test/yielda.lua",
+	"modules/test/yieldb.lua",
+	"modules/bitmap/tests.lua",
+}
+
+bootMenuSources = {
+	"k/bootmenu.c",
+	"testing/atomic.c",
+}
+
 if _VERSION ~= "Lua 5.2" then
 	error "Lua 5.2 is required to run this script"
 end
@@ -329,15 +421,8 @@ function build_kernel()
 	else
 		sources = {
 			{ path = "k/boot.c", copts = { "-DBOOT_MODE="..bootMode } },
-			"k/debug.c",
-			"k/atomic.c",
-			--"k/lock.c",
-			"k/pageAllocator.c",
-			"k/process.c",
-			"k/scheduler.c",
-			"k/svc.c",
-			"k/kipc.c",
 		}
+		for _, s in ipairs(kernelSources) do table.insert(sources, s) end
 	end
 	if machineIs("arm") then
 		table.insert(sources, 2, "k/mmu_arm.c") -- Put right after boot.c
@@ -548,87 +633,14 @@ function build_kernel()
 	end
 end
 
-luaSources = {
-	"lua/lapi.c",
-	"lua/lcode.c",
-	"lua/lctype.c",
-	"lua/ldebug.c",
-	"lua/ldo.c",
-	"lua/ldump.c",
-	"lua/lfunc.c",
-	"lua/lgc.c",
-	"lua/llex.c",
-	"lua/lmem.c",
-	"lua/lobject.c",
-	"lua/lopcodes.c",
-	"lua/lparser.c",
-	"lua/lstate.c",
-	"lua/lstring.c",
-	"lua/ltable.c",
-	"lua/ltm.c",
-	"lua/lundump.c",
-	"lua/lvm.c",
-	"lua/lzio.c",
-	"lua/lauxlib.c",
-	"lua/lbaselib.c",
-	"lua/lbitlib.c",
-	"lua/lcorolib.c",
-	"lua/ldblib.c",
-	--"lua/liolib.c",
-	--"lua/lmathlib.c",
-	--"lua/loslib.c",
-	"lua/lstrlib.c",
-	"lua/ltablib.c",
-	"lua/loadlib.c",
-	"lua/linit.c",
-}
-
-luaModules = {
-	"modules/init.lua",
-	"modules/misc.lua",
-	"modules/interpreter.lua",
-	"modules/spin.lua",
-	{ path = "modules/membuf.lua", native = "usersrc/membuf.c" },
-	{ path = "modules/int64.lua", native = "usersrc/int64.c" },
-	{ path = "modules/runloop.lua", native = "usersrc/runloop.c" },
-	{ path = "modules/ipc.lua", native = "usersrc/ipc.c" },
-	{ path = "modules/timerserver/init.lua" },
-	{ path = "modules/timerserver/server.lua", native = "modules/timerserver/timers.c" },
-	"modules/symbolParser.lua",
-	{ path = "modules/bitmap/init.lua", native = "modules/bitmap/bitmap_lua.c" },
-}
-
-mallocSource = {
-	path = "usersrc/malloc.c",
-	user = true,
-	copts = {
-		"-DHAVE_MMAP=0",
-		"-DHAVE_MREMAP=0",
-		"-DHAVE_MORECORE=1",
-		"-DMORECORE=sbrk",
-		"-DUSE_BUILTIN_FFS=1",
-		"-DLACKS_UNISTD_H",
-		"-DLACKS_SYS_PARAM_H",
-		"-DNO_MALLOC_STATS=1", -- Avoids fprintf dep
-		"-DMALLOC_FAILURE_ACTION=", -- no errno
-		"-DUSE_LOCKS=1",
-	},
-}
-
 function addBootMenuSources(sources, modules)
-	local extraModules = {
-		"modules/test/init.lua",
-		"modules/test/yielda.lua",
-		"modules/test/yieldb.lua",
-		"modules/bitmap/tests.lua",
-	}
-	for _, m in ipairs(extraModules) do
+	for _, m in ipairs(bootMenuModules) do
 		table.insert(modules, m)
 	end
-	table.insert(sources, "k/bootmenu.c")
-	table.insert(sources, "testing/atomic.c")
+	for _, s in ipairs(bootMenuSources) do
+		table.insert(sources, s)
+	end
 end
-
 
 function generateLuaModulesSource()
 	local dirs = calculateUniqueDirsFromSources("bin/obj-"..config.name.."/", luaModules)
