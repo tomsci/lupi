@@ -32,7 +32,6 @@ void printk(const char* fmt, ...) ATTRIBUTE_PRINTF(1, 2);
 void hexdump(const char* addr, int len);
 void worddump(const void* addr, int len);
 void dumpRegisters(uint32* regs, uint32 pc, uint32 dataAbortFar);
-NORETURN kabort4(uint32 r0, uint32 r1, uint32 r2, uint32 r3);
 NORETURN NAKED assertionFail(int nextras, const char* condition, const char* file, int line, ...);
 NORETURN hang();
 NORETURN reboot();
