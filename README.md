@@ -157,12 +157,13 @@ different build targets which correspond to config files
 Syntax:
 
 	./build/build.lua [options] [<target>] [...]
-		-m | --modules    Precompile Lua modules with luac.
-		-l | --listing    Build and dump kernel listings.
-		-p | --preprocess Preprocess sources only.
-		-v | --verbose    Verbose mode.
-		-j <number>       Run <number> of compiles in parallel.
-		-b | --bootmode n Set the boot mode.
+		-m | --modules      Precompile Lua modules with luac.
+		-l | --listing      Build and dump kernel listings.
+		-p | --preprocess   Preprocess sources only.
+		-v | --verbose      Verbose mode.
+		-j <number>         Run <number> of compiles in parallel.
+		-b | --bootmode <n> Set the boot mode.
+		-i | --incremental  Enable incremental build.
 
 	Supported targets:
 		clean	Removes all built products.
@@ -177,6 +178,18 @@ Targets are built in the order specified on the command line, so if you specify
 `clean`, it should be first. Eg:
 
 	./build/build.lua -m clean pi
+
+Incremental builds are enabled by specifying the `-i` or `--incremental`
+command-line options. When enabled, the build will output an additional file
+`bin/obj-<target>/dependencyCache.lua`. This file contains information about the
+dependencies of all the object files as well as the command-line used to create
+them. If the next build also enables the incremental option, this file is loaded
+and a file is only recompiled if it or any of its dependencies have changed
+since the last build (ie if the last modified date of any of the sources is
+more recent than that of the object file). Sources are also rebuilt if the
+command line used to build them has changed (for example, due to a different
+bootMode being specified). A non-incremental build will not calculate the
+dependencies and will delete dependencyCache.lua if it exists.
 
 There are two implicit assumptions that the build script makes, related to the
 linking options for the kernel. These must match the definitions used inside the
@@ -195,6 +208,8 @@ The system requirements for running build.lua are:
   gcc 4.x syntax.
 * The default system shell must support `which`, `find -path`, `mkdir -p`,
   `rm`.
+* To support incremental builds, the shell must also support `xargs`,
+  `stat -f "%m %N"` and `find -prune`.
 
 ### Documentation
 
@@ -339,8 +354,15 @@ Setting up IRQs is SoC-specific therefore `irq_init()` is defined in
 `build/pi/irq.c`. This configures the hardware timers on the BCM2835 which are
 used to implement system ticks.
 
-Once the IRQ setup is complete, `Boot()` sets up the first process and calls
-`process_start()`. The first process is always `init`.
+What happens once the IRQ setup is complete depends on the `bootMode` option
+that was given to build.lua when the kernel was built. If the `bootMode` is `2`
+then the boot sequence is paused and a menu is shown on the serial port allowing
+you to set the bootMode at runtime, then boot is continued in the same was as if
+the `bootMode` had been set at build time. If the `bootMode` is `0` (which is
+the default if it wasn't specified on the build.lua command-line) then `Boot()`
+sets up the first process and calls `process_start()`. The first process is
+always `init`. There are other boot modes which do specific things, see
+`k/bootMenu.c` for more details.
 
 ### Process creation
 
