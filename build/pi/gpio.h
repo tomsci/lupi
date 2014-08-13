@@ -21,6 +21,10 @@
 #define GPEDS1			(KPeripheralBase + 0x00200044)
 #define GPFEN0			(KPeripheralBase + 0x00200058)
 #define GPFEN1			(KPeripheralBase + 0x0020005C)
+#define GPLEN0			(KPeripheralBase + 0x00200070)
+#define GPLEN1			(KPeripheralBase + 0x00200074)
+#define GPAFEN0			(KPeripheralBase + 0x00200088)
+#define GPAFEN1			(KPeripheralBase + 0x0020008C)
 #define GPPUD			(KPeripheralBase + 0x00200094)
 #define GPPUDCLK0		(KPeripheralBase + 0x00200098)
 #define KGpioFunctionSelectPinMask (7)
@@ -46,7 +50,7 @@
 void gpio_setPull(int upDownStatus, uintptr clkReg, uint32 bitmask);
 
 void gpio_set(int pin, bool value);
-
+bool gpio_get(int pin);
 
 /// SPI stuff
 

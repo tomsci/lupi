@@ -4,6 +4,7 @@
 void dummy();
 uint32 GET32(uint32 addr);
 void PUT32(uint32 addr, uint32 val);
+#define WAIT_CYCLES(n) for (int i = 0; i < n; i++) { dummy(); }
 
 /**
 Sets the pull up or pull down status for the given pins according to the
@@ -20,14 +21,11 @@ register. For example:
 */
 void gpio_setPull(int upDownStatus, uintptr clkReg, uint32 bitmask) {
 	PUT32(GPPUD, upDownStatus);
-	for (int i = 0; i < 150; i++) {
-		// Spec says you really do have to spin for 150 cycles
-		dummy();
-	}
+	WAIT_CYCLES(150);
 	PUT32(clkReg, bitmask);
-	for (int i = 0; i < 150; i++) {
-		dummy();
-	}
+	WAIT_CYCLES(150);
+	PUT32(GPPUD, 0);
+	WAIT_CYCLES(150);
 	PUT32(clkReg, 0);
 }
 
@@ -43,6 +41,11 @@ void gpio_set(int pin, bool value) {
  	}
  	uint32 mask = 1 << pin;
  	PUT32(reg, mask);
+}
+
+bool gpio_get(int pin) {
+	uintptr reg = (pin < 32) ? GPLEV0 : GPLEV1;
+	return GET32(reg) & (1 << (pin & 31));
 }
 
 //////
