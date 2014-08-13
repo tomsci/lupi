@@ -40,7 +40,6 @@ drawing text.
 ]]
 --native function Bitmap:setBackgroundColour(colour)
 
-
 --[[**
 Draw a solid rectangle using the current foreground colour.
 ]]
@@ -55,6 +54,14 @@ separate parameters, you may pass an array with two entries, for example:
 	bmp:drawText(pos, text)
 ]]
 --native function Bitmap:drawText(x, y, text)
+
+--[[**
+Returns the width and height in pixels of the specified text, if it were to be
+rendered into this bitmap with the current settings.
+
+	local width, height = bmp:getTextSize("Some text")
+]]
+--native function Bitmap:getTextSize(text)
 
 --[[**
 Draw a line in current foreground colour. You may also pass arrays for the two

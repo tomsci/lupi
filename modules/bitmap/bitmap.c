@@ -141,7 +141,12 @@ void bitmap_drawText(Bitmap* b, uint16 x, uint16 y, const char* text) {
 	if (b->autoBlit) bitmap_blitDirtyToScreen(b);
 }
 
-#define plot(b,x,y) b->data[y*b->bounds.w + x] = b->colour
+void bitmap_getTextRect(Bitmap* b, int numChars, Rect* result) {
+	result->h = CHAR_HEIGHT;
+	result->w = numChars * CHAR_WIDTH;
+}
+
+#define plot(ptr,col,x,y) ptr[y*b->bounds.w + x] = col
 
 void bitmap_drawLine(Bitmap* b, uint16 x0, uint16 y0, uint16 x1, uint16 y1) {
 	// Prof Bresenham, we salute you
@@ -187,18 +192,20 @@ void bitmap_drawLine(Bitmap* b, uint16 x0, uint16 y0, uint16 x1, uint16 y1) {
 	// Hoist these as they're constants
 	const int TwoDinc = 2 * dinc;
 	const int TwoDincMinusTwoDscan = 2 * dinc - 2 * dscan;
+	const uint16 colour = b->colour;
+	uint16 *const data = &b->data[0];
 
 	int D = TwoDinc - dscan;
-	plot(b, x0, y0);
+	plot(data, colour, x0, y0);
 
 	for (scan = scanStart; scan != scanEnd; scan += scanIncr) {
 		//PRINTL("scan=%d inc=%d D=%d", (int)scan, (int)inc, D);
 		if (D > 0) {
 			inc = inc + incr;
-			plot(b, *x, *y);
+			plot(data, colour, *x, *y);
 			D = D + TwoDincMinusTwoDscan;
 		} else {
-			plot(b, *x, *y);
+			plot(data, colour, *x, *y);
 			D = D + TwoDinc;
 		}
 	}

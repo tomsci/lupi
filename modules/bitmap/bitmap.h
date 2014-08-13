@@ -57,6 +57,7 @@ static inline uint16 bitmap_getHeight(Bitmap* b) { return rect_getHeight(&b->bou
 void bitmap_drawLine(Bitmap* b, uint16 x0, uint16 y0, uint16 x1, uint16 y1);
 void bitmap_drawRect(Bitmap* b, const Rect* r);
 void bitmap_drawText(Bitmap* b, uint16 x, uint16 y, const char* text);
+void bitmap_getTextRect(Bitmap* b, int numChars, Rect* result);
 void bitmap_blitToScreen(Bitmap* b, const Rect* r);
 void bitmap_blitDirtyToScreen(Bitmap* b);
 

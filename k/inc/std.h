@@ -51,4 +51,7 @@ typedef __builtin_va_list va_list;
 
 #define offsetof(type, member)	__builtin_offsetof(type, member)
 
+#define min(x,y)				((x) < (y) ? (x) : (y))
+#define max(x,y)				((x) > (y) ? (x) : (y))
+
 #endif

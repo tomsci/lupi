@@ -49,6 +49,20 @@ static int drawText(lua_State* L) {
 	return 0;
 }
 
+static int getTextSize(lua_State* L) {
+	Bitmap* b = bitmap_check(L, 1);
+	Rect r;
+	rect_zero(&r);
+	lua_len(L, 2);
+	bitmap_getTextRect(b, lua_tointeger(L, -1), &r);
+	lua_pushinteger(L, r.w);
+	lua_pushinteger(L, r.h);
+	return 2;
+}
+
+void bitmap_getTextRect(Bitmap* b, int numChars, Rect* result);
+
+
 static int drawLine(lua_State* L) {
 	Bitmap* b = bitmap_check(L, 1);
 	int x0, y0, x1, y1;
@@ -140,6 +154,7 @@ int init_module_bitmap_init(lua_State* L) {
 	luaL_Reg fns[] = {
 		{ "drawRect", drawRect },
 		{ "drawText", drawText },
+		{ "getTextSize", getTextSize },
 		{ "drawLine", drawLine },
 		{ "getHeight", getHeight },
 		{ "getWidth", getWidth },
