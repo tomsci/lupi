@@ -32,7 +32,7 @@ void printk(const char* fmt, ...) ATTRIBUTE_PRINTF(1, 2);
 void hexdump(const char* addr, int len);
 void worddump(const void* addr, int len);
 void dumpRegisters(uint32* regs, uint32 pc, uint32 dataAbortFar);
-NORETURN NAKED assertionFail(int nextras, const char* condition, const char* file, int line, ...);
+NORETURN NAKED assertionFail(int nextras, const char* file, int line, const char* condition, ...);
 NORETURN hang();
 NORETURN reboot();
 
@@ -41,10 +41,14 @@ NORETURN reboot();
 
 #define ASSERT(cond, args...) \
 	if (unlikely(!(cond))) { \
-		assertionFail(NUMVARARGS(args), #cond, __FILE__, __LINE__, ## args); \
+		assertionFail(NUMVARARGS(args), __FILE__, __LINE__, #cond, ## args); \
 	}
-#define kabort() assertionFail(0, "(kabort)", __FILE__, __LINE__)
-#define kabort1(arg) assertionFail(1, "(kabort)", __FILE__, __LINE__, arg)
+#define kabort() assertionFail(0, __FILE__, __LINE__, "(kabort)")
+#define kabort1(arg) assertionFail(1, __FILE__, __LINE__, "(kabort)", arg)
+
+#define ASSERT_USER_PTR8(x) ASSERT(((uintptr)(x) < KUserMemLimit), (uintptr)(x))
+#define ASSERT_USER_PTR32(x) ASSERT(((uintptr)(x) & 3) == 0 && ((uintptr)(x) < KUserMemLimit), (uintptr)(x))
+#define ASSERT_USER_PTR16(x) ASSERT(((uintptr)(x) & 1) == 0 && ((uintptr)(x) < KUserMemLimit), (uintptr)(x))
 
 #define FOURCC(str) ((str[0]<<24)|(str[1]<<16)|(str[2]<<8)|(str[3]))
 #define IS_POW2(val) ((val & (val-1)) == 0)

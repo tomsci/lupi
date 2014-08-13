@@ -320,13 +320,13 @@ void NAKED dataAbort() {
 	asm("SUBS pc, r14, #4");
 }
 
-const char KAssertionFailed[] = "ASSERTION FAILURE %s at %s:%d\n";
+const char KAssertionFailed[] = "\nASSERTION FAILURE at %s:%d\nASSERT(%s)\n";
 
 // Some careful crafting here so the top of the stack and registers are nice and
 // clean-looking in the debugger. This works quite nicely with the fixed args in
 // registers r0-r3 and the variadic extras spilling onto the stack. The order
 // of the arguments means that r1-r3 are already correct for the call to printk.
-void NAKED assertionFail(int nextras, const char* condition, const char* file, int line, ...) {
+void NAKED assertionFail(int nextras, const char* file, int line, const char* condition, ...) {
 	// Make sure we preserve r14 across the call to printk
 	asm("PUSH {r0, r14}");
 	asm("LDR r0, =KAssertionFailed");
