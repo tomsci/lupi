@@ -97,10 +97,33 @@ function lessThanUnsigned(a, b)
 	return abig < bbig or aa < bb
 end
 
+local function instanciate(classObj, args)
+	local obj = args or {}
+	setmetatable(obj, classObj)
+	if classObj.init then
+		obj:init()
+	end
+	return obj
+end
+
+local classObjMt = {
+	__call = instanciate
+}
+
+function class(classObj)
+	classObj.__index = function(obj, key)
+		return classObj[key]
+	end
+	setmetatable(classObj, classObjMt)
+	return classObj
+end
+
+
 -- Because we're used by the build system too, indirectly via symbolParser.lua,
 -- we have to adhere by the Lua 5.2 module convention
 return {
 	array = array,
+	class = class,
 	iter = iter,
 	lessThanUnsigned = lessThanUnsigned,
 	roundDownUnsigned = roundDownUnsigned,
