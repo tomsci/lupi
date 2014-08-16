@@ -51,7 +51,7 @@ available as member functions. For example:
 		local t = array { "a", "b", "c" }
 		t:remove(2)   -- equivalent to table.remove(t, 2)
 		t:insert(2, "b") -- equivalent to table.insert(2, "b")
-		for k,v,del in t:iter() do -- equivalent to common.iter(t)
+		for k,v,del in t:iter() do -- equivalent to misc.iter(t)
 			-- ...
 		end
 

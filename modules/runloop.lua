@@ -109,9 +109,11 @@ function RunLoop:handleCompletion(obj, result)
 end
 
 --[[**
-Creates a new async request. Does *not* automatically call `queue`.
+Creates a new async request. Does *not* automatically call `queue`. The
+C memory allocation for the `AsyncRequest` struct will be increased by
+`extraSize` if it is specified.
 ]]
---native function RunLoop:newAsyncRequest(membersOrNil)
+--native function RunLoop:newAsyncRequest([members, [extraSize]])
 
 --[[**
 Sets the given async request as pending. If `obj` has a `requestFn`, this

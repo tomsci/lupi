@@ -89,6 +89,8 @@ static int yield_lua(lua_State* L) {
 
 lua_State* newLuaStateForModule(const char* moduleName, lua_State* L);
 
+#define SET_INT(L, name, val) lua_pushinteger(L, val); lua_setfield(L, -2, name);
+
 int newProcessEntryPoint() {
 
 	//uint32 superPage = *(uint32*)0xF802E000; // This should fail with far=F802E000
@@ -120,6 +122,10 @@ int newProcessEntryPoint() {
 	lua_pop(L, 1); // pops globals
 	lua_newtable(L);
 	luaL_setfuncs(L, lupi_funcs, 0);
+	SET_INT(L, "TotalRam", EValTotalRam);
+	SET_INT(L, "BootMode", EValBootMode);
+	SET_INT(L, "ScreenWidth", EValScreenWidth);
+	SET_INT(L, "ScreenHeight", EValScreenHeight);
 	lua_setglobal(L, "lupi");
 
 	// The debug table is evil and must be excised, except for debug.traceback

@@ -196,7 +196,7 @@ function main()
 	printPrompt()
 
 	if lupi ~= nil then
-		local rl = runloop.new()
+		local rl = runloop.current or runloop.new()
 		local chreq = rl:newAsyncRequest({
 			completionFn = function(req, ch)
 				gotChar(ch)

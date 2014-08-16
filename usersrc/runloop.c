@@ -32,8 +32,9 @@ AsyncRequest* runloop_checkRequestPending(lua_State* L, int idx) {
 	return req;
 }
 
-static int newAsyncRequest(lua_State* L) {
-	AsyncRequest* req = (AsyncRequest*)lua_newuserdata(L, sizeof(AsyncRequest));
+int runloop_newAsyncRequest(lua_State* L) {
+	int extraSize = luaL_optint(L, 3, 0);
+	AsyncRequest* req = (AsyncRequest*)lua_newuserdata(L, sizeof(AsyncRequest) + extraSize);
 	req->flags = 0;
 	luaL_setmetatable(L, AsyncRequestMetatable);
 	// If a table with completionFn etc specified was passed to the fn, use that for the uservalue
@@ -132,7 +133,7 @@ static int clearFlags(lua_State* L) {
 int init_module_runloop(lua_State* L) {
 	lua_newtable(L);
 	luaL_Reg runloopFns[] = {
-		{ "newAsyncRequest", newAsyncRequest },
+		{ "newAsyncRequest", runloop_newAsyncRequest },
 		{ "waitForAnyRequest", wfar },
 		{ NULL, NULL }
 	};
@@ -153,8 +154,6 @@ int init_module_runloop(lua_State* L) {
 		{ NULL, NULL }
 	};
 	luaL_setfuncs(L, reqFns, 0);
-	lua_pushvalue(L, -1);
-	lua_setfield(L, -2, "__index");
 	lua_setfield(L, -2, "AsyncRequest");
 	return 0;
 }
