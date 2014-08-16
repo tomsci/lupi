@@ -188,6 +188,11 @@ typedef struct SuperPage {
 	Thread dfcThread;
 	Dfc dfcs[MAX_DFCS];
 	Driver drivers[MAX_DRIVERS];
+	KAsyncRequest inputRequest;
+	uintptr inputRequestBuffer;
+	int inputRequestBufferSize;
+	bool needToSendTouchUp;
+
 } SuperPage;
 
 ASSERT_COMPILE(sizeof(SuperPage) <= KPageSize);
@@ -241,7 +246,7 @@ NORETURN reschedule();
 void saveCurrentRegistersForThread(void* savedRegisters);
 void dfc_queue(DfcFn fn, uintptr arg1, uintptr arg2, uintptr arg3);
 void dfc_requestComplete(KAsyncRequest* request, int result);
-void irq_checkDfcs(void* savedRegisters);
+bool irq_checkDfcs();
 
 uintptr ipc_mapNewSharedPageInCurrentProcess();
 int ipc_connectToServer(uint32 id, uintptr sharedPage);

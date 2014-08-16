@@ -83,6 +83,8 @@ void Boot(uintptr atagsPhysAddr) {
 	TheSuperPage->totalRam = atags.totalRam;
 	TheSuperPage->boardRev = atags.boardRev;
 	TheSuperPage->bootMode = checkBootMode(BOOT_MODE);
+	TheSuperPage->dfcThread.state = EBlockedFromSvc;
+	thread_setBlockedReason(&TheSuperPage->dfcThread, EBlockedWaitingForDfcs);
 
 	irq_init();
 	kern_enableInterrupts();

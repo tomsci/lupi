@@ -37,5 +37,6 @@ typedef enum {
 } ExecGettableValue;
 
 #define KExecDriverTftBlit		0
+#define KExecDriverTftInputRequest	1
 
 #endif

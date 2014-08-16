@@ -19,8 +19,9 @@
 
 uint32 GET32(uint32 addr);
 void PUT32(uint32 addr, uint32 val);
-bool tick(void* savedRegs);
+bool tick();
 void uart_got_char(byte b);
+void tft_gpioHandleInterrupt();
 
 #define KTimerControlReset 0x00F90020 // Prescale = 0xF9=249, InterruptEnable=1
 #define KTimerControl23BitCounter (1<<1)
@@ -65,7 +66,7 @@ bool handleIrq(void* savedRegs) {
 	uint32 irqBasicPending = GET32(IRQ_BASIC);
 	if (irqBasicPending & 1) {
 		// Timer IRQ
-		threadTimeExpired = tick(savedRegs);
+		threadTimeExpired = tick();
 		PUT32(ARM_TIMER_CLI,0);
 	}
 	if (irqBasicPending & (1 << 8)) {
@@ -86,16 +87,28 @@ bool handleIrq(void* savedRegs) {
 	if (irqBasicPending & (1 << 9)) {
 		// IRQ Pending Reg 2
 		uint32 pending2 = GET32(IRQ_PEND2);
-		printk("IRQ pending2: %X\n", pending2);
+		//printk("IRQ pending2: %X\n", pending2);
 		if (pending2 & (1 << (GPIO0_INT - 32))) {
-			// TODO
-
-			// And clear the interrupt
-			PUT32(GPEDS0, 0xFFFFFFFF); // You clear them by setting ones not zeros
+			uint32 gpioInts = GET32(GPEDS0);
+			if (gpioInts & (1<<24)) {
+				tft_gpioHandleInterrupt();
+			}
 		}
 	}
-	irq_checkDfcs(threadTimeExpired ? NULL : savedRegs);
-	return threadTimeExpired;
+	bool dfcsPending = irq_checkDfcs();
+	if (threadTimeExpired || dfcsPending) {
+		uint32 spsr;
+		GetSpsr(spsr);
+		bool threadWasInSvc = (spsr & KPsrModeMask) == KPsrModeSvc;
+		if (threadWasInSvc) {
+			atomic_setbool(&TheSuperPage->rescheduleNeededOnSvcExit, true);
+			// Don't reschedule immediately
+		} else {
+			saveCurrentRegistersForThread(savedRegs);
+			return true; // Reschedule right now
+		}
+	}
+	return false; // Normally, just return from the IRQ
 }
 
 void NAKED irq() {
@@ -103,7 +116,7 @@ void NAKED irq() {
 	asm("MOV r0, sp"); // Full descending stack means sp now points to the regs we saved
 	asm("BL handleIrq");
 	asm("CMP r0, #0"); // Has thread timeslice expired?
-	asm("BNE reschedule_irq"); // If so, tick() will have saved thread state, so just reschedule()
+	asm("BLNE reschedule_irq"); // If so, handleIrq() will have saved thread state, so just reschedule()
 	// Otherwise, return to thread
 	asm("POP  {r0-r12, r14}");
 	asm("SUBS pc, r14, #4");

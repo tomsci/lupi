@@ -194,7 +194,7 @@ void thread_yield(Thread* t) {
 }
 
 // This runs in IRQ context remember
-bool tick(void* savedRegs) {
+bool tick() {
 	SuperPage* const s = TheSuperPage;
 	s->uptime++;
 	if (s->uptime == s->timerCompletionTime) {
@@ -208,24 +208,14 @@ bool tick(void* savedRegs) {
 		} else {
 			// This is only allowed if the thread is (still!) in an SVC,
 			// which probably shouldn't ever happen
-			uint32 spsr;
-			GetSpsr(spsr);
-			bool threadWasInSvc = (spsr & KPsrModeMask) == KPsrModeSvc;
+			bool threadWasInSvc = (getSpsr() & KPsrModeMask) == KPsrModeSvc;
 			ASSERT(threadWasInSvc);
+			return true;
 		}
 		if (t->timeslice == 0) {
+			// Thread timeslice expired
 			thread_yield(t);
-			// Thread is out of time!
-			// Check if we can preempt directly or whether to wait for svc exit
-			uint32 spsr = getSpsr();
-			bool threadWasInSvc = (spsr & KPsrModeMask) == KPsrModeSvc;
-			if (threadWasInSvc) {
-				atomic_setbool(&s->rescheduleNeededOnSvcExit, true);
-				return false; // Don't reschedule immediately
-			} else {
-				saveCurrentRegistersForThread(savedRegs);
-				return true; // Reschedule right now
-			}
+			return true;
 		}
 	}
 	return false;
@@ -293,24 +283,19 @@ static void dfcs_run(int numDfcsPending, Dfc* dfcs);
 
 /**
 Call from end of IRQ handler to check for any pending DFCs to run. Runs in IRQ
-mode, interrupts disabled. Will not return if there are pending DFCs, therefore
-should only be called as the last thing the IRQ handler does (except for
-calling reschedule_irq if tick() returned true).
-
-`savedRegisters` can be NULL if the IRQ handler has called tick and it returned
-true.
+mode, interrupts disabled. Returns true if a reschedule is required due to there
+being any pending DFCs (and if so, will mark the dfcThread as ready to run)
 */
-void irq_checkDfcs(void* savedRegisters) {
-	uint32 numDfcsPending = atomic_set(&TheSuperPage->numDfcsPending, 0);
-	if (numDfcsPending == 0) return;
-	// If we have some DFCs, ready the DFC thread
+bool irq_checkDfcs() {
 	Thread* dfcThread = &TheSuperPage->dfcThread;
-	Thread* currentThread = TheSuperPage->currentThread;
-	if (currentThread == dfcThread) {
-		// We interrupted the DFC thread, aargh
-		ASSERT(false);
-		return;
+
+	if (dfcThread->state == EReady) {
+		// Then DFC thread is already scheduled or running, nothing we can do
+		return false;
 	}
+	uint32 numDfcsPending = atomic_set(&TheSuperPage->numDfcsPending, 0);
+	if (numDfcsPending == 0) return false;
+	// If we have some DFCs, ready the DFC thread
 	thread_setState(dfcThread, EReady);
 	// Copy DFCs into dfcThread's stack so that we don't have to access the
 	// SuperPage's copy with interrupts enabled.
@@ -326,15 +311,7 @@ void irq_checkDfcs(void* savedRegisters) {
 	GetCpsr(psr);
 	psr = (psr & ~0xFF) | KPsrModeSvc | KPsrFiqDisable;
 	dfcThread->savedRegisters[16] = psr;
-
-	// Preempt the current thread
-	if (currentThread && savedRegisters) {
-		saveCurrentRegistersForThread(savedRegisters);
-	}
-
-	reschedule_irq();
-	// Doesn't return, and also will not enable interrupts until it has set
-	// currentThread (which is important in ensuring this code works reenterantly)
+	return true;
 }
 
 void dfc_queue(DfcFn fn, uintptr arg1, uintptr arg2, uintptr arg3) {

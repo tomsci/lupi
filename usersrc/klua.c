@@ -416,6 +416,9 @@ static void WeveCrashedSetupDebuggingStuff(lua_State* L) {
 	MBUF_MEMBER(SuperPage, svcPsrMode);
 	MBUF_MEMBER(SuperPage, numDfcsPending);
 	// dfcThread has to be declared after Thread
+	MBUF_MEMBER_TYPE(SuperPage, inputRequest, "KAsyncRequest");
+	MBUF_MEMBER(SuperPage, inputRequestBuffer);
+	MBUF_MEMBER(SuperPage, inputRequestBufferSize);
 
 	MBUF_TYPE(ThreadState);
 	MBUF_ENUM(ThreadState, EReady);
@@ -434,6 +437,7 @@ static void WeveCrashedSetupDebuggingStuff(lua_State* L) {
 	MBUF_MEMBER_TYPE(Thread, savedRegisters, "regset");
 
 	MBUF_MEMBER_TYPE(SuperPage, dfcThread, "Thread");
+
 	MBUF_NEW(SuperPage, TheSuperPage);
 	lua_setglobal(L, "TheSuperPage");
 
