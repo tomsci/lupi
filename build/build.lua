@@ -47,9 +47,12 @@ luaModules = {
 	{ path = "modules/timerserver/init.lua" },
 	{ path = "modules/timerserver/server.lua", native = "modules/timerserver/timers.c" },
 	"modules/symbolParser.lua",
-	"modules/passwordManager/textui.lua",
 	{ path = "modules/bitmap/init.lua", native = "modules/bitmap/bitmap_lua.c" },
 	{ path = "modules/input/input.lua", native = "modules/input/input.c" },
+	"modules/passwordManager/textui.lua",
+	"modules/passwordManager/uicontrols.lua",
+	"modules/passwordManager/window.lua",
+	"modules/passwordManager/gui.lua",
 }
 
 mallocSource = {

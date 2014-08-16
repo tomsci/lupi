@@ -19,6 +19,8 @@ static int displayBootMenu() {
 Boot menu:\n\
  Enter, 0: Start interpreter\n\
         1: Start klua debugger\n\
+        3: Password manager (console UI)\n\
+        4: Password manager (GUI)\n\
 Test func:\n\
         a: Run atomics unit tests\n\
         b: Run bitmap tests\n\

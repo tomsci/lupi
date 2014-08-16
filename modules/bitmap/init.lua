@@ -106,4 +106,5 @@ Colour = {
 	Red = rgbColour(0xFF, 0, 0),
 	Green = rgbColour(0, 0xFF, 0),
 	Blue = rgbColour(0, 0, 0xFF),
+	Purple = 0xE01F,
 }
