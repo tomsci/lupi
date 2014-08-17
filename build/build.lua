@@ -53,6 +53,7 @@ luaModules = {
 	"modules/passwordManager/uicontrols.lua",
 	"modules/passwordManager/window.lua",
 	"modules/passwordManager/gui.lua",
+	"modules/passwordManager/keychain.lua",
 }
 
 mallocSource = {

@@ -24,6 +24,10 @@ function main()
 		lupi.createProcess("test.init")
 	elseif bootMode == string.byte('b') then
 		require("bitmap.tests").main()
+	elseif bootMode == 3 then
+		return lupi.createProcess("passwordManager.textui")
+	elseif bootMode == 4 then
+		lupi.createProcess("passwordManager.gui")
 	end
 	local interpreter = require("interpreter")
 	local hadPreCmd = false
