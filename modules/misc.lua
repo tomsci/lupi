@@ -3,14 +3,14 @@ This function behaves like `ipairs`, except that it returns a third value, which
 is a function that removes the current value without messing up the iteration.
 Usage:
 
-		local tbl = { "a", "b", "c" }
-		for i, val, remove in misc.iter(tbl) do
-			if val == "b" then
-				remove()
-				-- Table is now { "a", "c" } and the next time
-				-- around the loop, val will be "c"
-			end
+	local tbl = { "a", "b", "c" }
+	for i, val, remove in misc.iter(tbl) do
+		if val == "b" then
+			remove()
+			-- Table is now { "a", "c" } and the next time
+			-- around the loop, val will be "c"
 		end
+	end
 
 ]]
 function iter(tbl)
@@ -48,12 +48,12 @@ arrayMt.__index = arrayMt
 Sets a metatable on `arg` that makes the standard table functions and `iter`
 available as member functions. For example:
 
-		local t = array { "a", "b", "c" }
-		t:remove(2)   -- equivalent to table.remove(t, 2)
-		t:insert(2, "b") -- equivalent to table.insert(2, "b")
-		for k,v,del in t:iter() do -- equivalent to misc.iter(t)
-			-- ...
-		end
+	local t = array { "a", "b", "c" }
+	t:remove(2)   -- equivalent to table.remove(t, 2)
+	t:insert(2, "b") -- equivalent to table.insert(t, 2, "b")
+	for k,v,del in t:iter() do -- equivalent to misc.iter(t)
+		-- ...
+	end
 
 `array()` is equivalent to `array({})`.
 ]]
@@ -110,9 +110,99 @@ local classObjMt = {
 	__call = instanciate
 }
 
+function memberEnv(obj)
+	if obj._memberEnv == nil then
+		assert(obj._globalScope, "object must define a _globalScope")
+		-- Return an object that will try the object followed by the globalscope
+		local mt = {
+			__index = function(_, key)
+				local result = obj[key]
+				if result == nil then result = obj._globalScope[key] end
+				return result
+			end,
+			__newindex = function(_, key, value)
+				obj[key] = value
+			end,
+		}
+		obj._memberEnv = {}
+		setmetatable(obj._memberEnv, mt)
+	end
+	return obj._memberEnv
+end
+
+--[[**
+Support for object-style tables, with class-like semantics. `class` is used to
+define a Class object which may be instanciated by calling it as a function.
+The objects returned by this instanciation support calling into the Class object
+(via the usual metatable `__index` fallback mechanism). They also support a
+few special members. The first is `init()`, which if defined will be called on
+every newly-instanciated object.
+
+	Button = class {
+		-- Members with default vals go here if desired
+		pos = 1,
+		text = "woop"
+	}
+
+	function Button:init()
+		-- Do stuff
+	end
+
+	function Button:draw()
+		-- ...
+	end
+
+	button = Button() -- default args. Will call init()
+	button2 = Button { pos = 2 } -- Will also call init()
+
+The second special member is `super` which can be used to chain together a
+(single-inheritance) class heirarchy.
+
+	Checkbox = class {
+		super = Button,
+		checked = false,
+	}
+
+	function Checkbox:draw()
+		-- Some custom stuff
+		super.draw(self) -- and call through to super if you want
+	end
+
+Finally, there is a special member `_globalScope` which can modifies the
+behaviour of the class metatable and can be used to avoid having to use the
+prefix `self.` in front of member variables, when used inside a member function.
+You may
+continue to use the `self.member` syntax to disambiguate between a member and a
+similarly-named item in the global scope, and for calling other member functions
+using the `self:someFunction()` syntax.
+
+	UnselfishButton = class {
+		super = Button,
+		_globalScope = _ENV,
+	}
+
+	function UnselfishButton:draw()
+		-- This odd-looking syntax gives us an env that can access self
+		-- variables directly
+		local _ENV = -self
+
+		print("Drawing "..text) -- no need to say self.text
+	end
+
+If the "`-self`" syntax looks just too horrible, you may also use:
+
+	local _ENV = misc.memberEnv(self)
+]]
 function class(classObj)
 	classObj.__index = function(obj, key)
-		return classObj[key]
+		local result = classObj[key]
+		if result == nil and classObj.super ~= nil then
+			result = classObj.super[key]
+		end
+		return result
+	end
+	classObj.__unm = function(obj)
+		return memberEnv(obj)
 	end
 	setmetatable(classObj, classObjMt)
 	return classObj
