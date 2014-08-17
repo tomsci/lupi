@@ -163,7 +163,7 @@ void tft_init() {
 	TheSuperPage->screenHeight = WIDTH;
 
 	write(PIXEL_FORMAT_SET, 0x55); // 16-bit
-	write(FRAME_RATE_CONTROL_1, 0x00, 0x1B); // 1B = 70Hz default
+	write(FRAME_RATE_CONTROL_1, 0x00, 0x10); // 1B = 70Hz default, 10 = 119Hz
 	write(DISPLAY_FUNCTION_CONTROL, 0x08, 0x82, 0x27); // Stuff.
 	write(0xF2, 0x00); // Undocumented: disable gamma?
 	write(GAMMA_SET, 0x01);
