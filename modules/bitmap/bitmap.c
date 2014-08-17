@@ -197,6 +197,7 @@ void bitmap_drawLine(Bitmap* b, uint16 x0, uint16 y0, uint16 x1, uint16 y1) {
 
 	int D = TwoDinc - dscan;
 	plot(data, colour, x0, y0);
+	plot(data, colour, x1, y1);
 
 	for (scan = scanStart; scan != scanEnd; scan += scanIncr) {
 		//PRINTL("scan=%d inc=%d D=%d", (int)scan, (int)inc, D);
