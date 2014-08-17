@@ -75,5 +75,5 @@ function Button:draw()
 		textColour
 	bitmap:setColour(fg)
 	-- Plus one is because text hugs the top
-	bitmap:drawText(x + padding, y + padding + 1, text)
+	bitmap:drawText(text, x + padding, y + padding + 1)
 end

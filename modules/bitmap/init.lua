@@ -50,14 +50,30 @@ Draw a solid rectangle using the current foreground colour.
 --native function Bitmap:drawRect(x, y, w, h)
 
 --[[**
+Draws a hollow rectangle using the current foreground colour.
+]]
+function Bitmap:drawBox(x, y, w, h)
+	local x1, y1 = x + w - 1, y + h - 1
+	self:drawLine(x, y, x1, y)
+	self:drawLine(x1, y, x1, y1)
+	self:drawLine(x, y1, x1, y1)
+	self:drawLine(x, y, x, y1)
+end
+
+--[[**
 Draw text in the current foreground colour. The non-text pixels within the text
 rect will be set to the background colour. Instead of passing x and y as
 separate parameters, you may pass an array with two entries, for example:
 
 	local pos = { x, y }
-	bmp:drawText(pos, text)
+	bmp:drawText(text, pos)
 ]]
---native function Bitmap:drawText(x, y, text)
+--native function Bitmap:drawText(text, x, y)
+
+function Bitmap:drawTextCentred(text, x, y, w, h)
+	local width, height = self:getTextSize(text)
+	self:drawText(text, x + (w-width) / 2, y + (h-height) / 2)
+end
 
 --[[**
 Returns the width and height in pixels of the specified text, if it were to be
@@ -107,6 +123,7 @@ end
 Colour = {
 	Black = rgbColour(0, 0, 0),
 	White = rgbColour(0xFF, 0xFF, 0xFF),
+	Grey = rgbColour(0x80, 0x80, 0x80),
 	Red = rgbColour(0xFF, 0, 0),
 	Green = rgbColour(0, 0xFF, 0),
 	Blue = rgbColour(0, 0, 0xFF),

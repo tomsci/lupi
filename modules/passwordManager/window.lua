@@ -49,6 +49,14 @@ function Window:addControl(c)
 	c:draw()
 end
 
+function Window:width()
+	return self.bitmap:getWidth()
+end
+
+function Window:height()
+	return self.bitmap:getHeight()
+end
+
 local function rng(lower, val, upper)
 	return val >= lower and val < upper
 end
@@ -118,4 +126,12 @@ end
 function Window:redraw()
 	-- This will only redraw the dirty regions
 	self.bitmap:blit()
+end
+
+function Window:clear()
+	local b = self.bitmap
+	b:setColour(self.backgroundColour)
+	b:drawRect(0, 0, b:getWidth(), b:getHeight())
+	self.controls = array()
+	self:redraw()
 end

@@ -100,7 +100,7 @@ end
 local function instanciate(classObj, args)
 	local obj = args or {}
 	setmetatable(obj, classObj)
-	if classObj.init then
+	if obj.init then
 		obj:init()
 	end
 	return obj
@@ -165,7 +165,7 @@ The second special member is `super` which can be used to chain together a
 
 	function Checkbox:draw()
 		-- Some custom stuff
-		super.draw(self) -- and call through to super if you want
+		self.super.draw(self) -- and call through to super if you want
 	end
 
 Finally, there is a special member `_globalScope` which can modifies the
@@ -187,6 +187,7 @@ using the `self:someFunction()` syntax.
 		local _ENV = -self
 
 		print("Drawing "..text) -- no need to say self.text
+		super.draw(self) -- No need to say self.super
 	end
 
 If the "`-self`" syntax looks just too horrible, you may also use:

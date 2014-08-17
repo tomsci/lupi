@@ -41,9 +41,9 @@ static int drawRect(lua_State* L) {
 
 static int drawText(lua_State* L) {
 	Bitmap* b = bitmap_check(L, 1);
+	const char* text = luaL_checkstring(L, 2);
 	int x, y;
-	int textIdx = getxy(L, 2, &x, &y);
-	const char* text = luaL_checkstring(L, textIdx);
+	getxy(L, 3, &x, &y);
 	bitmap_drawText(b, x, y, text);
 	// PRINTL("dirtyRect = %d,%d,%dx%d", b->dirtyRect.x, b->dirtyRect.y, b->dirtyRect.w, b->dirtyRect.h);
 	return 0;
