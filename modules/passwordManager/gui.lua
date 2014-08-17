@@ -6,6 +6,7 @@ local window = require "passwordManager.window"
 
 local Colour = bitmap.Colour
 local Button = uicontrols.Button
+local Window = window.Window
 
 function main()
 	local rl 
@@ -13,13 +14,9 @@ function main()
 		rl = runloop.new()
 	end
 
-	win = window.Window() -- Well this syntax doesn't look confusing
+	win = Window()
 	win.debugDrawing = true
 	input.registerInputObserver(function (...) win:gotInput(...) end)
-	local b = win.bitmap
-	b:setColour(Colour.Purple)
-	b:drawRect(0, 0, b:getWidth(), b:getHeight())
-	b:blit()
 
 	but = Button {
 		text = "Hello world",
@@ -30,6 +27,15 @@ function main()
 		end
 	}
 	win:addControl(but)
+
+	disbut = Button {
+		enabled = false,
+		x = 10,
+		y = 50,
+		text = "I am greyed out",
+	}
+	win:addControl(disbut)
+
 	win:redraw()
 
 	if rl then

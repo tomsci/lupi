@@ -10,7 +10,9 @@ local class = misc.class
 local array = misc.array
 
 Window = class {
+	_globalScope = _ENV,
 	bitmap = nil,
+	backgroundColour = Colour.Purple,
 	controls = nil,
 	debugDrawing = false,
 	dragging = false,
@@ -19,18 +21,26 @@ Window = class {
 }
 
 function Window:init()
-	if not self.controls then
-		self.controls = array()
+	local _ENV = -self
+	if not controls then
+		controls = array()
 	end
 	if not self.bitmap then
 		self.bitmap = bitmap.create()
-		self.bitmap:setBackgroundColour(Colour.White)
+		if backgroundColour then
+			bitmap:setColour(backgroundColour)
+			bitmap:drawRect(0, 0, bitmap:getWidth(), bitmap:getHeight())
+		end
 	end
 end
 
 function Window:__tostring()
-	return string.format("Window %dx%d", self.bitmap:getWidth(),
-		self.bitmap:getHeight())
+	if self.bitmap then
+		return string.format("Window %dx%d", self.bitmap:getWidth(),
+			self.bitmap:getHeight())
+	else
+		return "Window"
+	end
 end
 
 function Window:addControl(c)
@@ -56,52 +66,53 @@ function Window:findControlForCoords(x, y)
 end
 
 function Window:gotInput(flags, x, y)
+	local _ENV = -self
+
 	local c
 	if flags > 0 then
 		c = self:findControlForCoords(x, y)
 	else
-		c = self.focusedPressedControl
+		c = focusedPressedControl
 	end
-	-- print(string.format("Input %d,%d,%d c=%s fcc=%s fpc=%s", x, y, flags,
-	-- 	tostring(c), tostring(self.focusCapturedControl), tostring(self.focusedPressedControl)))
+	-- print(string.format("Input %d,%d,%d c=%s fcc=%s fpc=%s dragging=%s", x, y, flags, tostring(c), tostring(focusCapturedControl), tostring(focusedPressedControl), tostring(dragging)))
 
 	if flags == 0 then
 		-- Pen up
-		if c and c == self.focusCapturedControl then
+		if c and c == focusCapturedControl then
 			if c.setPressed then c:setPressed(false) end
 			c:handleActivated()
 		end
-		self.dragging = false
-		self.focusCapturedControl = nil
-	elseif self.dragging == false then
+		dragging = false
+		focusCapturedControl = nil
+	elseif dragging == false then
 		-- Pen down
-		self.dragging = true
-		self.focusCapturedControl = c
+		dragging = true
+		focusCapturedControl = c
 		if c and c.setPressed then
-			self.focusedPressedControl = c
+			focusedPressedControl = c
 			c:setPressed(true, x, y)
-		elseif self.debugDrawing then
-			self.bitmap:drawRect(x, y, 1, 1)
+		elseif debugDrawing then
+			bitmap:drawRect(x, y, 1, 1)
 		end
 	else
 		-- Dragging
-		if self.focusCapturedControl then
-			if self.focusedPressedControl then
-				if self.focusedPressedControl ~= c then
+		if focusCapturedControl then
+			if focusedPressedControl then
+				if focusedPressedControl ~= c then
 					-- Dragged out of focusedPressedControl
-					self.focusedPressedControl:setPressed(false)
-					self.focusedPressedControl = nil
+					focusedPressedControl:setPressed(false)
+					focusedPressedControl = nil
 				end
-			elseif self.focusCapturedControl == c and c.setPressed then
+			elseif focusCapturedControl == c and c.setPressed then
 				-- Dragged back in to focusCapturedControl
-				self.focusedPressedControl = c
+				focusedPressedControl = c
 				c:setPressed(true, x, y)
 			end
-		elseif self.debugDrawing then
-			self.bitmap:drawRect(x, y, 1, 1)
+		elseif debugDrawing then
+			bitmap:drawRect(x, y, 1, 1)
 		end
 	end
-	self.bitmap:blit()
+	bitmap:blit()
 end
 
 function Window:redraw()

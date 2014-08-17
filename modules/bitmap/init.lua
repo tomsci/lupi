@@ -2,6 +2,10 @@
 
 create = Bitmap.create -- For convenience
 
+function Bitmap:__tostring()
+	return string.format("Bitmap %dx%d", self:getWidth(), self:getHeight())
+end
+
 --[[**
 Create a new bitmap.
 ]]

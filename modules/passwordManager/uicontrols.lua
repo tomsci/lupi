@@ -6,12 +6,16 @@ local Colour = bitmap.Colour
 local class = misc.class
 
 Button = class {
+	_globalScope = _ENV,
 	bitmap = nil,
 	backgroundColour = Colour.White,
+	disabledBackgroundColour = bitmap.rgbColour(0xCC, 0xCC, 0xCC),
 	textColour = Colour.Black,
+	disabledTextColour = bitmap.rgbColour(0x33, 0x33, 0x33),
 	padding = 10,
 	edgeColour = Colour.Black,
 	text = nil,
+	enabled = true,
 	pressed = false,
 	x = 0,
 	y = 0,
@@ -32,7 +36,13 @@ end
 
 function Button:setPressed(flag)
 	--print(tostring(self).." pressed "..tostring(flag))
+	if not self.enabled then return end
 	self.pressed = flag
+	self:draw()
+end
+
+function Button:setEnabled(flag)
+	self.enabled = flag
 	self:draw()
 end
 
@@ -41,24 +51,29 @@ function Button:handleActivated()
 end
 
 function Button:draw()
+	local _ENV = -self
 	assert(self.bitmap, "No bitmap to draw to!")
-	local bmp = self.bitmap
-	local w, h = bmp:getTextSize(self.text)
-	w = w + self.padding * 2
-	h = h + self.padding * 2
-	local x, y = self.x, self.y
-	local bg = self.pressed and self.textColour or self.backgroundColour
-	bmp:setColour(bg)
-	bmp:setBackgroundColour(bg)
-	bmp:drawRect(x, y, w, h)
+	local w, h = bitmap:getTextSize(text)
+	w = w + padding * 2
+	h = h + padding * 2
+	local x, y = x, y
+	local bg = pressed and textColour or
+		not enabled and disabledBackgroundColour or
+		backgroundColour
+	bitmap:setColour(bg)
+	bitmap:setBackgroundColour(bg)
+	bitmap:drawRect(x, y, w, h)
 
-	bmp:setColour(self.edgeColour)
-	bmp:drawLine(x, y, x + w, y) 
-	bmp:drawLine(x + w, y, x + w, y + h) 
-	bmp:drawLine(x, y + h, x + w, y + h) 
-	bmp:drawLine(x, y, x, y + h) 
+	bitmap:setColour(edgeColour)
+	bitmap:drawLine(x, y, x + w, y)
+	bitmap:drawLine(x + w, y, x + w, y + h)
+	bitmap:drawLine(x, y + h, x + w, y + h)
+	bitmap:drawLine(x, y, x, y + h)
 
-	bmp:setColour(self.pressed and self.backgroundColour or self.textColour)
+	local fg = pressed and backgroundColour or
+		not enabled and disabledTextColour or
+		textColour
+	bitmap:setColour(fg)
 	-- Plus one is because text hugs the top
-	bmp:drawText(x + self.padding, y + self.padding + 1, self.text)
+	bitmap:drawText(x + padding, y + padding + 1, text)
 end
