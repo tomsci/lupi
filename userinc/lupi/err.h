@@ -7,6 +7,7 @@
 #define KErrArgument		(-6)
 #define KErrBadHandle		(-8)
 #define KErrAlreadyExists	(-11)
+#define KErrBadName			(-28)
 
 #define KErrProcessLimit	(-60)
 #endif

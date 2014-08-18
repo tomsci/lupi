@@ -17,7 +17,13 @@ extern char user_ProcessName[];
 
 static bool thread_init(Process* p, int index);
 
+int strlen(const char *s);
+
 static int process_init(Process* p, const char* processName) {
+	if (strlen(processName) >= MAX_PROCESS_NAME) {
+		return KErrBadName;
+	}
+
 	// Do an early check that processName is valid - easier on callers if we fail now rather than
 	// once we've actually started executing the process
 	const LuaModule* module = getLuaModule(processName);
