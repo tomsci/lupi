@@ -2,9 +2,41 @@ require "input"
 require "bitmap"
 require "misc"
 
+--[[**
+Some basic UI controls.
+
+The convention for controls being rendered by a [window](window.html)
+is they must support the following members and member functions:
+
+* `x`, `y`: Coordinates of top left of control
+* `bitmap`: The bitmap the control will render in to. Must be set before calling
+  `draw()`.
+* `control:draw()`: Called by the window to render the control.
+* `control:width()`: Should return the width of the control, that is the extent
+  it will draw to in `bitmap`. Will only be called once `bitmap` is set.
+* `control:height()`: As per width().
+
+Controls may draw into their bitmap whenever they wish, for example when their
+state changes, but should always fully render their contents as a result of a
+call to `draw()`.
+
+In addition, the following optional functions may be implemented by controls
+that can receive input:
+
+* `control:handleActivated()`: Called when a touch even occurs within the
+  control.
+* `control:setPressed(bool)`: Called with argument `true` when a touch down
+  event occurs within the control's bounds. May be called repeatedly if the
+  touch drags in and out of the control. Only called if control also implements
+  `handleActivated()`.
+]]
+
 local Colour = bitmap.Colour
 local class = misc.class
 
+--[[**
+A basic momentary-push button.
+]]
 Button = class {
 	_globalScope = _ENV,
 	bitmap = nil,
@@ -20,6 +52,8 @@ Button = class {
 	pressed = false,
 	x = 0,
 	y = 0,
+	fixedWidth = nil,
+	fixedHeight = nil,
 }
 
 function Button:init()
@@ -64,6 +98,10 @@ function Button:setPressed(flag)
 	self:draw()
 end
 
+--[[**
+Call to disable a button. Disabled buttons are drawn greyed out and do not
+respond to input.
+]]
 function Button:setEnabled(flag)
 	self.enabled = flag
 	self:draw()
@@ -117,17 +155,21 @@ function Button:drawContent(w, h)
 	bitmap:drawText(text, x + lpad, y + tpad + 1)
 end
 
+--[[**
+A subclass of Button which draws a checkbox. The current state of the checkbox
+is in the member `checked` and may be set by calling
+`checkbox:setChecked(flag)`.
+]]
 Checkbox = class {
 	super = Button,
 	checked = false,
+	checkboxSize = 9,
+	checkboxGap = 5,
 }
-
-local checkboxSize = 9
-local checkboxGap = 5
 
 function Checkbox:contentSize()
 	local w, h = self.super.contentSize(self)
-	w = w + checkboxSize + checkboxGap
+	w = w + self.checkboxSize + self.checkboxGap
 	return w, h
 end
 
@@ -148,6 +190,10 @@ function Checkbox:drawContent(w, h)
 end
 
 function Checkbox:handleActivated()
-	self.checked = not self.checked
+	self:setChecked(not self.checked)
+end
+
+function Checkbox:setChecked(flag)
+	self.checked = flag
 	self:draw()
 end

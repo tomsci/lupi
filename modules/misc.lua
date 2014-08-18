@@ -168,13 +168,12 @@ The second special member is `super` which can be used to chain together a
 		self.super.draw(self) -- and call through to super if you want
 	end
 
-Finally, there is a special member `_globalScope` which can modifies the
+Finally, there is a special member `_globalScope` which will modify the
 behaviour of the class metatable and can be used to avoid having to use the
 prefix `self.` in front of member variables, when used inside a member function.
-You may
-continue to use the `self.member` syntax to disambiguate between a member and a
-similarly-named item in the global scope, and for calling other member functions
-using the `self:someFunction()` syntax.
+You may continue to use the `self.member` syntax to disambiguate between a
+member and a similarly-named item in the global scope, and for calling other
+member functions using the `self:someFunction()` syntax.
 
 	UnselfishButton = class {
 		super = Button,
