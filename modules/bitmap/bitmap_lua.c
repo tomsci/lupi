@@ -149,7 +149,7 @@ static int setAutoBlit(lua_State* L) {
 	return 0;
 }
 
-int init_module_bitmap_init(lua_State* L) {
+int init_module_bitmap_bitmap(lua_State* L) {
 	luaL_newmetatable(L, BitmapMetatable);
 	luaL_Reg fns[] = {
 		{ "drawRect", drawRect },
