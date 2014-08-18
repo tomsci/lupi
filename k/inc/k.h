@@ -84,12 +84,14 @@ typedef enum ThreadBlockedReason {
 } ThreadBlockedReason;
 
 uint32 atomic_inc(uint32* ptr);
-uint32 atomic_set(uint32* ptr, uint32 val);
-bool atomic_cas(uint32* ptr, uint32 expectedVal, uint32 newVal);
+NOIGNORE uint32 atomic_set(uint32* ptr, uint32 val);
+NOIGNORE bool atomic_cas(uint32* ptr, uint32 expectedVal, uint32 newVal);
 #ifndef LP64
+NOIGNORE static inline Thread* atomic_set_thread(Thread** ptr, Thread* val);
 static inline Thread* atomic_set_thread(Thread** ptr, Thread* val) {
 	return (Thread*)atomic_set((uint32*)ptr, (uint32)val);
 }
+NOIGNORE static inline uintptr atomic_set_uptr(uintptr* ptr, uintptr val);
 static inline uintptr atomic_set_uptr(uintptr* ptr, uintptr val) {
 	return (uintptr)atomic_set((uint32*)ptr, (uint32)val);
 }
@@ -97,8 +99,8 @@ static inline uintptr atomic_set_uptr(uintptr* ptr, uintptr val) {
 #endif
 
 uint8 atomic_inc8(uint8* ptr);
-uint8 atomic_set8(uint8* ptr, uint8 val);
-bool atomic_cas8(uint8* ptr, uint8 expectedVal, uint8 newVal);
+NOIGNORE uint8 atomic_set8(uint8* ptr, uint8 val);
+NOIGNORE bool atomic_cas8(uint8* ptr, uint8 expectedVal, uint8 newVal);
 static inline bool atomic_setbool(bool* ptr, bool val) {
 	return (bool)atomic_set8((uint8*)ptr, val);
 }
@@ -226,9 +228,9 @@ static inline Process* processForServer(Server* s) {
 	return processForThread(s->serverRequest.thread);
 }
 
-int process_new(const char* name, Process** resultProcess);
+NOIGNORE int process_new(const char* name, Process** resultProcess);
 NORETURN process_start(Process* p);
-bool process_grow_heap(Process* p, int incr);
+NOIGNORE bool process_grow_heap(Process* p, int incr);
 void thread_setState(Thread* t, enum ThreadState s);
 NORETURN thread_exit(Thread* t, int reason);
 void thread_requestSignal(KAsyncRequest* request);
@@ -248,11 +250,11 @@ void dfc_queue(DfcFn fn, uintptr arg1, uintptr arg2, uintptr arg3);
 void dfc_requestComplete(KAsyncRequest* request, int result);
 bool irq_checkDfcs();
 
-uintptr ipc_mapNewSharedPageInCurrentProcess();
-int ipc_connectToServer(uint32 id, uintptr sharedPage);
-int ipc_createServer(uint32 id, Thread* thread);
-void ipc_processExited(PageAllocator* pa, Process* p);
+NOIGNORE uintptr ipc_mapNewSharedPageInCurrentProcess();
+NOIGNORE int ipc_connectToServer(uint32 id, uintptr sharedPage);
+NOIGNORE int ipc_createServer(uint32 id, Thread* thread);
+NOIGNORE void ipc_processExited(PageAllocator* pa, Process* p);
 void ipc_requestServerMsg(Thread* serverThread, uintptr serverRequest);
-int ipc_completeRequest(uintptr request, bool toServer);
+NOIGNORE int ipc_completeRequest(uintptr request, bool toServer);
 
 #endif // LUPI_K_H

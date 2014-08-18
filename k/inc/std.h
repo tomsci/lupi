@@ -34,6 +34,7 @@ typedef _Bool bool;
 #define NAKED							__attribute__((naked))
 #define NOINLINE						__attribute__((noinline))
 #define NORETURN						void __attribute__((noreturn))
+#define NOIGNORE						__attribute__((warn_unused_result))
 #define USED  							__attribute__((used))
 
 #define ASSERT_COMPILE(x) extern int __compiler_assert(int[(x)?1:-1])
