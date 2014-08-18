@@ -29,15 +29,15 @@ function Window:init()
 		self.bitmap = bitmap.create()
 		if backgroundColour then
 			bitmap:setColour(backgroundColour)
-			bitmap:drawRect(0, 0, bitmap:getWidth(), bitmap:getHeight())
+			bitmap:drawRect(0, 0, bitmap:width(), bitmap:height())
 		end
 	end
 end
 
 function Window:__tostring()
 	if self.bitmap then
-		return string.format("Window %dx%d", self.bitmap:getWidth(),
-			self.bitmap:getHeight())
+		return string.format("Window %dx%d", self.bitmap:width(),
+			self.bitmap:height())
 	else
 		return "Window"
 	end
@@ -50,11 +50,11 @@ function Window:addControl(c)
 end
 
 function Window:width()
-	return self.bitmap:getWidth()
+	return self.bitmap:width()
 end
 
 function Window:height()
-	return self.bitmap:getHeight()
+	return self.bitmap:height()
 end
 
 local function rng(lower, val, upper)
@@ -131,7 +131,7 @@ end
 function Window:clear()
 	local b = self.bitmap
 	b:setColour(self.backgroundColour)
-	b:drawRect(0, 0, b:getWidth(), b:getHeight())
+	b:drawRect(0, 0, b:width(), b:height())
 	self.controls = array()
 	self:redraw()
 end

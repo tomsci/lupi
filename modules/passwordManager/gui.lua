@@ -54,9 +54,9 @@ function displayMainList(startingAt)
 	local topBarHeight = 20
 	b:setColour(Colour.White)
 	b:setBackgroundColour(win.backgroundColour)
-	b:drawTextCentred("Password manager", 0, 0, b:getWidth(), topBarHeight)
+	b:drawTextCentred("Password manager", 0, 0, b:width(), topBarHeight)
 	b:setColour(Colour.Black)
-	b:drawLine(0, topBarHeight, b:getWidth()-1, topBarHeight)
+	b:drawLine(0, topBarHeight, b:width()-1, topBarHeight)
 
 	prevButton = Button {
 		x = 5,
@@ -65,7 +65,7 @@ function displayMainList(startingAt)
 		bitmap = b,
 		handleActivated = gotoPrevious,
 	}
-	prevButton.y = b:getHeight() - prevButton:height() - 5
+	prevButton.y = b:height() - prevButton:height() - 5
 
 	nextButton = Button {
 		y = prevButton.y,
@@ -74,7 +74,7 @@ function displayMainList(startingAt)
 		bitmap = b,
 		handleActivated = gotoNext,
 	}
-	nextButton.x = b:getWidth() - nextButton:width() - 5
+	nextButton.x = b:width() - nextButton:width() - 5
 
 	displayCheckbox = Checkbox {
 		text = "Display",

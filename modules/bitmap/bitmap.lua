@@ -3,7 +3,7 @@
 create = Bitmap.create -- For convenience
 
 function Bitmap:__tostring()
-	return string.format("Bitmap %dx%d", self:getWidth(), self:getHeight())
+	return string.format("Bitmap %dx%d", self:width(), self:height())
 end
 
 --[[**
@@ -14,12 +14,12 @@ Create a new bitmap.
 --[[**
 Get height of the bitmap.
 ]]
---native function Bitmap:getHeight()
+--native function Bitmap:height()
 
 --[[**
 Get width of the bitmap.
 ]]
---native function Bitmap:getWidth()
+--native function Bitmap:width()
 
 --[[**
 Gets the current foreground (pen) colour.
