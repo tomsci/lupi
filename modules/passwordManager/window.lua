@@ -10,7 +10,6 @@ local class = misc.class
 local array = misc.array
 
 Window = class {
-	_globalScope = _ENV,
 	bitmap = nil,
 	backgroundColour = Colour.Purple,
 	controls = nil,
@@ -21,7 +20,7 @@ Window = class {
 }
 
 function Window:init()
-	local _ENV = -self
+	local _ENV = self + _ENV
 	if not controls then
 		controls = array()
 	end
@@ -74,7 +73,7 @@ function Window:findControlForCoords(x, y)
 end
 
 function Window:gotInput(flags, x, y)
-	local _ENV = -self
+	local _ENV = self + _ENV
 
 	local c
 	if flags > 0 then

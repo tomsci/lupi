@@ -38,7 +38,6 @@ local class = misc.class
 A basic momentary-push button.
 ]]
 Button = class {
-	_globalScope = _ENV,
 	bitmap = nil,
 	backgroundColour = Colour.White,
 	disabledBackgroundColour = bitmap.rgbColour(0xCC, 0xCC, 0xCC),
@@ -116,7 +115,7 @@ function Button:contentSize()
 end
 
 function Button:draw()
-	local _ENV = -self
+	local _ENV = self + _ENV
 	assert(self.bitmap, "No bitmap to draw to!")
 	local contentw, contenth = self:contentSize()
 	local w, h
@@ -148,7 +147,7 @@ function Button:draw()
 end
 
 function Button:drawContent(w, h)
-	local _ENV = -self
+	local _ENV = self + _ENV
 	local lpad = fixedWidth and (fixedWidth - w)/2 or hpadding
 	local tpad = fixedHeight and (fixedHeight - h)/2 or vpadding
 	-- Plus one is because text hugs the top
@@ -161,20 +160,20 @@ is in the member `checked` and may be set by calling
 `checkbox:setChecked(flag)`.
 ]]
 Checkbox = class {
-	super = Button,
+	_super = Button,
 	checked = false,
 	checkboxSize = 9,
 	checkboxGap = 5,
 }
 
 function Checkbox:contentSize()
-	local w, h = self.super.contentSize(self)
+	local w, h = Button.contentSize(self)
 	w = w + self.checkboxSize + self.checkboxGap
 	return w, h
 end
 
 function Checkbox:drawContent(w, h)
-	local _ENV = -self
+	local _ENV = self + _ENV
 	local cbx = x + hpadding
 	local cby = y + (self:height() - checkboxSize) / 2
 	local b = self.bitmap
