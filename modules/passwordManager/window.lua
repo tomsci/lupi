@@ -60,6 +60,17 @@ local function rng(lower, val, upper)
 	return val >= lower and val < upper
 end
 
+local function sendControlEvent(fn, ...)
+	-- It's ok if a control doesn't implement a given event, and thus if fn is
+	-- nil
+	if fn == nil then return end
+	-- if type(fn) ~= "function" then return end
+	local ok, err = xpcall(fn, debug.traceback, ...)
+	if not ok then
+		print(err)
+	end
+end
+
 function Window:findControlForCoords(x, y)
 	-- Only consider controls with a handleActivated fn
 	for _, control in self.controls:iter() do
@@ -77,7 +88,7 @@ function Window:gotInput(flags, x, y)
 
 	local c
 	if flags > 0 then
-		c = self:findControlForCoords(x, y)
+		c = findControlForCoords(x, y)
 	else
 		c = focusedPressedControl
 	end
@@ -86,8 +97,11 @@ function Window:gotInput(flags, x, y)
 	if flags == 0 then
 		-- Pen up
 		if c and c == focusCapturedControl then
-			if c.setPressed then c:setPressed(false) end
-			c:handleActivated()
+			sendControlEvent(c.setPressed, c, false)
+			if c.enabled ~= false then
+				-- If enabled is nil or true, we send the event
+				sendControlEvent(c.handleActivated, c)
+			end
 		end
 		dragging = false
 		focusCapturedControl = nil
@@ -97,7 +111,7 @@ function Window:gotInput(flags, x, y)
 		focusCapturedControl = c
 		if c and c.setPressed then
 			focusedPressedControl = c
-			c:setPressed(true, x, y)
+			sendControlEvent(c.setPressed, c, true, x, y)
 		elseif debugDrawing then
 			bitmap:drawRect(x, y, 1, 1)
 		end
@@ -107,13 +121,15 @@ function Window:gotInput(flags, x, y)
 			if focusedPressedControl then
 				if focusedPressedControl ~= c then
 					-- Dragged out of focusedPressedControl
-					focusedPressedControl:setPressed(false)
+					sendControlEvent(focusedPressedControl.setPressed, focusedPressedControl, false)
 					focusedPressedControl = nil
+				elseif focusedPressedControl.handleDragged then
+					sendControlEvent(focusedPressedControl.handleDragged, focusedPressedControl, x, y)
 				end
 			elseif focusCapturedControl == c and c.setPressed then
 				-- Dragged back in to focusCapturedControl
 				focusedPressedControl = c
-				c:setPressed(true, x, y)
+				sendControlEvent(c.setPressed, c, true, x, y)
 			end
 		elseif debugDrawing then
 			bitmap:drawRect(x, y, 1, 1)
@@ -132,5 +148,4 @@ function Window:clear()
 	b:setColour(self.backgroundColour)
 	b:drawRect(0, 0, b:width(), b:height())
 	self.controls = array()
-	self:redraw()
 end

@@ -4,6 +4,10 @@ require "bitmap"
 local uicontrols = require "passwordManager.uicontrols"
 local window = require "passwordManager.window"
 local keychain = require "passwordManager.keychain"
+--BEGIN DEBUG
+for i = 1, 30 do
+	table.insert(keychain.items, { url = "Filler item "..i, pass="Item"..i.."pass" })
+end
 
 local Colour = bitmap.Colour
 local Button, Checkbox = uicontrols.Button, uicontrols.Checkbox
@@ -19,7 +23,7 @@ function main()
 	-- win.debugDrawing = true
 	input.registerInputObserver(function (...) win:gotInput(...) end)
 
-	displayMainList()
+	assert(xpcall(displayMainList, debug.traceback))
 
 	if rl then
 		rl:run()
@@ -49,6 +53,7 @@ end
 
 function displayMainList(startingAt)
 	win:clear()
+	if not startingAt then startingAt = 1 end
 
 	local b = win.bitmap
 	local topBarHeight = 20
@@ -61,7 +66,7 @@ function displayMainList(startingAt)
 	prevButton = Button {
 		x = 5,
 		text = "Previous",
-		enabled = false,
+		enabled = (startingAt > 1),
 		bitmap = b,
 		handleActivated = gotoPrevious,
 	}
@@ -80,6 +85,7 @@ function displayMainList(startingAt)
 		text = "Display",
 		x = prevButton.x + prevButton:width() + 5,
 		y = prevButton.y,
+		checked = true, -- Until we have PS/2 support
 	}
 
 	win:addControl(prevButton)
@@ -87,10 +93,11 @@ function displayMainList(startingAt)
 	win:addControl(displayCheckbox)
 
 	local items = keychain.items
-	currentPageStart = startingAt or 1
+	local numItems = #items
+	currentPageStart = startingAt
 	local row = 0
 	local rowHeight = 30
-	local maxRows = (win:height() - topBarHeight - 10 - nextButton:height()) / rowHeight
+	maxRows = (win:height() - topBarHeight - 10 - nextButton:height()) / rowHeight
 	local rowWidth = win:width() / 2
 	local x = 0
 	for i = currentPageStart, currentPageStart + maxRows*2 do
@@ -99,12 +106,13 @@ function displayMainList(startingAt)
 		local but = Button {
 			text = item.url,
 			x = x,
-			y = topBarHeight + 10 + row * (rowHeight - 1), -- we overlap borders
+			y = topBarHeight + 5 + row * (rowHeight - 1), -- we overlap borders
 			fixedHeight = rowHeight,
 			fixedWidth = rowWidth,
 			edgeColour = Colour.Grey,
 			vpadding = 10,
 			setPressed = itemButtonPressed,
+			item = item,
 		}
 		win:addControl(but)
 		row = row + 1
@@ -114,18 +122,38 @@ function displayMainList(startingAt)
 				x = rowWidth
 				row = 0
 			else
-				error("Shouldn't get here")
 				break
 			end
 		end
 	end
+	currentNumItems = row + (x > 0 and 1 or 0) * maxRows
+	nextButton:setEnabled(numItems > currentPageStart-1 + currentNumItems)
 	win:redraw()
 end
 
 function gotoPrevious()
+	displayMainList(currentPageStart - maxRows*2)
+end
+
+function gotoNext()
+	displayMainList(currentPageStart + currentNumItems)
 end
 
 function itemButtonPressed(itemButton, flag)
-	--TODO
+	if displayCheckbox.checked then
+		local b = win.bitmap
+		b:setColour(win.backgroundColour)
+		b:drawRect(0, prevButton.y, win:width(), prevButton:height())
+		b:setBackgroundColour(win.backgroundColour)
+		b:setColour(Colour.White)
+		if flag then
+			b:drawTextCentred(itemButton.item.pass, 0, prevButton.y, b:width(), prevButton:height())
+		else
+			prevButton:draw()
+			displayCheckbox:draw()
+			nextButton:draw()
+		end
+		win:redraw()
+	end
 	Button.setPressed(itemButton, flag)
 end

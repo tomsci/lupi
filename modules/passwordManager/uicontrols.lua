@@ -118,17 +118,8 @@ function Button:draw()
 	local _ENV = self + _ENV
 	assert(self.bitmap, "No bitmap to draw to!")
 	local contentw, contenth = self:contentSize()
-	local w, h
-	if fixedWidth then
-		w = fixedWidth
-	else
-		w = contentw + hpadding * 2
-	end
-	if fixedHeight then
-		h = fixedHeight
-	else
-		h = contenth + vpadding * 2
-	end
+	local w = fixedWidth or contentw + hpadding * 2
+	local h = fixedHeight or contenth + vpadding * 2
 	local bg = pressed and textColour
 		or (not enabled and disabledBackgroundColour) or backgroundColour
 	bitmap:setColour(bg)
