@@ -7,20 +7,61 @@ local function mkdirForFile(path)
 	build.mkdir(dir)
 end
 
+local function fixupLinksInLine(line, filename, lineNum)
+	local function fixupLink(link)
+		local path, anchor = link:match("^([^#]*)(#.*)$")
+		if not path then
+			path = link
+			anchor = ""
+		end
+		if path:match("^[a-z]+:") then
+			-- It's a real URL, do not touch
+			return link
+		end
+		-- Now check that the file exists (the empty path means a link within
+		-- the current file, so no need to check that)
+		if #path > 0 then
+			local dir = build.removeLastPathComponent(filename)
+			local absPath = build.makeAbsolutePath(path, dir)
+			local f = io.open(absPath, "r")
+			if not f then
+				error(string.format("%s:%d: Link destination not found: '%s'",
+					filename, lineNum, path), 0)
+			end
+			f:close()
+		end
+		-- Finally, fix it up to its html-ified name
+		return path:gsub("%.[a-z]+$", ".html")..anchor
+	end
+	-- Check for out-of-line links of the form [linktext]: URL
+	local text, url = line:match("^%[(.*)%]: (.*)")
+	if text then
+		return string.format("[%s]: %s", text, fixupLink(url))
+	end
+
+	-- Now search for inline links of the form [linktext](linkurl)
+	local function repl(text, url)
+		return string.format("[%s](%s)", text, fixupLink(url))
+	end
+	line = line:gsub("%[([^%]]+)%]%(([^)]+)%)", repl)
+	return line
+end
+
 local function scanFileForInlineDocs(file)
 	local f = assert(io.open(file, "r"))
 	-- Scan file line-by-line for either /** (C style) or --[[** (Lua style)
 	local mdFile, mdf
 	local inDocs = false
 	local docLines = {}
+	local lineNum = 1
 	for l in f:lines() do
 		if inDocs then
 			local lastLine = l:match("^%s*(.*)%*/") or l:match("^%s*(.*)%]%]")
 			if lastLine then
-				table.insert(docLines, lastLine)
+				table.insert(docLines, fixupLinksInLine(lastLine, file, lineNum))
 				inDocs = false
 			else
-				table.insert(docLines, l)
+				table.insert(docLines, fixupLinksInLine(l, file, lineNum))
 			end
 		elseif l == "/**" or l == "--[[**" then
 			-- Found docs
@@ -50,11 +91,26 @@ local function scanFileForInlineDocs(file)
 			mdf:write("\n")
 			docLines = {}
 		end
+		lineNum = lineNum + 1
 	end
 	if mdf then
 		mdf:close()
 	end
 	return mdFile
+end
+
+local function processMarkdownFile(mdFile, outputFile)
+	local f = assert(io.open(mdFile, "r"))
+	mkdirForFile(outputFile)
+	local outf = assert(io.open(outputFile, "w"))
+	local lineNum = 1
+	for line in f:lines() do
+		outf:write(fixupLinksInLine(line, mdFile, lineNum))
+		outf:write("\n")
+		lineNum = lineNum + 1
+	end
+	f:close()
+	outf:close()
 end
 
 local function docForSrc(source)
@@ -108,6 +164,14 @@ local function doBuild()
 		end
 	end
 	p:close()
+
+	-- We now process even md files to check links
+	for i, f in ipairs(mdSources) do
+		local processedFile = build.objForSrc(f, ".md")
+		processMarkdownFile(f, processedFile)
+		origSources[processedFile] = f
+		mdSources[i] = processedFile
+	end
 
 	for _, f in ipairs(inlineFiles) do
 		local mdFile = scanFileForInlineDocs(f)

@@ -8,7 +8,7 @@ to memory. MemBufs have both an address and a length, and unless otherwise
 explicitly stated below, any attempt to access outside of the defined bounds
 will cause an error. They cannot normally be created from Lua code (except for
 when the klua debugger is running), only from native code using
-[mbuf_new()](../userinc/lupi/membuf.html#mbuf_new).
+[mbuf_new()](../userinc/lupi/membuf.h#mbuf_new).
 
 ]]
 
@@ -34,7 +34,7 @@ In every other way, behaves the same as [getByte()](#getByte).
 --native function MemBuf:getInt(offset)
 
 --[[**
-Like [getInt()](#getInt) but returns an [Int64](int64.html).
+Like [getInt()](#getInt) but returns an [Int64](int64.lua).
 ]]
 --native function MemBuf:getInt64(offset)
 

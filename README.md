@@ -65,7 +65,7 @@ Because there is no generic malloc-style allocator in the kernel, all kernel
 memory is tracked at the page (4 KB) or section (1 MB) granularity.
 
 Most kernel-side data structures are kept at a fixed address defined in
-[memmap.h](k/inc/memmap.html). [mmu_init()](k/inc/mmu.html#mmu_init) sets up an
+[memmap.h](k/inc/memmap.h). [mmu_init()](k/inc/mmu.h#mmu_init) sets up an
 initial 1 MB section which is referred to as "section zero". This contains the
 majority of the kernel data structures, including page tables for the other
 sections, kernel and exception stacks, and the `PageAllocator` which tracks
@@ -126,7 +126,7 @@ we don't handle preemption of threads running a privileged mode).
 
 Interrupts are enabled during SVC calls, as well as during normal user thread
 execution. This means certain operations are done using atomic operations or by
-calling [kern_disableInterrupts()](k/scheduler.html#kern_disableInterrupts).
+calling [kern_disableInterrupts()](k/scheduler.c#kern_disableInterrupts).
 Currently due to the lack of working icache, the atomic operations compile down
 to disabling interrupts anyway.
 
@@ -263,15 +263,16 @@ for all documented symbols, the format of which is the symbol name without
 brackets or arguments. Lua member functions have the `.` or `:` replaced with an
 underscore `_`. This means that from the top-level `README.md` (ie the file that
 generated README.html) we can link to the documentation for the function
-RunLoop:queue(obj) located in `modules/runloop.lua` with the following syntax
-`[link text](modules/runloop.html#RunLoop_queue)`, which produces the link:
+`RunLoop:queue(obj)` located in `modules/runloop.lua` with the following syntax
+`[link text]``(modules/runloop.lua#RunLoop_queue)`, which produces the link:
 
-> [link text](modules/runloop.html#RunLoop_queue)
+> [link text](modules/runloop.lua#RunLoop_queue)
 
-Note that you must refer to the .html file in the link location, not the
-original .lua file. Note also that the build performs no fixup of the links - so
-you will need to provide a correct relative path, with the applicable number of
-`../` as necessary.
+Note that link paths are to the source file containing the documentation (ie not
+to the generated `.html` file), relative to the source file containing the link.
+You will need to add the applicable number of `../` as necessary. The
+documentation build target will error if it encounters a broken link in any of
+the documentation.
 
 [markdown]: http://daringfireball.net/projects/markdown/
 
@@ -429,8 +430,8 @@ pattern. The unfortunate side effect of this is that a statement like
 helper functions defined in the misc module - see [roundDownUnsigned][] and
 [lessThanUnsigned][].
 
-[roundDownUnsigned]: modules/misc.html#roundDownUnsigned
-[lessThanUnsigned]: modules/misc.html#lessThanUnsigned
+[roundDownUnsigned]: modules/misc.lua#roundDownUnsigned
+[lessThanUnsigned]: modules/misc.lua#lessThanUnsigned
 
 ### No io or os
 
@@ -463,7 +464,7 @@ There is a new global table with the functions described below:
 *	`lupi.getUptime()`
 
 	Returns the number of milliseconds since boot as an
-	[Int64](modules/int64.html).
+	[Int64](modules/int64.lua).
 
 ### Modules with native C code
 
