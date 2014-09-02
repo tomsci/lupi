@@ -83,20 +83,29 @@ table hr {
 	font-size: x-small ;
 }
 
-/*
-h3 code {
-	font-family: inherit ;
-	font-size: inherit ;
-}
-*/
-
 code {
 	font-size: 12pt ;
+	margin: 0 2px;
+	padding: 0px 5px;
+	border: 1px solid #ddd;
+	background-color: #f8f8f8;
+	border-radius: 3px;
+	font-family: Consolas, "Liberation Mono", Courier, monospace;
+	color: #333;
 }
 
 pre {
 	margin-left: 3em ;
 }
+
+pre code {
+	margin: inherit;
+	padding: inherit;
+	border: inherit;
+	background-color: inherit;
+	border-radius: inherit;
+}
+
 
 p+h1, ul+h1 {
 	font-style: normal ;
