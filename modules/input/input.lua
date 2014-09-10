@@ -13,6 +13,11 @@ local observer
 xmin, xmax = 250, 3800
 ymin, ymax = 230, 3700
 
+-- Cached globals
+tscWidth = nil
+tscHeight = nil
+rotated = false
+
 --[[**
 Function to take the 12-bit raw sample data from the TSC's ADC and convert to
 screen coordinates. Calibration data is currently hard-coded in the

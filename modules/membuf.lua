@@ -17,7 +17,7 @@ Returns the byte of memory located at self:getAddress() + offset, as a number.
 If an `_accessFn` is set, this will be used to read the memory, otherwise this
 function performs the equivalent of:
 
-		return *((char*)address + offset)
+	return *((char*)address + offset)
 
 Note therefore that offset is *zero-based* because it is an offset in memory and
 not a Lua table index. An error will be thrown if the location lies outside of

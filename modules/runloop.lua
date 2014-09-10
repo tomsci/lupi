@@ -1,5 +1,53 @@
 require "misc"
 
+--[[**
+The run loop is responsible for dispatching asynchronous callbacks on the
+calling thread. It's like pretty much every other event loop ever.
+
+Individual tasks are represented by `AsyncRequest` objects which are constructed
+using the `RunLoop:newAsyncRequest()` API (or some higher-level equivalent).
+AsyncRequests must define at a minimum, a `completionFn` which is called when
+the request is completed. It has the signature
+
+	function completionFn(asyncRequestObj, result)
+		-- result will currently always be an integer
+	end
+
+and is called using `pcall` so calling `error()` from within a completion
+function is allowable and will cause a stacktrace to be printed. The second
+member that AsyncRequests may define is a `requestFn`. This is optional, and is
+useful for repeating requests - if defined the run loop will automatically call
+it when you `queue()` the object and again whenever the request completes, so
+you don't have to bother doing it yourself. A request that does not define a
+`requestFn` is responsible for calling `Runloop:queue(obj)` followed by whatever
+the asynchronous function is, every time. It is an error to pass to a function
+an `AsyncRequest` that has not been `queue()d`.
+
+`AsyncRequest` objects are backed by a C `struct AsyncRequest` and may
+therefore be used in C API calls.
+
+Example usage:
+
+	require "runloop"
+
+	function main()
+		-- Create run loop
+		local rl = runloop.new()
+
+		-- Set up some async sources
+		local chreq = rl:newAsyncRequest({
+			completionFn = someFunction,
+			requestFn = lupi.getch_async,
+		})
+
+		-- Add them to the run loop
+		rl:queue(chreq)
+
+		-- Finally, start the run loop
+		rl:run()
+	end
+]]
+
 -- AsyncRequest and RunLoop objects setup by native code
 
 function AsyncRequest:__index(key)
@@ -14,7 +62,8 @@ function AsyncRequest:__newindex(key, value)
 end
 
 --[[**
-Returns the members table for a specific async request
+Returns the members table for a specific async request. This is used internally
+by `AsyncRequest`.
 ]]
 --native function AsyncRequest.getMembers(asyncRequest)
 
@@ -51,6 +100,9 @@ Clears all flags on the request. Called by the runloop just before the request's
 ]]
 --native function AsyncRequest:clearFlags()
 
+--[[**
+Creates a new RunLoop.
+]]
 function RunLoop.new()
 	local rl = {
 		pendingRequests = {},
@@ -65,12 +117,20 @@ end
 new = RunLoop.new
 -- current set by RunLoop.new
 
+--[[**
+Convenience function equivalent to `runloop.current:run()`.
+]]
 function run()
 	assert(current, "No runloop constructed")
 	current:run()
 end
 
+--[[**
+Starts the event loop running. Does not return.
+]]
 function RunLoop:run()
+	assert(#self.pendingRequests > 0,
+		"Starting a run loop with no pending requests makes no sense...")
 	while true do
 		local numReqs = self:waitForAnyRequest()
 		-- Now search the list and complete exactly numReqs requests

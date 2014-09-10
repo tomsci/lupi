@@ -63,22 +63,23 @@ function array(arg)
 	return result
 end
 
+local sizeFail = (0x80000000 < 0)
+
 --[[**
 Rounds `val` down to the nearest multiple of `size`, considering `val` as if it
 were unsigned (ie values with the top bit set are considered large positive).
 ]]
 function roundDownUnsigned(val, size)
-	-- With integer division (which is the only type we have atm) this should do the trick
+	-- With integer division (which is the only type we have atm)
+	-- this should do the trick
 	local n = val / size
 	-- Ugh because Lua is compiled with 32-bit signed ints only, if val is
 	-- greater than 0x8000000, then the above divide which rounds towards zero,
 	-- will actually round *up* when the number is considered as unsigned
 	-- Therefore, subtract one from n in this case
-	if val < 0 then n = n - 1 end
+	if sizeFail and val < 0 then n = n - 1 end
 	return n * size
 end
-
-local sizeFail = (0x80000000 < 0)
 
 -- Make sure compiled constants are being handled same as runtime
 assert((tonumber("80000000", 16) < 0) == (0x80000000 < 0))
@@ -93,11 +94,14 @@ function lessThanUnsigned(a, b)
 	-- Otherwise, the curse of signed 32-bit integers strikes again
 	local abig, bbig = a < 0 and 1 or 0, b < 0 and 1 or 0
 	local aa, bb = bit32.band(a, 0x7FFFFFF), bit32.band(b, 0x7FFFFFF)
-	--if debug then print(string.format("a=%x b=%x abig=%d bbig=%d aa=%x bb=%x", a, b, abig, bbig, aa, bb)) end
+	-- if debug then
+	-- 	print(string.format(
+	-- 		"a=%x b=%x abig=%d bbig=%d aa=%x bb=%x", a, b, abig, bbig, aa, bb))
+	-- end
 	return abig < bbig or aa < bb
 end
 
-local function instanciate(classObj, args)
+local function instantiate(classObj, args)
 	local obj = args or {}
 	setmetatable(obj, classObj)
 	if obj.init then
@@ -107,7 +111,7 @@ local function instanciate(classObj, args)
 end
 
 local classObjMt = {
-	__call = instanciate
+	__call = instantiate
 }
 
 function memberEnv(obj, env)
@@ -169,11 +173,12 @@ end
 
 --[[**
 Support for object-style tables, with class-like semantics. `class` is
-used to define a Class object which may be instanciated by calling it as a
-function. The objects returned by this instanciation support calling into the
+used to define a Class object which may be instantiated by calling it as a
+function. `class()`, `class(nil)`, `class {}`, and `class({})` are all
+equivalent. The objects returned by this instantiation support calling into the
 Class object (via the usual metatable `__index` fallback mechanism). They also
 support a few special operations. The first is the `init()` member function,
-which if defined will be called on every newly-instanciated object.
+which if defined will be called on every newly-instantiated object.
 
 	Button = class {
 		-- Members with default vals go here if desired
@@ -193,7 +198,7 @@ which if defined will be called on every newly-instanciated object.
 	button2 = Button { pos = 2 } -- Will also call init()
 
 The second special member is `_super` which can be used to chain together a
-(single-inheritance) class heirarchy.
+(single-inheritance) class hierarchy.
 
 	Checkbox = class {
 		_super = Button,
@@ -205,7 +210,7 @@ The second special member is `_super` which can be used to chain together a
 
 Note that `_super` should not be accessed as if it were a normal member, because
 it will not behave the way you might expect super to behave when called from the
-member of a class which is not the leaf of the class heirarchy. If you really
+member of a class which is not the leaf of the class hierarchy. If you really
 want a super variable in a member function, you must access it via the
 explicitly-named class object, as in:
 
@@ -230,21 +235,21 @@ on any member access or member function call for the remainder of the function
 (or more accurately, the remainder of the scope of the `_ENV` declaration). You
 may continue to use the `self.member` syntax to disambiguate between a member
 and a similarly-named item in the global scope, or if you want to call a static
-member function (eg `self.someFunctionThatDoesntExpectASelfArg()`).
+member function (eg `self.someFunctionThatDoesntExpectASelfArg()`). Any
+statement of the form `variable = value` will be translated to
+`self.variable = value`, even if `self.variable` is currently nil and
+`_ENV.variable` isn't.
 
 	UnselfishButton = class {
 		_super = Button,
 	}
 
 	function UnselfishButton:draw()
-		-- This slightly odd syntax gives us an env that can access self
-		-- variables directly
-		local _ENV = self + _ENV
-		-- Could also have said
-		-- local _ENV = misc.memberEnv(self, _ENV)
+		-- Sets the _ENV to one that can access self directly
+		local _ENV = self + _ENV    -- or misc.memberEnv(self, _ENV)
 
-		print("Drawing "..text) -- no need to say self.text
-		drawContent() -- No need to say self:drawContent()
+		print("Drawing "..text)     -- no need to say self.text
+		drawContent()               -- no need to say self:drawContent()
 	end
 
 Note that for performance reasons, member functions are only checked the first

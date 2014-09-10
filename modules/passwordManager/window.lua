@@ -2,7 +2,37 @@ require "misc"
 require "bitmap"
 
 --[[**
-`Window` objects handle input and handle laying out controls
+`Window` objects handle input and handle laying out controls.
+
+The convention for controls being rendered by a `Window` is they must support
+the following members and member functions:
+
+* `x`, `y`: Coordinates of top left of control
+* `bitmap`: The bitmap the control will render in to. Must be set before calling
+  `draw()`.
+* `control:draw()`: Called by the window to render the control.
+* `control:width()`: Should return the width of the control, that is the extent
+  it will draw to in `bitmap`. Will only be called once `bitmap` is set.
+* `control:height()`: As per width().
+* `enabled`: if exactly equal to `false`, controls will not be eligible for
+  touch events even if they implement `handleActivated` etc.
+
+Controls may draw into their bitmap whenever they wish, for example when their
+state changes, but should always fully render their contents as a result of a
+call to `draw()`.
+
+In addition, the following optional functions may be implemented by controls
+that can receive input:
+
+* `control:handleActivated()`: Called when a touch even occurs within the
+  control.
+* `control:setPressed(bool)`: Called with argument `true` when a touch down
+  event occurs within the control's bounds. May be called repeatedly if the
+  touch drags in and out of the control. Only called if control also implements
+  `handleActivated()`.
+* `control:handleDragged(x, y)`: Called after a `setPressed(true)` each time
+  a new down touch even occurs. Only called if control also implements
+  `handleActivated()`.
 ]]
 
 local Colour = bitmap.Colour

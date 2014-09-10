@@ -7,7 +7,8 @@ function Bitmap:__tostring()
 end
 
 --[[**
-Create a new bitmap.
+Create a new bitmap. Width and height may be ommitted, in which case the screen
+dimensions are used.
 ]]
 --native function Bitmap.create(width, height)
 
@@ -84,8 +85,8 @@ rendered into this bitmap with the current settings.
 --native function Bitmap:getTextSize(text)
 
 --[[**
-Draw a line in current foreground colour. You may also pass arrays for the two
-points, for example:
+Draw a line in current foreground colour, from (x0, y0) to (x1, y1) inclusive.
+You may also pass arrays for the two points, for example:
 
 	local start = { x0, y0 }
 	local end = { x1, y1 }

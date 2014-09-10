@@ -1,6 +1,6 @@
 #!/usr/bin/env lua
 
---[[
+--[[**
 # markdown.lua -- version 0.32
 
 <http://www.frykholm.se/files/markdown.lua>

@@ -211,6 +211,84 @@ The system requirements for running build.lua are:
 * To support incremental builds, the shell must also support `xargs`,
   `stat -f "%m %N"` and `find -prune`.
 
+### Coding standards
+
+The One True Style.
+
+* Indentation with tabs (at four spaces per tab) except in strings that can be
+  printed at runtime, which should use spaces. LFs only.
+* Aim for 80 character lines unless it looks worse to split it up.
+* Documentation comments should be maximum 80 characters.
+* Documentation comments should start at the margin, ie don't put a `*` at the
+  beginning of every line.
+* Variable and function names should be lowercaseCamelCase.
+* C: constants should normally be declared as macros of the form
+  `#define KMyConstant 1234`.
+* Lua: constant-style variables should be CapitalisedCamelCase.
+* Struct (C) and metatable (Lua) definitions should be CapitalisedCamelCase.
+* C: functions may use a pseudo-namespace-style prefix with an underscore, such
+  as `runloop_checkRequestPending()`.
+* C: basic `#define`s should be `SHOUTY_CASE` or `KSomeConstant` style.
+* C: Function-like and variable-like macros can be in CapitalisedCamelCase if
+  they look better like that.
+* C: block open curly brackets `{` on the same line as starts the block.
+* C: block close curly brackets `}` have same number of indents as the line
+  where the `{` occurred.
+* C: `if` statements must use curly brackets unless statement is on same line.
+* C: C files must be C99 compliant. Therefore member initialisation like
+  `MyStruct s = { .member = 1 };` is encouraged.
+* C: the `*` goes with the type. No I don't care that this is technically
+  incorrect. Don't write misleading code declaring multiple pointers in a single
+  statement and you won't have to care either.
+* C: For "pointer-to-const" the `const` can go before the type. For any other
+  constness (const-pointer-to-nonconst, const-pointer-to-const etc) put it to
+  the right of the thing that is being consted, eg
+  `char const * const doublyConstPtr = NULL;`.
+* Lua: indent one tab for each block or list of table entries.
+* Note: the examples below probably show up with spaces instead of tabs in the
+  HTML, because HTML doesn't handle tabs well.
+
+C example:
+
+	struct Something {
+		int member;
+		char* someOtherMember;
+	};
+
+	void someFn(Something* obj) {
+		const char* somePointer = obj->someOtherMember;
+		if (statement) {
+			doSomething();
+		} else {
+			doSomethingElse();
+		}
+	}
+
+Lua example:
+
+	Something = class {
+		member = 0,
+		someOtherMember = "hello",
+	}
+
+	function someFn()
+		if statement then
+			doSomething()
+		end
+	end
+
+Other constraints:
+
+* C: Global or global static non-const data should only be used extremely
+  sparingly (eg by third-party code like `malloc.c`) because there is only 4KB
+  total allocated for all global data. Global data of any sort is not permitted
+  in the kernel, variables should be stored in the superpage or be accessible
+  via a macro expanding to a fixed address.
+* C: Fully-const global data is permitted.
+* C: Any non-const global data that is used must be uninitialised. Initialised
+  data will probably not even be relocated properly let alone get the value you
+  specify.
+
 ### Documentation
 
 The documentation is built by running `./build/build.lua doc`, and the resulting
