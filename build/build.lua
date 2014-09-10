@@ -56,6 +56,14 @@ luaModules = {
 	"modules/passwordManager/keychain.lua",
 }
 
+local function armOnly() return machineIs("arm") end
+local function kluaPresent() return config.klua end
+local function uluaPresent() return config.ulua end
+local function notFullyHosted() return not config.fullyHosted end
+local function ukluaPresent() return config.klua or config.ulua end
+local function bootMenuOnly() return bootMode > 1 end
+local function modulesPresent() return config.ulua end
+
 mallocSource = {
 	path = "usersrc/malloc.c",
 	user = true,
@@ -71,10 +79,14 @@ mallocSource = {
 		"-DMALLOC_FAILURE_ACTION=", -- no errno
 		"-DUSE_LOCKS=1",
 	},
+	enabled = uluaPresent,
 }
 
--- Note, doesn't include boot.c or mmu_*.c, those are added programmatically
+-- Note, doesn't include boot.c which is added programmatically
 kernelSources = {
+	{ path = "k/cpumode_arm.c", enabled = armOnly },
+	{ path = "k/mmu_arm.c", enabled = armOnly },
+	{ path = "k/scheduler_arm.c", enabled = armOnly },
 	"k/debug.c",
 	"k/atomic.c",
 	"k/pageAllocator.c",
@@ -82,6 +94,18 @@ kernelSources = {
 	"k/scheduler.c",
 	"k/svc.c",
 	"k/kipc.c",
+	{ path = "usersrc/memcpy_arm.S", user = true, enabled = armOnly },
+	{ path = "usersrc/memcmp_arm.S", user = true, enabled = armOnly },
+	{ path = "usersrc/crt.c", user = true, enabled = notFullyHosted },
+	{ path = "usersrc/strtol.c", user = true, enabled = notFullyHosted },
+	{ path = "usersrc/uklua.c", user = true, enabled = ukluaPresent },
+	{ path = "modules/bitmap/bitmap.c", user = true, enabled = modulesPresent },
+	{ path = "usersrc/ulua.c", user = true, enabled = uluaPresent },
+	{ path = "usersrc/uexec.c", user = true, enabled = uluaPresent },
+	mallocSource,
+	{ path = "usersrc/kluaHeap.c", user = true, kluaPresent },
+	{ path = "k/bootMenu.c", enabled = bootMenuOnly },
+	{ path = "testing/atomic.c", enabled = bootMenuOnly },
 }
 
 bootMenuModules = {
@@ -89,11 +113,6 @@ bootMenuModules = {
 	"modules/test/yielda.lua",
 	"modules/test/yieldb.lua",
 	"modules/bitmap/tests.lua",
-}
-
-bootMenuSources = {
-	"k/bootMenu.c",
-	"testing/atomic.c",
 }
 
 if _VERSION ~= "Lua 5.2" then
@@ -293,7 +312,7 @@ function removeExtension(path)
 	return path:match("(.*)%.(.*)") or path
 end
 
-local function machineIs(m)
+function machineIs(m)
 	for _, type in ipairs(config.machine or {}) do
 		if m == type then return true end
 	end
@@ -577,16 +596,13 @@ function build_kernel()
 	}
 	local sources
 	if machineIs("host") then
-		--# We make no assumptions about what host wants to compile by default
+		-- We make no assumptions about what host wants to compile by default
 		sources = {}
 	else
 		sources = {
 			{ path = "k/boot.c", copts = { "-DBOOT_MODE="..bootMode } },
 		}
 		for _, s in ipairs(kernelSources) do table.insert(sources, s) end
-	end
-	if machineIs("arm") then
-		table.insert(sources, 2, "k/mmu_arm.c") -- Put right after boot.c
 	end
 
 	for _, src in ipairs(config.sources or {}) do
@@ -608,7 +624,7 @@ function build_kernel()
 	end
 
 	local includes = {}
-	local includeModules = config.klua or config.ulua
+	local includeModules = modulesPresent()
 	if config.lua then
 		for _,src in ipairs(luaSources) do
 			table.insert(sources, { path = src, user = true })
@@ -624,32 +640,22 @@ function build_kernel()
 				table.insert(sources, { path = src, user = true })
 			end
 		end
-		if machineIs("arm") then
-			table.insert(sources, { path = "usersrc/memcpy_arm.S", user = true })
-			table.insert(sources, { path = "usersrc/memcmp_arm.S", user = true })
-		end
-		if not config.fullyHosted then
-			table.insert(sources, { path = "usersrc/crt.c", user = true })
-			table.insert(sources, { path = "usersrc/strtol.c", user = true })
-			table.insert(sources, { path = "usersrc/uklua.c", user = true })
-			table.insert(sources, { path = "modules/bitmap/bitmap.c", user = true })
-		end
 		if config.ulua then
-			table.insert(sources, mallocSource)
 			if config.klua then
-				--# ulua and klua can both be true when we're using klua as a kernel debugger
-				--# In this config we're primarily ulua (don't define KLUA in the kernel) but
-				--# klua.c still gets compiled
+				-- ulua and klua can both be true when we're using klua as a kernel debugger
+				-- In this config we're primarily ulua (don't define KLUA in the kernel) but
+				-- klua.c still gets compiled
 				table.insert(includes, "-DKLUA_DEBUGGER")
 			end
 		elseif config.klua then
 			table.insert(includes, "-DKLUA")
+			table.insert(includes, "-DLUPI_NO_PROCESS")
 			table.insert(userIncludes, "-DLUACONF_USE_PRINTK")
 		end
+	else
+		table.insert(includes, "-DLUPI_NO_PROCESS")
 	end
 	if config.ulua then
-		table.insert(sources, { path = "usersrc/ulua.c", user = true })
-		table.insert(sources, { path = "usersrc/uexec.c", user = true })
 		-- Add any modules with native code
 		for _, module in ipairs(luaModules) do
 			if type(module) == "table" and module.native then
@@ -670,7 +676,10 @@ function build_kernel()
 		table.insert(includes, qrp(inc))
 	end
 
-	local dirs = calculateUniqueDirsFromSources("bin/obj-"..config.name.."/", sources)
+	local allSources = { }
+	for i,s in ipairs(sources) do allSources[i] = s end
+	if config.entryPoint then table.insert(allSources, config.entryPoint) end
+	local dirs = calculateUniqueDirsFromSources("bin/obj-"..config.name.."/", allSources)
 	for dir, _ in pairs(dirs) do
 		mkdir(dir)
 	end
@@ -688,7 +697,6 @@ function build_kernel()
 	end
 
 	if config.klua then
-		table.insert(sources, { path = "usersrc/kluaHeap.c", user = true })
 		-- klua.c is a special case as it sits between kernel and user code,
 		-- and needs to access bits of both. It is primarily user (has user
 		-- includes) but additionally has access to kernel headers
@@ -714,7 +722,10 @@ function build_kernel()
 		if type(source) == "string" then
 			source = { path = source }
 		end
-		if source.path:match("%.s$") then
+		if type(source.enabled) == "function" and not source.enabled() then
+			-- Skip this file
+		elseif source.path:match("%.s$") and source.copts == nil then
+			-- If it has custom copts, assume it wants to be compilec()'d
 			table.insert(objs, assemble(source.path))
 		else
 			table.insert(objs, compilec(source, source.user and userIncludes or includes))
@@ -724,14 +735,14 @@ function build_kernel()
 	waitForAllJobs()
 
 	if preprocess then
-		--# We're done
+		-- We're done
 		return
 	end
 
 	if config.link then
 		config.link(objs)
 	else
-		--# The proper code - link time!
+		-- The proper code - link time!
 		local outDir = "bin/" .. config.name .. "/"
 		mkdir(outDir)
 		local elf = outDir .. "kernel.elf"
@@ -806,9 +817,6 @@ function addBootMenuSources(sources, modules)
 	for _, m in ipairs(bootMenuModules) do
 		table.insert(modules, m)
 	end
-	for _, s in ipairs(bootMenuSources) do
-		table.insert(sources, s)
-	end
 end
 
 function generateLuaModulesSource()
@@ -850,7 +858,7 @@ function generateLuaModulesSource()
 			local newline = '\n'
 			local escapedNewline = [[\n\]]..newline
 			local escapedQuote = [[\"]]
-			--# Thank goodness backslash isn't a special char in lua gsub!
+			-- Thank goodness backslash isn't a special char in lua gsub!
 			local rep = {
 				[backslash] = doubleBackslash,
 				[newline] = escapedNewline,

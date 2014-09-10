@@ -22,7 +22,7 @@ byte getch();
 
 #if !defined(HOSTED) && !defined(ULUA_PRESENT)
 
-void hang() __attribute__((noreturn));
+NORETURN hang();
 
 void abort() {
 	printk("abort called. Arse!\n");

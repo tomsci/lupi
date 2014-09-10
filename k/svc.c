@@ -60,7 +60,7 @@ int64 handleSvc(int cmd, uintptr arg1, uintptr arg2, uint32 r14_svc) {
 			// of the SVC call all nicely filled in in r0.
 			kabort();
 		}
-#ifndef KLUA
+#ifndef LUPI_NO_PROCESS
 		case KExecCreateProcess: {
 			// TODO sanitise again!
 			const char* name = (const char*)arg1;

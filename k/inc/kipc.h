@@ -2,7 +2,6 @@
 #define KIPC_H
 
 #include <k.h>
-#include <memmap.h>
 #include <mmu.h>
 
 #define MAX_SHARED_PAGES 256

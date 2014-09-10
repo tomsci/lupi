@@ -1,6 +1,10 @@
 #ifndef LUPI_ARM_H
 #define LUPI_ARM_H
 
+#ifndef ARM
+#error "Configured processor is not ARM"
+#endif
+
 // PSR control bits p100
 #define KPsrIrqDisable 0x80 // I
 #define KPsrFiqDisable 0x40 // F

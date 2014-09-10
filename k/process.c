@@ -1,8 +1,9 @@
 #include <k.h>
 #include <pageAllocator.h>
-#include <memmap.h>
 #include <mmu.h>
+#ifdef ARM
 #include <arm.h>
+#endif
 #include <err.h>
 #include <ipc.h>
 #include <module.h>
@@ -15,7 +16,9 @@
 extern uint32 user_ProcessPid;
 extern char user_ProcessName[];
 
+#ifndef LUPI_NO_PROCESS
 static bool thread_init(Process* p, int index);
+#endif
 
 int strlen(const char *s);
 
@@ -24,6 +27,9 @@ static int process_init(Process* p, const char* processName) {
 		return KErrBadName;
 	}
 
+#ifdef LUPI_NO_PROCESS
+	return KErrNotSupported;
+#else
 	// Do an early check that processName is valid - easier on callers if we fail now rather than
 	// once we've actually started executing the process
 	const LuaModule* module = getLuaModule(processName);
@@ -58,7 +64,10 @@ static int process_init(Process* p, const char* processName) {
 	} while (ch);
 
 	return 0;
+#endif // LUPI_NO_PROCESS
 }
+
+#ifndef LUPI_NO_PROCESS
 
 static bool thread_init(Process* p, int index) {
 	Thread* t = &p->threads[index];
@@ -81,7 +90,8 @@ static bool thread_init(Process* p, int index) {
 	return true;
 }
 
-#ifndef KLUA
+#ifdef ARM
+
 static NORETURN NAKED do_process_start(uint32 sp) {
 	ModeSwitch(KPsrModeUsr|KPsrFiqDisable);
 	// We are in user mode now! So no calling printk(), or doing privileged stuff
@@ -92,6 +102,14 @@ static NORETURN NAKED do_process_start(uint32 sp) {
 	asm("B exec_threadExit");
 	// Definitely don't return from here
 }
+
+#else
+
+static NORETURN NAKED do_process_start(uint32 sp) {
+	ASSERT(false);
+}
+
+#endif
 
 NORETURN process_start(Process* p) {
 	switch_process(p);
