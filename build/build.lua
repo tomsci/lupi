@@ -101,7 +101,7 @@ kernelSources = {
 	{ path = "usersrc/uklua.c", user = true, enabled = ukluaPresent },
 	{ path = "modules/bitmap/bitmap.c", user = true, enabled = modulesPresent },
 	{ path = "usersrc/ulua.c", user = true, enabled = uluaPresent },
-	{ path = "usersrc/uexec.c", user = true, enabled = uluaPresent },
+	{ path = "usersrc/uexec.c", user = true },
 	mallocSource,
 	{ path = "usersrc/kluaHeap.c", user = true, kluaPresent },
 	{ path = "k/bootMenu.c", enabled = bootMenuOnly },
@@ -138,8 +138,6 @@ jobs = { n = 0 }
 maxJobs = 1
 debugSchedulingEntryPoint = false
 bootMode = 0
-textSectionStart = 0xF8008000
-bssSectionStart = 0x00007000
 
 local function loadConfig(c)
 	local env = {
@@ -404,8 +402,12 @@ local function loadDependencyCache(cacheFile)
 	-- (currently) captured in dependencyCache.lua nor do we correctly re-check
 	-- timestamps of files generated during this build, so just always unclean
 	-- it for now.
-	if verbose then print("Uncleaning entryPoint.c") end
-	dependencyInfo[objForSrc("modules/entryPoint.c")].clean = false
+	local ep = dependencyInfo[objForSrc("modules/entryPoint.c")]
+	if ep then
+		if verbose then print("Uncleaning entryPoint.c") end
+		ep.clean = false
+	end
+
 	for obj, cmdLine in pairs(moduleTable.commandLines) do
 		dependencyInfo[obj].commandLine = cmdLine
 	end
@@ -755,7 +757,9 @@ function build_kernel()
 			table.insert(args, findLibgcc())
 		end
 		-- The only BSS we have is userside, so we can set to a user address
-		table.insert(args, string.format("-Ttext 0x%X -Tbss 0x%X", textSectionStart, bssSectionStart))
+		assert(config.textSectionStart, "No textSectionStart defined in buildconfig!")
+		assert(config.bssSectionStart, "No bssSectionStart defined in buildconfig!")
+		table.insert(args, string.format("-Ttext 0x%X -Tbss 0x%X", config.textSectionStart, config.bssSectionStart))
 		local cmd = string.format("%s %s -o %s", config.ld, join(args), qrp(elf))
 		local ok = exec(cmd)
 		if not ok then error("Link failed!") end
@@ -769,7 +773,7 @@ function build_kernel()
 		cmd = string.format("%s -a -W %s > %s", config.readelf, qrp(elf), qrp(readElfOutput))
 		ok = exec(cmd)
 		if not ok then error("Readelf failed!") end
-		checkElfSize(readElfOutput, textSectionStart, 0x00040000)
+		checkElfSize(readElfOutput, config.textSectionStart, 0x00040000)
 
 		if includeSymbols then
 			-- Symbols get appended on the end of the kernel image, and the
@@ -789,8 +793,8 @@ function build_kernel()
 			local imageFile = assert(io.open(baseDir..img, "r+b"))
 			local fileSize = imageFile:seek("end")
 			-- Note we're not currently compiling the symbols modules
-			imageFile:seek("set", moduleTableSymbol.addr - textSectionStart+ 4)
-			local symbolsAddress = textSectionStart + fileSize
+			imageFile:seek("set", moduleTableSymbol.addr - config.textSectionStart+ 4)
+			local symbolsAddress = config.textSectionStart + fileSize
 			assert(imageFile:write(le32(symbolsAddress)))
 			assert(imageFile:write(le32(#moduleText)))
 			imageFile:seek("end")
