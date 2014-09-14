@@ -124,25 +124,6 @@ void StuffWeDontDoAnyMore() {
 }
 #endif
 
-void NAKED dummy() {
-	asm("BX lr");
-}
-
-NOINLINE NAKED uint32 GET32(uint32 addr) {
-	asm("ldr r0,[r0]");
-	asm("bx lr");
-}
-
-NOINLINE NAKED void PUT32(uint32 addr, uint32 val) {
-    asm("str r1,[r0]");
-    asm("bx lr");
-}
-
-NOINLINE NAKED byte GET8(uintptr ptr) {
-	asm("LDRB r0, [r0]");
-	asm("BX lr");
-}
-
 void NAKED fiq() {
 	printk("FIQ???\n");
 	asm("SUBS pc, r14, #4");

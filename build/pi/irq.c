@@ -17,8 +17,6 @@
 
 //#define SYSTIMERCLO (KPeripheralBase + 0x3004)
 
-uint32 GET32(uint32 addr);
-void PUT32(uint32 addr, uint32 val);
 bool tick();
 void uart_got_char(byte b);
 void tft_gpioHandleInterrupt();

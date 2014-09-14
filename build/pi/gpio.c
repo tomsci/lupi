@@ -2,8 +2,6 @@
 #include "gpio.h"
 
 void dummy();
-uint32 GET32(uint32 addr);
-void PUT32(uint32 addr, uint32 val);
 #define WAIT_CYCLES(n) for (int i = 0; i < n; i++) { dummy(); }
 
 /**

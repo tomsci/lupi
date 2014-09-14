@@ -94,6 +94,7 @@ kernelSources = {
 	"k/scheduler.c",
 	"k/svc.c",
 	"k/kipc.c",
+	"k/ringbuf.c",
 	{ path = "usersrc/memcpy_arm.S", user = true, enabled = armOnly },
 	{ path = "usersrc/memcmp_arm.S", user = true, enabled = armOnly },
 	{ path = "usersrc/crt.c", user = true, enabled = notFullyHosted },
@@ -776,6 +777,7 @@ function build_kernel()
 		checkElfSize(readElfOutput, config.textSectionStart, 0x00040000)
 
 		if includeSymbols then
+			assert(includeModules, "Cannot include the symbols module unless modules are being built")
 			-- Symbols get appended on the end of the kernel image, and the
 			-- symbols module KLuaModulesTable entry is fixed up to point to it
 			local symParser = require("modules/symbolParser")

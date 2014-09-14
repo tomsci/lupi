@@ -7,9 +7,6 @@
 #include <err.h>
 #include "gpio.h"
 
-uint32 GET32(uint32 addr);
-void PUT32(uint32 addr, uint32 val);
-
 #define WIDTH 240
 #define HEIGHT 320
 
@@ -103,7 +100,7 @@ static void tft_gpioInterruptDfcFn(uintptr arg1, uintptr arg2, uintptr arg3);
 #define begin_tftOperation() spi_beginTransaction(TFT_SPI_CS_POLL, TFT_SPI_CDIV)
 #define begin_tscOperation() spi_beginTransaction(TSC_SPI_CS, TSC_SPI_CDIV)
 
-void tft_init() {
+void screen_init() {
 	TheSuperPage->screenWidth = WIDTH;
 	TheSuperPage->screenHeight = HEIGHT;
 
@@ -291,7 +288,7 @@ void tsc_register_write(uint8 reg, uint8 val) {
 
 #define CrashBorderWidth 5
 #define BlitN(colour, n) for (int i = 0; i < n; i++) { spi_write_poll(colour, 2); }
-void tft_drawCrashed() {
+void screen_drawCrashed() {
 	uint8 red[] = {0xF8, 0x00};
 	int w = TheSuperPage->screenWidth;
 	int h = TheSuperPage->screenHeight;

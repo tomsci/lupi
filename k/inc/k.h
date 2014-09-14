@@ -35,6 +35,8 @@ void dumpRegisters(uint32* regs, uint32 pc, uint32 dataAbortFar);
 NORETURN NAKED assertionFail(int nextras, const char* file, int line, const char* condition, ...);
 NORETURN hang();
 NORETURN reboot();
+uint32 GET32(uint32 addr);
+void PUT32(uint32 addr, uint32 val);
 
 #define NUMVARARGS(...)  (sizeof((int[]){__VA_ARGS__})/sizeof(int))
 #define KRegisterNotSaved 0xA11FADE5
@@ -256,5 +258,10 @@ NOIGNORE int ipc_createServer(uint32 id, Thread* thread);
 NOIGNORE void ipc_processExited(PageAllocator* pa, Process* p);
 void ipc_requestServerMsg(Thread* serverThread, uintptr serverRequest);
 NOIGNORE int ipc_completeRequest(uintptr request, bool toServer);
+
+void ring_push(byte* ring, int size, byte b);
+byte ring_pop(byte* ring, int size);
+bool ring_empty(byte* ring, int size);
+bool ring_full(byte* ring, int size);
 
 #endif // LUPI_K_H
