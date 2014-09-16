@@ -48,6 +48,10 @@ bool gpio_get(int pin) {
 
 //////
 
+void spi_init() {
+	// Nothing needed for PI
+}
+
 /**
 Call at the beginning of communication with a SPI device. This sets chip_select
 and starts the SPI clock running. `cs` must be the appropriate BCM2835 CS
