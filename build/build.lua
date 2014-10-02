@@ -539,29 +539,10 @@ function calculateUniqueDirsFromSources(prefix, sources)
 end
 
 local function findLibgcc()
-	-- First find where gcc is
-	local h = io.popen("which "..config.cc)
+	local h = io.popen(config.cc.." -print-libgcc-file-name")
 	local path = h:read("*l")
 	assert(h:close())
-	-- Then look for libgcc in ../lib/gcc relative to the gcc binary
-	local binDir = removeLastPathComponent(path)
-	local libDir = makeAbsolutePath("../lib/gcc", binDir)
-	-- Search for a libgcc.a in a dir matching one of the entries in
-	-- config.machine. Have to do repeated searches to ensure we pick up the
-	-- most specific one
-	local foundLib
-	for i = #config.machine, 1, -1 do
-		local path = string.format("*/%s/libgcc.a", config.machine[i])
-		local cmd = string.format("find %s -path %s", quote(libDir), quote(path))
-		h = io.popen(cmd)
-		for p in h:lines() do
-			foundLib = p
-		end
-		assert(h:close())
-		if foundLib then break end
-	end
-	assert(foundLib, "Cannot locate libgcc.a")
-	return foundLib
+	return path
 end
 
 local function findModulesTableSymbol(symbols)

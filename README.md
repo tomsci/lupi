@@ -206,8 +206,7 @@ The system requirements for running build.lua are:
 * Lua 5.2 must be on your `PATH`, and must support `io.popen()`.
 * For pi builds, `arm-none-eabi-gcc` must be on your `PATH`, and must support
   gcc 4.x syntax.
-* The default system shell must support `which`, `find -path`, `mkdir -p`,
-  `rm`.
+* The default system shell must support `find -path`, `mkdir -p`, `rm`.
 * To support incremental builds, the shell must also support `xargs`,
   `stat -f "%m %N"` and `find -prune`.
 
