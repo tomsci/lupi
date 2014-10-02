@@ -465,10 +465,14 @@ function compilec(source, extraArgs)
 		source = { path = source }
 	end
 
-	local overallOpts = preprocess and "-E" or source.listing and "-S" or "-c"
+	local overallOpts = preprocess and "-E" or "-c"
+	if listing then
+		-- This saves intermediary .i (preprocessed) and .s (asm) files
+		overallOpts = overallOpts.." -save-temps=obj"
+	end
 	local sysOpts = (source.hosted or config.fullyHosted) and "-ffreestanding" or "-ffreestanding -nostdinc -nostdlib"
 	if listing then
-		--# Debug is required to do interleaved listing
+		-- Debug is required for objdump to do interleaved listing
 		sysOpts = sysOpts .. " -g"
 	end
 	if not preprocess and incremental then
@@ -479,7 +483,7 @@ function compilec(source, extraArgs)
 
 	local extraArgsString = join(extraArgs)
 
-	local suff = preprocess and ".i" or source.listing and ".s" or ".o"
+	local suff = preprocess and ".i" or ".o"
 	local obj = objForSrc(source.path, suff)
 	local output = "-o "..qrp(obj)
 	local opts = join {
@@ -507,7 +511,7 @@ function compilec(source, extraArgs)
 	if not ok then
 		error("Compile failed for "..source.path, 2)
 	end
-	if not preprocess and incremental and not source.listing then
+	if not preprocess and incremental then
 		-- Remember the invocation for later
 		local dep = dependencyInfo[obj]
 		if not dep then
@@ -515,12 +519,6 @@ function compilec(source, extraArgs)
 			dependencyInfo[obj] = dep
 		end
 		dep.commandLine = cmd
-	end
-	if listing and not source.listing and not source.path:match("%.S$") then
-		--# Rerun the fun with listing enabled. Bit of a hack this.
-		--# Don't do it for *.S files, gcc gets confused and dumps them to stdout
-		source.listing = true
-		compilec(source, extraArgs)
 	end
 	return obj
 end

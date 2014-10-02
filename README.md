@@ -158,7 +158,7 @@ Syntax:
 
 	./build/build.lua [options] [<target>] [...]
 		-m | --modules      Precompile Lua modules with luac.
-		-l | --listing      Build and dump kernel listings.
+		-l | --listing      Create assembly listings.
 		-p | --preprocess   Preprocess sources only.
 		-v | --verbose      Verbose mode.
 		-j <number>         Run <number> of compiles in parallel.
