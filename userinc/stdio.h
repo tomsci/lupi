@@ -6,10 +6,12 @@
 #define EOF (-1)
 #define	BUFSIZ 1024
 
+typedef struct FILE FILE;
+
 #define fopen(f, mode) (NULL)
 #define fdopen(fd, mode) (NULL)
 #define freopen(f, mode, stream) (NULL)
-#define fclose(f) (0)
+static inline int fclose(FILE* f) { return 0; }
 #define fflush(f) (EOF)
 #define feof(f) (0)
 #define fread(ptr, size, nitems, stream) (-1)
@@ -19,7 +21,5 @@
 #define fgets(str, size, stream) (NULL)
 #define ferror(f) (1)
 #define stdin (0)
-
-typedef struct FILE FILE;
 
 #endif
