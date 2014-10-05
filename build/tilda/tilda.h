@@ -72,17 +72,6 @@
 #define PERIPH_RXTDIS	(1 << 1)
 #define PERIPH_TXTDIS	(1 << 9)
 
-// doc11057 p194
-#define SYSTICK_CTRL	0xE000E010
-#define SYSTICK_LOAD	0xE000E014
-#define SYSTICK_VAL		0xE000E018
-#define SYSTICK_CALIB	0xE000E01C
-
-#define SYSTICK_CTRL_ENABLE		(1 << 0)
-#define SYSTICK_CTRL_TICKINT	(1 << 1)
-#define SYSTICK_CTRL_CLKSOURCE	(1 << 2)
-#define SYSTICK_CTRL_COUNTFLAG	(1 << 16)
-
 #define LED_TX (1 << 21) // PA21, Output
 #define LED_RX (1 << 30) // PC30, Output
 

@@ -75,9 +75,10 @@ void spi_beginTransaction(uint32 chipSelectRegAddr) {
 	// the SPI port and the slave device on that port. Saves defining a new
 	// enum.
 
-	uint32 spi_n = chipSelectRegAddr & 0xFFFFFF;
-	ASSERT(spi_n == 0, spi_n); // Yeah we don't actually support other than 0
+	uint32 spi_n = chipSelectRegAddr & 0xFFFFFF00;
+	ASSERT(spi_n == SPI0, spi_n); // Yeah we don't actually support other than 0
 	uint32 id = ((chipSelectRegAddr & 0xFF) - SPI_CSR0) >> 2;
+	printk("spi_beginTransaction CS=%d\n", id);
 	uint32 pcs = 0xF ^ (1 << id); // Wow I actually get to use XOR operator!
 	PUT32(SPI0 + SPI_MR, SPI_MR_MSTR | SPI_MR_MODFDIS | (pcs << 16));
 }

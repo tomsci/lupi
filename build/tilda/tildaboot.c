@@ -42,7 +42,7 @@ void NAKED _start() {
 	asm(".word unhandledException"); // 30 = IRQ 14
 	asm(".word unhandledException"); // 31 = IRQ 15
 	asm(".word unhandledException"); // 32 = IRQ 16
-	asm(".word unhandledException"); // 33 = IRQ 17
+	asm(".word usart0Interrupt"); // 33 = IRQ 17 (PERIPHERAL_ID_USART0)
 	asm(".word unhandledException"); // 34 = IRQ 18
 	asm(".word unhandledException"); // 35 = IRQ 19
 	asm(".word unhandledException"); // 36 = IRQ 20
@@ -206,16 +206,30 @@ void parseAtags(uint32* ptr, AtagsParams* params) {
 	params->boardRev = 0xE; // MkE
 }
 
+static void setPeripheralInterruptPriority(int peripheralId, uint8 priority) {
+	ASSERT(priority <= 0xF);
+	uint32 addr = NVIC_IPR0 + peripheralId;
+	PUT32(addr, priority << 4);
+}
+
 void irq_init() {
 	// Enable more specific fault handlers
 	PUT32(SCB_SHCSR, SHCSR_USGFAULTENA | SHCSR_BUSFAULTENA | SHCSR_MEMFAULTENA);
 
-	// uint32 tenMsInSysTicks = GET32(SYSTICK_CALIB) & 0x00FFFFFF;
-	// PUT32(SYSTICK_LOAD, tenMsInSysTicks / 10); // 1ms ticks
-	// Not setting SYSTICK_CTRL_CLKSOURCE means systick is running at MCLK/8
-	// PUT32(SYSTICK_CTRL, SYSTICK_CTRL_ENABLE | SYSTICK_CTRL_TICKINT);
+	// Highest priority - sys tick (0x4).
+	PUT32(SCB_SHPR3, (0x4 << 28) | (0xA << 20));
 
-	// TODO set exception/event priorities
+	// Next highest, peripheral interrupts (0x8)
+	setPeripheralInterruptPriority(PERIPHERAL_ID_USART0, 0x8);
+
+	// Lowest, SVC (also pendSV above) 0xA
+	PUT32(SCB_SHPR2, 0xA << 28);
+
+	uint32 oneMsInSysTicks = GET32(SYSTICK_CALIB) & 0x00FFFFFF;
+	PUT32(SYSTICK_LOAD, oneMsInSysTicks); // 1ms ticks
+	//PUT32(SYSTICK_LOAD, oneMsInSysTicks * 1000); // 1s ticks
+	// Not setting SYSTICK_CTRL_CLKSOURCE means systick is running at MCLK/8
+	PUT32(SYSTICK_CTRL, SYSTICK_CTRL_ENABLE | SYSTICK_CTRL_TICKINT);
 }
 
 // TODO move to scheduler_armv7m.c
@@ -239,8 +253,12 @@ NORETURN scheduleThread(Thread* t) {
 }
 
 void tick() {
-	//TODO
-	printk("Tick!\n");
+	TheSuperPage->uptime++;
+	// TODO Finish this
+}
+
+void usart0Interrupt() {
+	printk("Usart0!");
 }
 
 // TODO move to cpumode_armv7m.c
@@ -254,7 +272,7 @@ void dumpRegisters(uint32* regs, uint32 excReturn) {
 
 	// esf = exception stack frame start
 	uint32* esf;
-	if (excReturn == KExcReturnThreadProcess) {
+	if ((excReturn & 0xF) == KExcReturnThreadProcess) {
 		// Exception frame will be on process stack
 		asm("MRS %0, PSP" : "=r" (esf));
 	} else {
