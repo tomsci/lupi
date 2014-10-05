@@ -97,6 +97,17 @@ bool NAKED atomic_cas8(uint8* ptr, uint8 expectedVal, uint8 newVal) {
 
 #else
 
+#ifdef ARMV7_M
+
+#define INTERRUPTS_OFF(contextReg, tempReg) \
+	asm("MRS " #contextReg ", PRIMASK"); \
+	asm("CPSID i")
+
+#define INTERRUPTS_ON(contextReg) \
+	asm("MSR PRIMASK, " #contextReg)
+
+#else
+
 #include <arm.h>
 
 // Note these definitions don't assume interrupts were actually enabled prior to the call
@@ -107,6 +118,8 @@ bool NAKED atomic_cas8(uint8* ptr, uint8 expectedVal, uint8 newVal) {
 
 #define INTERRUPTS_ON(contextReg) \
 	asm("MSR cpsr_c, " #contextReg)
+
+#endif // ARMV7_M
 
 uint32 NAKED atomic_set(uint32* ptr, uint32 val) {
 	INTERRUPTS_OFF(r2, r3);
@@ -151,6 +164,7 @@ bool NAKED atomic_cas(uint32* ptr, uint32 expectedVal, uint32 newVal) {
 	INTERRUPTS_OFF(r4, r3);
 	asm("LDR r3, [r0]");
 	asm("CMP r3, r1");
+	asm("ITEE NE");
 	asm("MOVNE r0, #0");
 	asm("STREQ r2, [r0]");
 	asm("MOVEQ r0, #1");
@@ -164,8 +178,14 @@ bool NAKED atomic_cas8(uint8* ptr, uint8 expectedVal, uint8 newVal) {
 	INTERRUPTS_OFF(r4, r3);
 	asm("LDRB r3, [r0]");
 	asm("CMP r3, r1");
+	asm("ITEE NE");
 	asm("MOVNE r0, #0");
+#ifdef ARM
+	// Sigh...
 	asm("STREQB r2, [r0]");
+#else
+	asm("STRBEQ r2, [r0]");
+#endif
 	asm("MOVEQ r0, #1");
 	INTERRUPTS_ON(r4);
 	asm("POP {r4}");

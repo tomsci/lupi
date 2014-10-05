@@ -2,9 +2,11 @@
 #include <pageAllocator.h>
 
 void pageAllocator_init(PageAllocator* allocator, int numPages) {
+#ifndef LUPI_NO_SECTION0
 	// We're assuming the page allocator starts on a page boundary, here
 	int allocatorPages = (pageAllocator_size(numPages) + KPageSize - 1) >> KPageShift;
 	zeroPages(allocator, allocatorPages);
+#endif
 	allocator->numPages = numPages;
 }
 
@@ -93,11 +95,11 @@ static void pageAllocator_doFree(PageAllocator* allocator, int idx, int num) {
 }
 
 void pageAllocator_free(PageAllocator* pa, uintptr addr) {
-	int idx = addr >> KPageShift;
+	int idx = (addr - KPhysicalRamBase) >> KPageShift;
 	pageAllocator_doFree(pa, idx, 1);
 }
 
 void pageAllocator_freePages(PageAllocator* pa, uintptr addr, int num) {
-	int idx = addr >> KPageShift;
+	int idx = (addr - KPhysicalRamBase) >> KPageShift;
 	pageAllocator_doFree(pa, idx, num);
 }

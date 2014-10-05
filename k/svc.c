@@ -10,8 +10,13 @@ static int getInt(int arg);
 
 NOINLINE NAKED uint64 readUserInt64(uintptr ptr) {
 	asm("MOV r2, r0");
+#ifdef ARM
 	asm("LDRT r0, [r2], #4"); // I think this is the correct way round...
 	asm("LDRT r1, [r2]");
+#elif defined(ARMV7_M)
+	asm("LDRT r0, [r2]");
+	asm("LDRT r1, [r2, #4]");
+#endif
 	asm("BX lr");
 }
 
@@ -129,6 +134,7 @@ int64 handleSvc(int cmd, uintptr arg1, uintptr arg2, uint32 r14_svc) {
 		case KExecGetUptime:
 			result = TheSuperPage->uptime;
 			break;
+#ifndef LUPI_NO_IPC
 		case KExecNewSharedPage:
 			result = ipc_mapNewSharedPageInCurrentProcess();
 			break;
@@ -147,6 +153,7 @@ int64 handleSvc(int cmd, uintptr arg1, uintptr arg2, uint32 r14_svc) {
 		case KExecCompleteIpcRequest:
 			result = ipc_completeRequest(arg1, arg2);
 			break;
+#endif
 		case KExecSetTimer: {
 			if (TheSuperPage->timerRequest.thread && TheSuperPage->timerRequest.thread != t) {
 				printk("Some other thread %p muscling in on the timer racket\n", t);

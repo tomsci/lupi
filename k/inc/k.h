@@ -5,14 +5,23 @@
 #include <std.h>
 #endif
 
-#define LUPI_VERSION_STRING "LuPi 0.20"
+#ifdef LUPI_NO_SECTION0
+// Needed because it's embedded in the superpage
+#include <pageAllocator.h>
+#endif
+
+#define LUPI_VERSION_STRING "LuPi 0.21"
 
 /*
 Limiting to 256 running processes makes the maths quite nice - the ProcessList fits into a page,
 and Process overhead is a maximum 1MB (sounds big but it's fixed). There's maybe also some
 cacheing tweaks we can do a la Multiple Memory Model on ARM11.
 */
+#ifdef LUPI_SINGLE_PROCESS
+#define MAX_PROCESSES 1
+#else
 #define MAX_PROCESSES 256
+#endif
 
 /*
 Max threads per process
@@ -31,7 +40,6 @@ void zeroPages(void* addr, int num);
 void printk(const char* fmt, ...) ATTRIBUTE_PRINTF(1, 2);
 void hexdump(const char* addr, int len);
 void worddump(const void* addr, int len);
-void dumpRegisters(uint32* regs, uint32 pc, uint32 dataAbortFar);
 NORETURN NAKED assertionFail(int nextras, const char* file, int line, const char* condition, ...);
 NORETURN hang();
 NORETURN reboot();
@@ -197,12 +205,22 @@ typedef struct SuperPage {
 	int inputRequestBufferSize;
 	bool needToSendTouchUp;
 
+#ifdef LUPI_NO_SECTION0
+	// We compact some other data structures into the superpage when we're
+	// on a mem-constrained platform
+	uint8 pageAllocatorMem[pageAllocator_size(KRamSize >> KPageShift)];
+#endif
 } SuperPage;
 
 ASSERT_COMPILE(sizeof(SuperPage) <= KPageSize);
 
 #define TheSuperPage ((SuperPage*)KSuperPageAddress)
+
+#ifdef LUPI_NO_SECTION0
+#define Al ((PageAllocator*)TheSuperPage->pageAllocatorMem)
+#else
 #define Al ((PageAllocator*)KPageAllocatorAddr)
+#endif
 
 #define GetProcess(idx) ((Process*)(KProcessesSection + ((idx) << KPageShift)))
 #define indexForProcess(p) ((int)((((uintptr)(p)) >> KPageShift) & 0xFF))

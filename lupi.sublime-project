@@ -9,7 +9,18 @@
 				"lua ./build/build.lua -j 64 -m -b 2 -s -i pi"
 			],
 			"file_regex": "^(?:bin/luac: |lua: )?([^:]+)(?::([0-9]+)):",
-			"name": "build.lua",
+			"name": "build.lua (pi)",
+			"working_dir": "${project_path}"
+		},
+		{
+			"cmd":
+			[
+				"/usr/local/bin/fish",
+				"-c",
+				"lua ./build/build.lua -j 64 -i tilda"
+			],
+			"file_regex": "^(?:bin/luac: |lua: )?([^:]+)(?::([0-9]+)):",
+			"name": "build.lua (tilda)",
 			"working_dir": "${project_path}"
 		}
 	],

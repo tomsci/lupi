@@ -1,4 +1,6 @@
 #include <k.h>
+
+#ifdef ARM
 #include <arm.h>
 
 static NAKED USED void irqSwitch() {
@@ -89,3 +91,11 @@ void test_atomics() {
 	atomic_inc_interrupted(&var);
 	ASSERT(var == 0x11223346, var);
 }
+
+#else
+
+void test_atomics() {
+	// TODO!
+}
+
+#endif

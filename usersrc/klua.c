@@ -9,7 +9,11 @@
 #include <k.h>
 #include <pageAllocator.h>
 #include <mmu.h>
+#if defined(ARM)
 #include <arm.h>
+#elif defined(ARMV7_M)
+#include <armv7-m.h>
+#endif
 #include <lupi/membuf.h>
 #include <lupi/int64.h>
 
@@ -18,6 +22,11 @@ byte getch();
 
 #ifdef HOSTED
 //#define USE_HOST_MALLOC_FOR_LUA
+#endif
+
+#ifdef KLUA_DEBUGGER
+// Goes with the terratory but not explicitly #define'd
+#define MODULES
 #endif
 
 #if !defined(HOSTED) && !defined(ULUA_PRESENT)
@@ -48,10 +57,16 @@ void* malloc(size_t len) {
 
 #ifndef USE_HOST_MALLOC_FOR_LUA
 
-void klua_heapReset();
+void klua_heapReset(uintptr hptr);
 void* klua_alloc_fn(void *ud, void *ptr, size_t osize, size_t nsize);
 
 #endif // USE_HOST_MALLOC_FOR_LUA
+
+static int panicFn(lua_State* L) {
+	const char* str = lua_tostring(L, lua_gettop(L));
+	printk("\nLua panic: %s\n", str);
+	return 0;
+}
 
 #ifndef ULUA_PRESENT
 
@@ -90,6 +105,7 @@ void interactiveLuaPrompt() {
 	lua_State* L = lua_newstate(klua_alloc_fn, (void*)KLuaHeapBase);
 #endif
 	luaL_openlibs(L);
+	lua_atpanic(L, panicFn);
 	printk("klua> ");
 
 	char line[256];
@@ -129,6 +145,8 @@ void interactiveLuaPrompt() {
 
 #endif // ULUA_PRESENT
 
+#ifdef MODULES
+
 static int putch_lua(lua_State* L) {
 	int ch = lua_tointeger(L, 1);
 	putbyte((byte)ch);
@@ -140,12 +158,9 @@ static int getch_lua(lua_State* L) {
 	return 1;
 }
 
-static int panicFn(lua_State* L) {
-	const char* str = lua_tostring(L, lua_gettop(L));
-	printk("\nLua panic: %s\n", str);
-	return 0;
-}
+#endif
 
+#ifdef KLUA_DEBUGGER
 lua_State* newLuaStateForModule(const char* moduleName, lua_State* L);
 static void WeveCrashedSetupDebuggingStuff(lua_State* L);
 
@@ -163,6 +178,9 @@ static int lua_getObj(lua_State* L) {
 	mbuf_push_object(L, ptr, len);
 	return 1;
 }
+#endif
+
+#ifdef MODULES
 
 static lua_State* initModule(uintptr heapBase, const char* module) {
 #ifdef USE_HOST_MALLOC_FOR_LUA
@@ -240,6 +258,8 @@ static int memBufGetMem(lua_State* L, uintptr ptr, int size) {
 }
 
 #endif // HOSTED
+
+#endif // MODULES
 
 #ifdef KLUA_DEBUGGER
 

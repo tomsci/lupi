@@ -57,12 +57,13 @@ luaModules = {
 }
 
 local function armOnly() return machineIs("arm") end
+local function armv7mOnly() return machineIs("armv7-m") end
 local function kluaPresent() return config.klua end
 local function uluaPresent() return config.ulua end
 local function notFullyHosted() return not config.fullyHosted end
-local function ukluaPresent() return config.klua or config.ulua end
 local function bootMenuOnly() return bootMode > 1 end
 local function modulesPresent() return config.ulua end
+local function ukluaPresent() return modulesPresent() and (config.klua or config.ulua) end
 
 mallocSource = {
 	path = "usersrc/malloc.c",
@@ -82,11 +83,21 @@ mallocSource = {
 	enabled = uluaPresent,
 }
 
+memCmpThumb2 = {
+	path = "usersrc/memcmp_thumb2.s",
+	user = true,
+	-- Gcc doesn't like .s (lowercase) files which require preprocessing
+	-- unless you override the type with -x
+	copts = { "-x assembler-with-cpp" },
+	enabled = armv7mOnly,
+}
+
 -- Note, doesn't include boot.c which is added programmatically
 kernelSources = {
 	{ path = "k/cpumode_arm.c", enabled = armOnly },
 	{ path = "k/mmu_arm.c", enabled = armOnly },
 	{ path = "k/scheduler_arm.c", enabled = armOnly },
+	{ path = "k/mmu_armv7m.c", enabled = armv7mOnly },
 	"k/debug.c",
 	"k/atomic.c",
 	"k/pageAllocator.c",
@@ -97,6 +108,8 @@ kernelSources = {
 	"k/ringbuf.c",
 	{ path = "usersrc/memcpy_arm.S", user = true, enabled = armOnly },
 	{ path = "usersrc/memcmp_arm.S", user = true, enabled = armOnly },
+	{ path = "usersrc/memcpy_thumb2.c", user = true, enabled = armv7mOnly },
+	memCmpThumb2,
 	{ path = "usersrc/crt.c", user = true, enabled = notFullyHosted },
 	{ path = "usersrc/strtol.c", user = true, enabled = notFullyHosted },
 	{ path = "usersrc/uklua.c", user = true, enabled = ukluaPresent },

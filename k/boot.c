@@ -1,7 +1,11 @@
 #include <k.h>
 #include <mmu.h>
 #include <pageAllocator.h>
+#if defined(ARM)
 #include <arm.h>
+#elif defined(ARMV7_M)
+#include <armv7-m.h>
+#endif
 #include <atags.h>
 #include <exec.h>
 #include <klua.h>
@@ -23,6 +27,12 @@ void parseAtags(uint32* atagsPtr, AtagsParams* params);
 int checkBootMode(int bootMode);
 #endif
 
+#ifdef KLUA
+void interactiveLuaPrompt();
+#endif
+
+static void initSuperPage();
+
 void Boot(uintptr atagsPhysAddr) {
 #ifdef ICACHE_IS_STILL_BROKEN
 #ifdef ENABLE_DCACHE
@@ -33,22 +43,41 @@ void Boot(uintptr atagsPhysAddr) {
 
 	printk("\n\n" LUPI_VERSION_STRING);
 
-#ifndef ICACHE_IS_STILL_BROKEN
+#if defined(ARM) && !defined(ICACHE_IS_STILL_BROKEN)
 	// Remove the temporary identity mapping for the first code page
 	printk("Identity mapping going bye-bye\n");
 	*(uint32*)KKernelPdeBase = 0;
 	printk("Identity mapping gone\n");
 #endif
 
+	AtagsParams atags;
+#ifdef LUPI_NO_SECTION0
+	parseAtags((uint32*)atagsPhysAddr, &atags);
+#else
 	// Set up data structures that weren't part of mmu_init()
 	mmu_mapSect0Data(KKernelAtagsBase, atagsPhysAddr & ~0xFFF, 1);
-	AtagsParams atags;
 	parseAtags((uint32*)(KKernelAtagsBase + (atagsPhysAddr & 0xFFF)), &atags);
-	printk(" (RAM = %d MB, board = %X, bootMode = %d)\n", atags.totalRam >> 20, atags.boardRev, BOOT_MODE);
+#endif
+	const char* units;
+	int amt;
+	if (atags.totalRam > 2*1024*1024) {
+		units = "MB";
+		amt = atags.totalRam >> 20;
+	} else {
+		units = "KB";
+		amt = atags.totalRam >> 10;
+	}
+	printk(" (RAM = %d %s, board = %X, bootMode = %d)\n", amt, units, atags.boardRev, BOOT_MODE);
 
+#ifdef LUPI_NO_SECTION0
+	initSuperPage(&atags);
+	pageAllocator_init(Al, KRamSize >> KPageShift);
+	pageAllocator_alloc(Al, KPageSect0, 3); // Handler stack, SuperPage, ProcessPage
+	Process* firstProcess = GetProcess(0);
+#else
 	const int numPagesRam = atags.totalRam >> KPageShift;
 	const uint paSizePages = PAGE_ROUND(pageAllocator_size(numPagesRam)) >> KPageShift;
-	ASSERT_COMPILE(paSizePages<<KPageShift <= KPageAllocatorMaxSize);
+	ASSERT(paSizePages << KPageShift <= KPageAllocatorMaxSize);
 	mmu_mapSect0Data(KPageAllocatorAddr, KPhysPageAllocator, paSizePages);
 	mmu_finishedUpdatingPageTables(); // So the pageAllocator's mem is visible
 
@@ -63,6 +92,8 @@ void Boot(uintptr atagsPhysAddr) {
 
 	mmu_mapPageInSection(Al, (uint32*)KSectionZeroPt, KSuperPageAddress, KPageSect0);
 
+	Process* firstProcess = GetProcess(0);
+
 	// We want a new section for Process pages (this doesn't actually map in the Process pages,
 	// only sets up the kernel PDE for them)
 	mmu_createSection(Al, KProcessesSection);
@@ -74,17 +105,12 @@ void Boot(uintptr atagsPhysAddr) {
 	mmu_mapPageInSection(Al, (uint32*)KSectionZeroPt, KDfcThreadStack, KPageSect0);
 
 	// One Process page for first proc
-	Process* firstProcess = GetProcess(0);
 	mmu_mapPageInSection(Al, (uint32*)KProcessesSection_pt, (uintptr)firstProcess, KPageProcess);
 
 	mmu_finishedUpdatingPageTables();
 
-	zeroPage(TheSuperPage);
-	TheSuperPage->totalRam = atags.totalRam;
-	TheSuperPage->boardRev = atags.boardRev;
-	TheSuperPage->bootMode = checkBootMode(BOOT_MODE);
-	TheSuperPage->dfcThread.state = EBlockedFromSvc;
-	thread_setBlockedReason(&TheSuperPage->dfcThread, EBlockedWaitingForDfcs);
+	initSuperPage(&atags);
+#endif
 
 	irq_init();
 	kern_enableInterrupts();
@@ -95,18 +121,36 @@ void Boot(uintptr atagsPhysAddr) {
 #endif
 
 	// Start first process (so exciting!)
-	SuperPage* s = TheSuperPage;
-	s->nextPid = 1;
-	s->numValidProcessPages = 1;
-	s->svcPsrMode = KPsrModeSvc | KPsrFiqDisable /*| KPsrIrqDisable*/;
-
 	firstProcess->pid = 0;
 	firstProcess->pdePhysicalAddress = 0;
 
+#if defined(KLUA)
+	interactiveLuaPrompt();
+#elif defined(LUPI_NO_PROCESS)
+	printk("Nothing to do...\n");
+	hang();
+#else
 	Process* p;
 	int err = process_new("init", &p);
 	ASSERT(p == firstProcess && err == 0, err, (uint32)p);
 	process_start(firstProcess);
+#endif // LUPI_NO_PROCESS
+}
+
+static void initSuperPage(const AtagsParams* atags) {
+	zeroPage(TheSuperPage);
+	SuperPage* s = TheSuperPage;
+	s->totalRam = atags->totalRam;
+	s->boardRev = atags->boardRev;
+	s->dfcThread.state = EBlockedFromSvc;
+	thread_setBlockedReason(&s->dfcThread, EBlockedWaitingForDfcs);
+	s->bootMode = checkBootMode(BOOT_MODE);
+	s->nextPid = 1;
+	s->numValidProcessPages = 1;
+#ifdef ARM
+	s->svcPsrMode = KPsrModeSvc | KPsrFiqDisable /*| KPsrIrqDisable*/;
+#endif
+
 }
 
 //TODO move this stuff
@@ -203,6 +247,7 @@ void NAKED assertionFail(int nextras, const char* file, int line, const char* co
 	asm("POP {r0, r14}"); // r0 = nextras
 	// We can't handle more than 4 extras. Any more get left on the stack
 	asm("CMP r0, #4");
+	asm("IT GT");
 	asm("MOVGT r0, #4");
 
 	// On stack now are zero or more extra args (as given by nextras)
@@ -217,6 +262,7 @@ void NAKED assertionFail(int nextras, const char* file, int line, const char* co
 	// r3 = scratch
 	asm(".saveReg:");
 	asm("CMP r0, #0");
+	asm("ITTTT NE");
 	asm("LDRNE r3, [sp], #4");
 	asm("STRNE r3, [r1], #4");
 	asm("SUBNE r0, #1");
@@ -226,12 +272,21 @@ void NAKED assertionFail(int nextras, const char* file, int line, const char* co
 	asm("LDR r3, .notSavedValue");
 	asm(".notSaved:");
 	asm("CMP r2, #0");
+	asm("ITTT NE");
 	asm("STRNE r3, [r1], #4");
 	asm("SUBNE r2, #1");
 	asm("BNE .notSaved");
 
+#ifdef ARMV7_M
+	asm("STMIA r1!, {r4-r12}");
+	asm("STR r13, [r1], #4");
+	asm("STR r14, [r1], #4");
+#else
 	asm("STMIA r1!, {r4-r14}");
+#endif
 	asm("STR r3, [r1], #4"); // For r15, which is not saved
+
+#ifdef ARM
 	// Finally, save CPSR
 	asm("MRS r3, cpsr");
 	asm("STR r3, [r1], #4");
@@ -242,10 +297,13 @@ void NAKED assertionFail(int nextras, const char* file, int line, const char* co
 	// marvin expects us to be in abort mode
 	ModeSwitch(KPsrModeAbort | KPsrIrqDisable | KPsrFiqDisable);
 	asm("LDR r13, .abortStackBase");
+#endif
 
 	asm("B iThinkYouOughtToKnowImFeelingVeryDepressed");
 	LABEL_WORD(.notSavedValue, KRegisterNotSaved);
+#ifdef ARM
 	LABEL_WORD(.abortStackBase, KAbortStackBase + KPageSize);
+#endif
 }
 
 // void dumpATAGS() {

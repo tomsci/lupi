@@ -175,6 +175,7 @@ int process_new(const char* name, Process** resultProcess) {
 			break;
 		}
 	}
+#if MAX_PROCESSES > 1
 	if (!p && s->numValidProcessPages < MAX_PROCESSES) {
 		// Map ourselves a new one
 		Process* newp = GetProcess(s->numValidProcessPages);
@@ -185,7 +186,10 @@ int process_new(const char* name, Process** resultProcess) {
 			p->pdePhysicalAddress = 0;
 			s->numValidProcessPages++;
 		}
-	} else if (!p) {
+	}
+#endif
+
+	if (!p) {
 		return KErrProcessLimit;
 	}
 
@@ -208,7 +212,9 @@ static void freeThreadStacks(Thread* t) {
 }
 
 static void process_exit(Process* p, int reason) {
+#ifndef LUPI_NO_IPC
 	ipc_processExited(Al, p);
+#endif
 
 	// Now reclaim the heap
 	mmu_unmapPagesInProcess(Al, p, KUserBss, 1 + ((p->heapLimit - KUserHeapBase) >> KPageShift));

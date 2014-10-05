@@ -1,6 +1,10 @@
+#ifndef LUPI_NO_IPC
+
 #include <kipc.h>
 #include <err.h>
 #include <pageAllocator.h>
+
+#ifndef LUPI_SINGLE_PROCESS
 
 uintptr ipc_mapNewSharedPageInCurrentProcess() {
 	// First find an unused page
@@ -29,6 +33,26 @@ uintptr ipc_mapNewSharedPageInCurrentProcess() {
 	return userPtr;
 }
 
+static int sharedPageIsValid(uintptr sharedPage, bool toServer) {
+	// Check sharedPage does in fact belong to the current process
+	// Or that we are the server it's associated with
+	int sharedPageIdx = indexForUserSharedPage(sharedPage);
+	Process* cp = TheSuperPage->currentProcess;
+	if (toServer) {
+		if (ownerForSharedPage(sharedPageIdx) != cp) {
+			return KErrBadHandle;
+		}
+	} else {
+		Server* s = serverForSharedPage(sharedPageIdx);
+		if (!s || processForServer(s) != cp) {
+			return KErrBadHandle;
+		}
+	}
+	return sharedPageIdx;
+}
+
+#endif
+
 // returns server idx or err
 int ipc_createServer(uint32 id, Thread* thread) {
 	// Find a free Server slot
@@ -50,24 +74,6 @@ int ipc_createServer(uint32 id, Thread* thread) {
 
 	// Done.
 	return 0;
-}
-
-static int sharedPageIsValid(uintptr sharedPage, bool toServer) {
-	// Check sharedPage does in fact belong to the current process
-	// Or that we are the server it's associated with
-	int sharedPageIdx = indexForUserSharedPage(sharedPage);
-	Process* cp = TheSuperPage->currentProcess;
-	if (toServer) {
-		if (ownerForSharedPage(sharedPageIdx) != cp) {
-			return KErrBadHandle;
-		}
-	} else {
-		Server* s = serverForSharedPage(sharedPageIdx);
-		if (!s || processForServer(s) != cp) {
-			return KErrBadHandle;
-		}
-	}
-	return sharedPageIdx;
 }
 
 void ipc_requestServerMsg(Thread* serverThread, uintptr serverRequest) {
@@ -196,3 +202,5 @@ int ipc_completeRequest(uintptr request, bool toServer) {
 	thread_requestSignal(&req);
 	return 0;
 }
+
+#endif

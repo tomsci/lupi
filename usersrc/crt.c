@@ -20,7 +20,7 @@ void* memset(void* ptr, byte val, int len) {
 #include <string.h>
 
 // Huge hack of a pow fn, we only handle positive integers
-double pow(double a, double b) {
+int pow(int a, int b) {
 	int result = 1;
 	int aa = (int)a;
 	int bb = (int)b;
@@ -75,6 +75,7 @@ const char* strpbrk(const char *s1, const char *s2) {
 }
 
 #ifdef ARM
+
 int NAKED _setjmp(jmp_buf env) {
 	asm("ldr r1, .jmpbufMagicVal");
 	asm("str r1, [r0], #4");
@@ -93,6 +94,33 @@ void NAKED _longjmp(jmp_buf env, int val) {
 	asm("mov r0, r1");
 	asm("bx lr");
 }
+
+#elif defined(THUMB2)
+
+int NAKED _setjmp(jmp_buf env) {
+	asm("ldr r1, .jmpbufMagicVal");
+	asm("str r1, [r0], #4");
+	// We don't do floating point (yet)
+	asm("stmia r0, {r4-r12}");
+	asm("str r13, [r0], #4");
+	asm("str r14, [r0], #4");
+	asm("mov r0, #0");
+	asm("bx lr");
+
+	LABEL_WORD(.jmpbufMagicVal, 0x5CAFF01D);
+}
+
+void NAKED _longjmp(jmp_buf env, int val) {
+	//TODO check jmpbufMagicVal
+	asm("add r0, #4");
+	asm("ldmia r0, {r4-r12}");
+	asm("ldr r2, [r0], #4");
+	asm("mov r13, r2");
+	asm("ldr r14, [r0], #4");
+	asm("mov r0, r1");
+	asm("bx lr");
+}
+
 #endif
 
 static int uintToStr(uint val, char* restrict str, int width, char filler) {
