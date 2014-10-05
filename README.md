@@ -168,6 +168,7 @@ Syntax:
 	Supported targets:
 		clean	Removes all built products.
 		pi		Build for the Raspberry Pi.
+		tilda	Build for the TiLDA MkE 0.33
 		hosted	Build a subset of the code as a native executable (unsupported,
 				often in a state of brokenness).
 		luac	Builds the luac compiler, must have been run to use the
@@ -234,6 +235,8 @@ The One True Style.
 * C: block close curly brackets `}` have same number of indents as the line
   where the `{` occurred.
 * C: `if` statements must use curly brackets unless statement is on same line.
+* C: `while` statements must use curly brackets. Always. Don't make me come
+  down there.
 * C: C files must be C99 compliant. Therefore member initialisation like
   `MyStruct s = { .member = 1 };` is encouraged.
 * C: the `*` goes with the type. No I don't care that this is technically
@@ -475,10 +478,12 @@ variable `user_ProcessName`, which was configured earlier by the kernel code in
 
 The next step is to create the Lua runtime, which is done by
 `newLuaStateForModule()`. This function calls `luaL_newstate()` and then
-customises the environment for our needs. We include Doug Lea's malloc
+customises the environment for our needs. We include Doug Lea's [malloc][]
 (dlmalloc) which is what Lua uses to allocate memory. dlmalloc is configured in
 its most basic mode using `sbrk` to allocate more physical memory. This gives a
 non-sparse heap growing upwards from `KUserHeapBase` (`0x8000`).
+
+[malloc]: http://g.oswego.edu/dl/html/malloc.html
 
 Once the lua environment is set up, the `main()` function is called and the
 process is fully started.
