@@ -34,8 +34,15 @@ typedef _Bool bool;
 #define NOIGNORE						__attribute__((warn_unused_result))
 
 #define ASSERT_COMPILE(x) extern int __compiler_assert(int[(x)?1:-1])
-#define ASSERTL(cond, args...) ((cond) || luaL_error(L, "Assertion failure: " #cond args))
-#define PRINTL(args...) do { lua_getglobal(L, "print"); lua_pushfstring(L, args); lua_call(L, 1, 0); } while(0)
+#define ASSERTL(cond, args...) \
+	do { if (!(cond)) { luaL_error(L, "Assertion failure: " #cond args); } } while(0)
+
+#define PRINTL(args...) \
+	do { \
+		lua_getglobal(L, "print"); \
+		lua_pushfstring(L, args); \
+		lua_call(L, 1, 0); \
+	} while(0)
 #define FOURCC(str) ((str[0]<<24)|(str[1]<<16)|(str[2]<<8)|(str[3]))
 
 typedef __builtin_va_list va_list;
