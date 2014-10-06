@@ -100,10 +100,9 @@ void NAKED _longjmp(jmp_buf env, int val) {
 int NAKED _setjmp(jmp_buf env) {
 	asm("ldr r1, .jmpbufMagicVal");
 	asm("str r1, [r0], #4");
-	// We don't do floating point (yet)
-	asm("stmia r0, {r4-r12}");
-	asm("str r13, [r0], #4");
-	asm("str r14, [r0], #4");
+	asm("mov r2, r13");
+	asm("mov r3, r14");
+	asm("stmia r0, {r2-r12}");
 	asm("mov r0, #0");
 	asm("bx lr");
 
@@ -113,10 +112,9 @@ int NAKED _setjmp(jmp_buf env) {
 void NAKED _longjmp(jmp_buf env, int val) {
 	//TODO check jmpbufMagicVal
 	asm("add r0, #4");
-	asm("ldmia r0, {r4-r12}");
-	asm("ldr r2, [r0], #4");
+	asm("ldmia r0, {r2-r12}");
 	asm("mov r13, r2");
-	asm("ldr r14, [r0], #4");
+	asm("mov r14, r3");
 	asm("mov r0, r1");
 	asm("bx lr");
 }
