@@ -3,7 +3,8 @@
 
 #include <std.h>
 
-void klua_runIntepreterModule(uintptr heapPtr);
+void klua_runInterpreter();
+void klua_runInterpreterModule();
 void switchToKluaDebuggerMode(uintptr sp);
 
 #endif

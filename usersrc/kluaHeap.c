@@ -1,6 +1,8 @@
 #include <stddef.h>
 #include <string.h>
 
+//void printk(const char* fmt, ...) ATTRIBUTE_PRINTF(1, 2); // DEBUG
+
 // Dumbest allocator in the world. Doesn't reclaim memory, just returns sucessively growing
 // pointers. We shall see if it's good enough....
 

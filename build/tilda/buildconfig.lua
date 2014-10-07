@@ -19,6 +19,7 @@ config = {
 	extraStdInc = "build/tilda/stdinc",
 
 	klua = true,
+	kluaIncludesModules = true,
 	ulua = false,
 
 	textSectionStart = 0x00080000, -- Must match KKernelCodeBase

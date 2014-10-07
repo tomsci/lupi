@@ -24,11 +24,6 @@ byte getch();
 //#define USE_HOST_MALLOC_FOR_LUA
 #endif
 
-#ifdef KLUA_DEBUGGER
-// Goes with the terratory but not explicitly #define'd
-#define MODULES
-#endif
-
 #if !defined(HOSTED) && !defined(ULUA_PRESENT)
 
 NORETURN hang();
@@ -145,7 +140,7 @@ void interactiveLuaPrompt() {
 
 #endif // ULUA_PRESENT
 
-#ifdef MODULES
+#ifdef KLUA_MODULES
 
 static int putch_lua(lua_State* L) {
 	int ch = lua_tointeger(L, 1);
@@ -158,10 +153,11 @@ static int getch_lua(lua_State* L) {
 	return 1;
 }
 
-#endif
+lua_State* newLuaStateForModule(const char* moduleName, lua_State* L);
+
+#endif // KLUA_MODULES
 
 #ifdef KLUA_DEBUGGER
-lua_State* newLuaStateForModule(const char* moduleName, lua_State* L);
 static void WeveCrashedSetupDebuggingStuff(lua_State* L);
 
 static int lua_newMemBuf(lua_State* L) {
@@ -180,7 +176,7 @@ static int lua_getObj(lua_State* L) {
 }
 #endif
 
-#ifdef MODULES
+#ifdef KLUA_MODULES
 
 static lua_State* initModule(uintptr heapBase, const char* module) {
 #ifdef USE_HOST_MALLOC_FOR_LUA
@@ -203,8 +199,8 @@ static lua_State* initModule(uintptr heapBase, const char* module) {
 }
 
 // A variant of interactiveLuaPrompt that lets us write the actual intepreter loop as a lua module
-void klua_runIntepreterModule(uintptr heapBase) {
-	lua_State* L = initModule(heapBase, "interpreter");
+void klua_runInterpreterModule() {
+	lua_State* L = initModule(KLuaHeapBase, "interpreter");
 	lua_pushliteral(L, "klua> ");
 	lua_setfield(L, -2, "prompt");
 
@@ -234,7 +230,7 @@ int klua_dump_reader(const char* name, lua_Reader reader, void* readData, lua_Wr
 }
 */
 
-#ifndef HOSTED
+#if !defined(HOSTED) && defined(KLUA_DEBUGGER)
 
 extern uint32 GET32(uint32 ptr);
 extern byte GET8(uint32 ptr);
@@ -257,9 +253,19 @@ static int memBufGetMem(lua_State* L, uintptr ptr, int size) {
 	return result;
 }
 
-#endif // HOSTED
+#endif // !defined(HOSTED) && defined(KLUA_DEBUGGER)
 
-#endif // MODULES
+void klua_runInterpreter() {
+	klua_runInterpreterModule();
+}
+
+#else // KLUA_MODULES
+
+void klua_runInterpreter() {
+	interactiveLuaPrompt();
+}
+
+#endif // KLUA_MODULES
 
 #ifdef KLUA_DEBUGGER
 

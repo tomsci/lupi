@@ -5,10 +5,10 @@
 #include <string.h>
 #include <errno.h>
 #include <k.h>
+#include <klua.h>
 
 void goDoLuaStuff();
 void interactiveLuaPrompt();
-void klua_runIntepreterModule(uintptr heapBase);
 void runUserTests();
 
 void* kernelMemory;
@@ -116,7 +116,7 @@ int main(int argc, char* argv[]) {
 
 	//goDoLuaStuff();
 	//interactiveLuaPrompt();
-	klua_runIntepreterModule(KLuaHeapBase);
+	klua_runInterpreterModule();
 
 	return 0;
 }

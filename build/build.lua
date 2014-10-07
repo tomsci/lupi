@@ -62,7 +62,7 @@ local function kluaPresent() return config.klua end
 local function uluaPresent() return config.ulua end
 local function notFullyHosted() return not config.fullyHosted end
 local function bootMenuOnly() return bootMode > 1 end
-local function modulesPresent() return config.ulua end
+local function modulesPresent() return config.ulua or (config.klua and config.kluaIncludesModules) end
 local function ukluaPresent() return modulesPresent() and (config.klua or config.ulua) end
 
 mallocSource = {
@@ -650,7 +650,7 @@ function build_kernel()
 	else
 		table.insert(includes, "-DLUPI_NO_PROCESS")
 	end
-	if config.ulua then
+	if includeModules then
 		-- Add any modules with native code
 		for _, module in ipairs(luaModules) do
 			if type(module) == "table" and module.native then
@@ -699,6 +699,9 @@ function build_kernel()
 		if config.ulua then
 			table.insert(kluaCopts, "-DULUA_PRESENT")
 			table.insert(kluaCopts, "-DKLUA_DEBUGGER")
+		end
+		if includeModules then
+			table.insert(kluaCopts, "-DKLUA_MODULES")
 		end
 		if config.include then
 			table.insert(kluaCopts, "-include "..qrp("build/"..config.name.."/"..config.include))

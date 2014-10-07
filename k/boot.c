@@ -125,7 +125,7 @@ void Boot(uintptr atagsPhysAddr) {
 	firstProcess->pdePhysicalAddress = 0;
 
 #if defined(KLUA)
-	interactiveLuaPrompt();
+	klua_runInterpreter();
 #elif defined(LUPI_NO_PROCESS)
 	printk("Nothing to do...\n");
 	hang();
@@ -220,7 +220,7 @@ void iThinkYouOughtToKnowImFeelingVeryDepressed() {
 		TheSuperPage->crashFar = far;
 		// We use a custom stack at the start of the debugger heap section
 		switchToKluaDebuggerMode(KLuaDebuggerStackBase + 0x1000);
-		klua_runIntepreterModule(KLuaDebuggerHeap);
+		klua_runInterpreterModule();
 	}
 }
 
