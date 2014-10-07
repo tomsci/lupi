@@ -135,3 +135,73 @@ bool tick() {
 	}
 	return false;
 }
+
+static void dfcs_run(int numDfcsPending, Dfc* dfcs);
+
+/**
+Call from end of IRQ handler to check for any pending DFCs to run. Runs in IRQ
+mode, interrupts disabled. Returns true if a reschedule is required due to there
+being any pending DFCs (and if so, will mark the dfcThread as ready to run)
+*/
+bool irq_checkDfcs() {
+	Thread* dfcThread = &TheSuperPage->dfcThread;
+
+	if (dfcThread->state == EReady) {
+		// Then DFC thread is already scheduled or running, nothing we can do
+		return false;
+	}
+	uint32 numDfcsPending = atomic_set(&TheSuperPage->numDfcsPending, 0);
+	if (numDfcsPending == 0) return false;
+	// If we have some DFCs, ready the DFC thread
+	thread_setState(dfcThread, EReady);
+	// Copy DFCs into dfcThread's stack so that we don't have to access the
+	// SuperPage's copy with interrupts enabled.
+	uintptr sp = KDfcThreadStack + KPageSize - sizeof(TheSuperPage->dfcs);
+	memcpy((void*)sp, TheSuperPage->dfcs, sizeof(TheSuperPage->dfcs));
+	// And massage the register set so that scheduleThread() will do the right thing
+	dfcThread->savedRegisters[0] = numDfcsPending;
+	dfcThread->savedRegisters[1] = sp;
+	dfcThread->savedRegisters[13] = sp;
+	// See doScheduleKernThread for why we set reg[14] not reg[15]
+	dfcThread->savedRegisters[14] = (uintptr)&dfcs_run;
+	uint32 psr;
+	GetCpsr(psr);
+	psr = (psr & ~0xFF) | KPsrModeSvc | KPsrFiqDisable;
+	dfcThread->savedRegisters[16] = psr;
+	return true;
+}
+
+void dfc_queue(DfcFn fn, uintptr arg1, uintptr arg2, uintptr arg3) {
+	uint32 n = atomic_inc(&TheSuperPage->numDfcsPending);
+	ASSERT(n <= MAX_DFCS);
+	Dfc* dfc = &TheSuperPage->dfcs[n-1];
+	dfc->fn = fn;
+	dfc->args[0] = arg1;
+	dfc->args[1] = arg2;
+	dfc->args[2] = arg3;
+
+	/*
+	if (n == 1 && (getCpsr() & KPsrModeMask) == KPsrModeSvc) {
+		// TODO ready the DFC thread
+	}
+	*/
+}
+
+// Stack alignment must be 16 bytes and we push one of these directly onto the
+// stack
+ASSERT_COMPILE((sizeof(TheSuperPage->dfcs) & 0xF) == 0);
+
+// Run as if it were a normal (albeit kernel-only) thread.
+static void dfcs_run(int numDfcsPending, Dfc* dfcs) {
+	for (int i = 0; i < numDfcsPending; i++) {
+		Dfc* dfc = &dfcs[i];
+		dfc->fn(dfc->args[0], dfc->args[1], dfc->args[2]);
+	}
+	Thread* me = TheSuperPage->currentThread;
+	ASSERT(me == &TheSuperPage->dfcThread);
+	// Have to do disable before messing with the current thread's state
+	kern_disableInterrupts();
+	thread_setState(me, EBlockedFromSvc);
+	thread_setBlockedReason(me, EBlockedWaitingForDfcs);
+	reschedule();
+}

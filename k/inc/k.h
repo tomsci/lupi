@@ -195,9 +195,14 @@ typedef struct SuperPage {
 	byte uartBuf[66];
 	Server servers[MAX_SERVERS];
 	bool rescheduleNeededOnSvcExit;
+#ifdef ARM
 	byte svcPsrMode; // settable so we don't accidentally enable interrupts when crashed
+#endif
 	uint32 numDfcsPending;
+#ifdef ARM
+	// DFCs implemented using PendSV rather than a Thread in ARMv7-M
 	Thread dfcThread;
+#endif
 	Dfc dfcs[MAX_DFCS];
 	Driver drivers[MAX_DRIVERS];
 	KAsyncRequest inputRequest;
