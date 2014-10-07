@@ -19,6 +19,7 @@
 #define NVIC_IPR7				0xE000E41C
 
 // p169
+#define SCB_ICSR				0xE000ED04 // Interrupt & Control State Register
 #define SCB_VTOR				0xE000ED08 // Vector table offset register
 #define SCB_SHPR1				0xE000ED18 // System handler priority registers
 #define SCB_SHPR2				0xE000ED1C // (p181)
@@ -29,10 +30,15 @@
 #define SCB_MMAR				0xE000ED34 // Mem Management Fault Address Reg
 #define SCB_BFAR				0xE000ED38 // Bus Fault Address Register
 
+// p172
+#define ICSR_PENDSVCLR			(1 << 27)
+#define ICSR_PENDSVSET			(1 << 28)
+
 // p183
 #define SHCSR_USGFAULTENA		(1 << 18)
 #define SHCSR_BUSFAULTENA		(1 << 17)
 #define SHCSR_MEMFAULTENA		(1 << 16)
+#define SHCSR_SVCALLACT			(1 << 7)
 
 // pp186-189
 #define CFSR_BFARVALID			(1 << 15)
@@ -70,5 +76,7 @@ enum ExceptionStackFrame {
 #define SYSTICK_CTRL_TICKINT	(1 << 1)
 #define SYSTICK_CTRL_CLKSOURCE	(1 << 2)
 #define SYSTICK_CTRL_COUNTFLAG	(1 << 16)
+
+#define SVCallActive()	(GET32(SCB_SHCSR) & SHCSR_SVCALLACT)
 
 #endif

@@ -23,8 +23,8 @@ void NAKED _start() {
 	asm(".word svc"); // 11 = SVC
 	asm(".word unhandledException"); // 12 = Reserved
 	asm(".word 0"); // 13 = Reserved
-	asm(".word unhandledException"); // 14 = PendSV (TODO)
-	asm(".word tick"); // 15 = Sys tick
+	asm(".word pendSV"); // 14 = PendSV (TODO)
+	asm(".word sysTick"); // 15 = Sys tick
 	asm(".word unhandledException"); // 16 = IRQ 0
 	asm(".word unhandledException"); // 17 = IRQ 1
 	asm(".word unhandledException"); // 18 = IRQ 2
@@ -56,9 +56,6 @@ void NAKED _start() {
 	asm(".word unhandledException"); // 44 = IRQ 28
 	asm(".word unhandledException"); // 45 = IRQ 29
 }
-
-void uart_init();
-void putbyte(byte c);
 
 #define CKGR_MOR	0x400E0620 // Main oscillator register
 #define CKGR_PLLAR	0x400E0628 // PMC Clock Generator PLLA Register
@@ -96,6 +93,7 @@ void putbyte(byte c);
 void dummy();
 #define WaitForPMC(bit) do { dummy(); } while (!(GET32(PMC_SR) & (bit)))
 
+// For boot debugging
 #define SET_TX() PUT32(PIOA + PIO_SODR, LED_TX)
 #define CLR_TX() PUT32(PIOA + PIO_CODR, LED_TX)
 #define SET_RX() PUT32(PIOC + PIO_SODR, LED_RX)
@@ -150,33 +148,27 @@ void tildaBoot() {
 	// Disable watchdog
 	PUT32(WDT_MR, 1 << 15); // WDDIS
 
-	// Enable parallel write for all PIO registers
-	// PUT32(PIOA + PIO_OWER, 0xFFFFFFFF);
-	// PUT32(PIOB + PIO_OWER, 0xFFFFFFFF);
-	// PUT32(PIOC + PIO_OWER, 0xFFFFFFFF);
-	// PUT32(PIOD + PIO_OWER, 0xFFFFFFFF);
-
 	// Set VTOR so we can unmap address zero
 	PUT32(SCB_VTOR, KKernelCodeBase);
 
 	Boot(0);
 }
 
-static NOINLINE USED void p() {
-	printk("unhandledException!\n");
-}
+// static NOINLINE USED void p() {
+// 	printk("unhandledException!\n");
+// }
 
 void NAKED unhandledException() {
 	// On exception entry, SP points to start of exception stack frame
 	// (which contains R0)
 	asm("PUSH {r4-r11}");
 
-	asm("PUSH {r14}");
-	asm("BL p");
-	asm("POP {r14}");
+	// asm("PUSH {r14}");
+	// asm("BL p");
+	// asm("POP {r14}");
 
 	asm("MOV r0, sp"); // r0 = &(r4-r11)
-	asm("MOV r1, r14"); // r2 = the EXC_RETURN
+	asm("MOV r1, r14"); // r1 = the EXC_RETURN
 	asm("BL dumpRegisters");
 	asm("B iThinkYouOughtToKnowImFeelingVeryDepressed");
 }
@@ -240,7 +232,7 @@ in, and the mode the current thread is in (as indicated by ??).
 * If mode is IRQ, `savedRegisters` should point to registers {r0-r12, pc} for
   the mode specified by spsr\_irq. r13 and r14 are retrieved via `STM ^` if
   spsr\_irq is USR (or System), and by a mode switch to SVC mode otherwise.
-* If  is SVC, `savedRegisters` should point to  only (ie usr PC) and
+* If  is SVC, `savedRegisters` should point to the EXC_RETURN only and
   . r13 and r14 are retreived via .
 */
 void saveCurrentRegistersForThread(void* savedRegisters) {
@@ -252,33 +244,114 @@ NORETURN scheduleThread(Thread* t) {
 	ASSERT(false);
 }
 
-void tick() {
-	TheSuperPage->uptime++;
-	// TODO Finish this
+// TODO move to scheduler_armv7m.c
+void dfc_queue(DfcFn fn, uintptr arg1, uintptr arg2, uintptr arg3) {
+	printk("dfc_queue\n");
+	int mask = kern_disableInterrupts();
+	uint32 n = ++(TheSuperPage->numDfcsPending);
+	ASSERT(n <= MAX_DFCS);
+	Dfc* dfc = &TheSuperPage->dfcs[n-1];
+	dfc->fn = fn;
+	dfc->args[0] = arg1;
+	dfc->args[1] = arg2;
+	dfc->args[2] = arg3;
+	kern_restoreInterrupts(mask);
+	PUT32(SCB_ICSR, ICSR_PENDSVSET);
 }
 
-void usart0Interrupt() {
-	printk("Usart0!");
+void pendSV() {
+	printk("pendSV\n");
+	Dfc dfcs[MAX_DFCS];
+	// Interrupts will always be enabled on entry to a configurable exception handler
+	kern_disableInterrupts();
+	const int n = TheSuperPage->numDfcsPending;
+	memcpy(dfcs, TheSuperPage->dfcs, n * sizeof(Dfc));
+	TheSuperPage->numDfcsPending = 0;
+	kern_enableInterrupts();
+
+	for (int i = 0; i < n; i++) {
+		Dfc* dfc = &dfcs[i];
+		dfc->fn(dfc->args[0], dfc->args[1], dfc->args[2]);
+	}
 }
 
-// TODO move to cpumode_armv7m.c
-void NAKED svc() {
-	printk("svc!\n");
-}
-
-void dumpRegisters(uint32* regs, uint32 excReturn) {
-	// Must be called in handler mode, ie SP=SP_main
-	// regs = registers R4 - R11
-
-	// esf = exception stack frame start
+uint32* getExceptionStackFrame(uint32* spmain, uint32 excReturn) {
+	// Must be called from handler mode (ie sp == sp_main)
 	uint32* esf;
 	if ((excReturn & 0xF) == KExcReturnThreadProcess) {
 		// Exception frame will be on process stack
 		asm("MRS %0, PSP" : "=r" (esf));
 	} else {
-		// It's on our stack, just above regs
-		esf = regs + 8; // R4-R11 is 8 regs
+		// It's on our stack, stackUsed bytes above current stack pointer
+		esf = spmain;
 	}
+	return esf;
+}
+
+#define getThreadExceptionStackFrame() getExceptionStackFrame(0, KExcReturnThreadProcess)
+
+// static void reschedule_dfc(uintptr arg1, uintptr arg2, uintptr arg3) {
+// 	//TODO
+// }
+
+void NAKED sysTick() {
+	asm("PUSH {r4-r12, lr}");
+	asm("MOV r0, sp");
+	asm("MOV r1, lr");
+	asm("BL doTick");
+	asm("POP {r4-r12, pc}");
+}
+
+static void USED doTick(uint32* regs, uintptr excReturn) {
+	SuperPage* const s = TheSuperPage;
+	s->uptime++;
+	if (s->uptime == s->timerCompletionTime) {
+		s->timerCompletionTime = UINT64_MAX;
+		dfc_requestComplete(&s->timerRequest, 0);
+	}
+	Thread* t = s->currentThread;
+	if (t && t->state == EReady) {
+		if (t->timeslice > 0) {
+			t->timeslice--;
+		} else {
+			// This is only allowed if the thread is (still!) in an SVC,
+			bool threadWasInSvc = SVCallActive();
+			ASSERT(threadWasInSvc);
+			atomic_setbool(&TheSuperPage->rescheduleNeededOnSvcExit, true);
+		}
+		if (t->timeslice == 0) {
+			// Thread timeslice expired
+			thread_yield(t);
+			// TODO dfc_queue(reschedule_dfc, 0, 0, 0);
+		}
+	}
+}
+
+void usart0Interrupt() {
+	printk("usart0Interrupt!");
+}
+
+// TODO move to cpumode_armv7m.c
+void NAKED svc() {
+	// Wow this is so much easier than on ARM
+	// Since we are the lowest-priority exception we don't have to worry about
+	// saving and restoring R4-R11
+	// Don't care about R12, just want to keep the stack aligned
+	asm("PUSH {r12, lr}");
+	asm("MOV r3, lr"); // TODO depends on saveCurrentRegistersForThread impl
+	asm("BL handleSvc");
+	// Hmm at this point I think I need to stash r0, r1 in the relevant position
+	// in the return stack
+	asm("POP {r12, lr}");
+	asm("STR r0, [sp, %0]" : : "i" (EsfR0));
+	asm("STR r1, [sp, %0]" : : "i" (EsfR1));
+	asm("BX lr");
+}
+
+void dumpRegisters(uint32* regs, uint32 excReturn) {
+	// Must be called in handler mode, ie SP=SP_main
+	// regs = eight registers R4 - R11
+	uint32* esf = getExceptionStackFrame(regs + 8, excReturn);
 	uint32 psr = esf[EsfPsr];
 	uint32 exceptionStackFrameSize = 32; // By default for non-FP-enabled
 	if (psr & (1 << 9)) exceptionStackFrameSize += 4; // Indicates padding

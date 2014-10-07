@@ -142,12 +142,12 @@ static void initSuperPage(const AtagsParams* atags) {
 	SuperPage* s = TheSuperPage;
 	s->totalRam = atags->totalRam;
 	s->boardRev = atags->boardRev;
-	s->dfcThread.state = EBlockedFromSvc;
-	thread_setBlockedReason(&s->dfcThread, EBlockedWaitingForDfcs);
 	s->bootMode = checkBootMode(BOOT_MODE);
 	s->nextPid = 1;
 	s->numValidProcessPages = 1;
 #ifdef ARM
+	s->dfcThread.state = EBlockedFromSvc;
+	thread_setBlockedReason(&s->dfcThread, EBlockedWaitingForDfcs);
 	s->svcPsrMode = KPsrModeSvc | KPsrFiqDisable /*| KPsrIrqDisable*/;
 #endif
 
