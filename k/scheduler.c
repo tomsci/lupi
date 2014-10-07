@@ -117,8 +117,10 @@ int kern_disableInterrupts() {
 	ModeSwitchVar(newMode);
 	return result;
 #elif defined(ARMV7_M)
+	int result;
+	asm("MRS %0, PRIMASK" : "=r" (result));
 	asm("CPSID i");
-	return 0;
+	return result;
 #endif
 }
 
@@ -138,8 +140,9 @@ void kern_restoreInterrupts(int mask) {
 #if defined(ARM)
 	ModeSwitchVar(mask);
 #elif defined(ARMV7_M)
-	(void)mask;
-	asm("CPSIE i");
+	if (mask) {
+		asm("CPSIE i");
+	}
 #endif
 }
 
