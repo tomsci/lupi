@@ -95,6 +95,7 @@ memCmpThumb2 = {
 -- Note, doesn't include boot.c which is added programmatically
 kernelSources = {
 	{ path = "k/cpumode_arm.c", enabled = armOnly },
+	{ path = "k/cpumode_armv7m.c", enabled = armv7mOnly },
 	{ path = "k/mmu_arm.c", enabled = armOnly },
 	{ path = "k/scheduler_arm.c", enabled = armOnly },
 	{ path = "k/mmu_armv7m.c", enabled = armv7mOnly },

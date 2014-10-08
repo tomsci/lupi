@@ -154,25 +154,6 @@ void tildaBoot() {
 	Boot(0);
 }
 
-// static NOINLINE USED void p() {
-// 	printk("unhandledException!\n");
-// }
-
-void NAKED unhandledException() {
-	// On exception entry, SP points to start of exception stack frame
-	// (which contains R0)
-	asm("PUSH {r4-r11}");
-
-	// asm("PUSH {r14}");
-	// asm("BL p");
-	// asm("POP {r14}");
-
-	asm("MOV r0, sp"); // r0 = &(r4-r11)
-	asm("MOV r1, r14"); // r1 = the EXC_RETURN
-	asm("BL dumpRegisters");
-	asm("B iThinkYouOughtToKnowImFeelingVeryDepressed");
-}
-
 void NAKED dummy() {
 	asm("BX lr");
 }
@@ -217,6 +198,7 @@ void irq_init() {
 	// Lowest, SVC (also pendSV above) 0xA
 	PUT32(SCB_SHPR2, 0xA << 28);
 
+	// Spec suggests this reg contains 10ms but it's definitely only 1ms
 	uint32 oneMsInSysTicks = GET32(SYSTICK_CALIB) & 0x00FFFFFF;
 	PUT32(SYSTICK_LOAD, oneMsInSysTicks); // 1ms ticks
 	//PUT32(SYSTICK_LOAD, oneMsInSysTicks * 1000); // 1s ticks
@@ -225,18 +207,45 @@ void irq_init() {
 }
 
 // TODO move to scheduler_armv7m.c
-/**
-The behaviour of this function is different depending on the mode it is called
-in, and the mode the current thread is in (as indicated by ??).
 
-* If mode is IRQ, `savedRegisters` should point to registers {r0-r12, pc} for
-  the mode specified by spsr\_irq. r13 and r14 are retrieved via `STM ^` if
-  spsr\_irq is USR (or System), and by a mode switch to SVC mode otherwise.
-* If  is SVC, `savedRegisters` should point to the EXC_RETURN only and
-  . r13 and r14 are retreived via .
+
+/**
+The behaviour of this function is different depending on whether the current
+thread is in an SVC call, and what exception handler is currently running.
+
+* If we are being called from the SVCall handler to do an explicit block,
+  `savedRegisters` should be NULL. The exception return is unwound, ie we will
+  restore state to thread mode just after returning from the SVC and fix up the
+  stack pointer.
+* If we are being called from another handler (presumably SysTick) for a
+  preempt then `savedRegisters` should point to the {r4-r11} saved on the
+  handler stack.
 */
 void saveCurrentRegistersForThread(void* savedRegisters) {
-	// TODO
+	Thread* t = TheSuperPage->currentThread;
+	const ExceptionStackFrame* esf = getThreadExceptionStackFrame();
+	t->savedRegisters[0] = esf->r0;
+	t->savedRegisters[1] = esf->r1;
+	t->savedRegisters[2] = esf->r2;
+	t->savedRegisters[3] = esf->r3;
+	t->savedRegisters[12] = esf->r12;
+	t->savedRegisters[13] = ((uintptr)esf) + stackFrameSize(esf);
+	t->savedRegisters[14] = esf->lr;
+	t->savedRegisters[15] = esf->returnAddress;
+	t->savedRegisters[16] = esf->psr & (~(1 << 9)); // Clear stack frame padding bit
+	if (SVCallCurrent()) {
+		ASSERT(savedRegisters == NULL, (uintptr)savedRegisters);
+	} else {
+		uint32* regs = (uint32*)savedRegisters;
+		t->savedRegisters[4] = regs[0];
+		t->savedRegisters[5] = regs[1];
+		t->savedRegisters[6] = regs[2];
+		t->savedRegisters[7] = regs[3];
+		t->savedRegisters[8] = regs[4];
+		t->savedRegisters[9] = regs[5];
+		t->savedRegisters[10] = regs[6];
+		t->savedRegisters[11] = regs[7];
+	}
 }
 
 // TODO move to scheduler_armv7m.c
@@ -274,21 +283,6 @@ void pendSV() {
 		dfc->fn(dfc->args[0], dfc->args[1], dfc->args[2]);
 	}
 }
-
-uint32* getExceptionStackFrame(uint32* spmain, uint32 excReturn) {
-	// Must be called from handler mode (ie sp == sp_main)
-	uint32* esf;
-	if ((excReturn & 0xF) == KExcReturnThreadProcess) {
-		// Exception frame will be on process stack
-		asm("MRS %0, PSP" : "=r" (esf));
-	} else {
-		// It's on our stack, stackUsed bytes above current stack pointer
-		esf = spmain;
-	}
-	return esf;
-}
-
-#define getThreadExceptionStackFrame() getExceptionStackFrame(0, KExcReturnThreadProcess)
 
 // static void reschedule_dfc(uintptr arg1, uintptr arg2, uintptr arg3) {
 // 	//TODO
@@ -331,64 +325,3 @@ void usart0Interrupt() {
 	printk("usart0Interrupt!");
 }
 
-// TODO move to cpumode_armv7m.c
-void NAKED svc() {
-	// Wow this is so much easier than on ARM
-	// Since we are the lowest-priority exception we don't have to worry about
-	// saving and restoring R4-R11
-	// Don't care about R12, just want to keep the stack aligned
-	asm("PUSH {r12, lr}");
-	asm("MOV r3, lr"); // TODO depends on saveCurrentRegistersForThread impl
-	asm("BL handleSvc");
-	// Hmm at this point I think I need to stash r0, r1 in the relevant position
-	// in the return stack
-	asm("POP {r12, lr}");
-	asm("STR r0, [sp, %0]" : : "i" (EsfR0));
-	asm("STR r1, [sp, %0]" : : "i" (EsfR1));
-	asm("BX lr");
-}
-
-void dumpRegisters(uint32* regs, uint32 excReturn) {
-	// Must be called in handler mode, ie SP=SP_main
-	// regs = eight registers R4 - R11
-	uint32* esf = getExceptionStackFrame(regs + 8, excReturn);
-	uint32 psr = esf[EsfPsr];
-	uint32 exceptionStackFrameSize = 32; // By default for non-FP-enabled
-	if (psr & (1 << 9)) exceptionStackFrameSize += 4; // Indicates padding
-	uint32 r13 = (uintptr)esf + exceptionStackFrameSize;
-
-	uint32 ipsr;
-	asm("MRS %0, psr" : "=r" (ipsr));
-
-	printk("r0:  %X r1:  %X r2:  %X r3:  %X\n", esf[EsfR0], esf[EsfR1], esf[EsfR2], esf[EsfR3]);
-	printk("r4:  %X r5:  %X r6:  %X r7:  %X\n", regs[0],    regs[1],    regs[2],    regs[3]);
-	printk("r8:  %X r9:  %X r10: %X r11: %X\n", regs[4],    regs[5],    regs[6],    regs[7]);
-	printk("r12: %X r13: %X r14: %X r15: %X\n", esf[EsfR12], r13,       esf[EsfLr], esf[EsfReturnAddress]);
-	printk("CPSR was %X\n", psr);
-	printk("ISR Number: %d\n", ipsr & 0x1FF);
-	uint32 cfsr = GET32(SCB_CFSR);
-	printk("CFSR: %X HFSR: %X\n", cfsr, GET32(SCB_HFSR));
-	// uint32 primask, faultmask, basepri;
-	// asm("MRS %0, PRIMASK" : "=r" (primask));
-	// asm("MRS %0, FAULTMASK" : "=r" (faultmask));
-	// asm("MRS %0, BASEPRI" : "=r" (basepri));
-	// printk("PRIMASK: %X FAULTMASK: %X BASEPRI: %X\n", primask, faultmask, basepri);
-	if (cfsr & CFSR_BFARVALID) {
-		printk("BFAR: %X\n", GET32(SCB_BFAR));
-	}
-	if (cfsr & CFSR_MMARVALID) {
-		printk("MMAR: %X\n", GET32(SCB_MMAR));
-	}
-
-	if (!TheSuperPage->marvin) {
-		// First time we hit this, populate crashRegisters
-		uint32* cr = TheSuperPage->crashRegisters;
-		memcpy(cr, esf, 4 * sizeof(uint32)); // R0 - R3
-		memcpy(cr + 4, regs, 12*sizeof(uint32)); // R4 - R11
-		cr[12] = esf[EsfR12];
-		cr[13] = r13;
-		cr[14] = esf[EsfLr];
-		cr[15] = esf[EsfReturnAddress];
-		cr[16] = psr;
-	}
-}

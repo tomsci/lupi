@@ -114,9 +114,13 @@ void NAKED svc() {
 	asm("ADD r13, r13, #4096"); // So r13 points to top of stack not base
 
 	asm(".postStackSet:");
-	asm("MOV r3, r14"); // r14_svc is address to return to user side
-	// Also save it for ourselves in the case where we don't get preempted
-	asm("MOV r4, r14");
+	// r14_svc is address to return to user side
+	// Save it for ourselves in the case where we don't get preempted
+	asm("PUSH {r14}");
+	// And set r3 to point to it for handleSvc
+	asm("MOV r3, sp");
+	// Finally, align stack, might as well use r14 again
+	asm("PUSH {r14}");
 
 	#ifdef STACK_DEPTH_DEBUG
 		asm("PUSH {r0-r3}");
@@ -134,9 +138,9 @@ void NAKED svc() {
 	#endif
 	// Avoid leaking kernel info into user space (like we really care!)
 	asm("MOV r2, #0");
-	asm("MOV r3, #0");
 
-	asm("MOVS pc, r4"); // r4 is where we stashed the user return address
+	asm("POP {r3, r4}");
+	asm("MOVS pc, r4");
 
 	asm(".loadDebuggerStack:");
 	asm("LDR r13, .debuggerStackTop");

@@ -20,7 +20,7 @@ NOINLINE NAKED uint64 readUserInt64(uintptr ptr) {
 	asm("BX lr");
 }
 
-int64 handleSvc(int cmd, uintptr arg1, uintptr arg2, uint32 r14_svc) {
+int64 handleSvc(int cmd, uintptr arg1, uintptr arg2, void* savedRegisters) {
 	if (cmd & KFastExec) {
 		cmd = cmd & ~KFastExec;
 	}
@@ -54,7 +54,7 @@ int64 handleSvc(int cmd, uintptr arg1, uintptr arg2, uint32 r14_svc) {
 				break;
 			}
 			thread_setState(t, EBlockedFromSvc);
-			saveCurrentRegistersForThread(&r14_svc);
+			saveCurrentRegistersForThread(savedRegisters);
 			thread_setBlockedReason(t, EBlockedOnGetch);
 			TheSuperPage->blockedUartReceiveIrqHandler = t;
 			reschedule();
@@ -72,7 +72,7 @@ int64 handleSvc(int cmd, uintptr arg1, uintptr arg2, uint32 r14_svc) {
 			Process* p = NULL;
 			int err = process_new(name, &p);
 			if (err == 0) {
-				saveCurrentRegistersForThread(&r14_svc);
+				saveCurrentRegistersForThread(savedRegisters);
 				t->savedRegisters[0] = p->pid;
 				process_start(p); // effectively causes a reschedule
 				// We should never get here because when the calling thread gets rescheduled,
@@ -91,7 +91,7 @@ int64 handleSvc(int cmd, uintptr arg1, uintptr arg2, uint32 r14_svc) {
 			if (t) {
 				// It's conceivable the thread could be null, if we've aborted
 				// during the bootmenu for eg
-				saveCurrentRegistersForThread(&r14_svc);
+				saveCurrentRegistersForThread(savedRegisters);
 				printk("Abort called by process %s\n", p->name);
 			} else {
 				printk("Abort called during boot\n");
@@ -102,7 +102,7 @@ int64 handleSvc(int cmd, uintptr arg1, uintptr arg2, uint32 r14_svc) {
 			reboot(); // doesn't return
 			break;
 		case KExecThreadYield:
-			saveCurrentRegistersForThread(&r14_svc);
+			saveCurrentRegistersForThread(savedRegisters);
 			thread_yield(t);
 			reschedule();
 			break;
@@ -125,7 +125,7 @@ int64 handleSvc(int cmd, uintptr arg1, uintptr arg2, uint32 r14_svc) {
 				*reqs = 0;
 			} else {
 				thread_setState(t, EWaitForRequest);
-				saveCurrentRegistersForThread(&r14_svc);
+				saveCurrentRegistersForThread(savedRegisters);
 				reschedule();
 			}
 			break;
@@ -143,7 +143,7 @@ int64 handleSvc(int cmd, uintptr arg1, uintptr arg2, uint32 r14_svc) {
 			break;
 		case KExecConnectToServer:
 			// Always save registers, because we'll need to block
-			saveCurrentRegistersForThread(&r14_svc);
+			saveCurrentRegistersForThread(savedRegisters);
 			// This doesn't return, unless there was an error
 			result = ipc_connectToServer(arg1, arg2);
 			break;
@@ -206,7 +206,7 @@ int64 handleSvc(int cmd, uintptr arg1, uintptr arg2, uint32 r14_svc) {
 	// timeslice doesn't expire after we've checked rescheduleNeededOnSvcExit
 	// but before we return.
 	if (atomic_setbool(&TheSuperPage->rescheduleNeededOnSvcExit, false)) {
-		saveCurrentRegistersForThread(&r14_svc);
+		saveCurrentRegistersForThread(savedRegisters);
 		// Save the result also
 		t->savedRegisters[0] = (uint32)result;
 		t->savedRegisters[1] = (result >> 32);

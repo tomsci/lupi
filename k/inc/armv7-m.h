@@ -33,6 +33,7 @@
 // p172
 #define ICSR_PENDSVCLR			(1 << 27)
 #define ICSR_PENDSVSET			(1 << 28)
+#define ICSR_VECTACTIVE_MASK	(0x1F)
 
 // p183
 #define SHCSR_USGFAULTENA		(1 << 18)
@@ -50,16 +51,22 @@
 #define DMB(reg)				asm("DMB")
 
 // See p643 of the ARM arch v7m
-enum ExceptionStackFrame {
-	EsfR0,
-	EsfR1,
-	EsfR2,
-	EsfR3,
-	EsfR12,
-	EsfLr,
-	EsfReturnAddress,
-	EsfPsr,
-};
+typedef struct ExceptionStackFrame {
+	uint32 r0;
+	uint32 r1;
+	uint32 r2;
+	uint32 r3;
+	uint32 r12;
+	uint32 lr;
+	uint32 returnAddress;
+	uint32 psr;
+} ExceptionStackFrame;
+
+ASSERT_COMPILE(sizeof(ExceptionStackFrame) == 8*4);
+
+ExceptionStackFrame* getExceptionStackFrame(uint32* spmain, uint32 excReturn);
+int stackFrameSize(const ExceptionStackFrame* esf);
+#define getThreadExceptionStackFrame() getExceptionStackFrame(0, KExcReturnThreadProcess)
 
 // Valid values for the bottom 4 bits of EXC_RETURN
 #define KExcReturnHandler		(1)
@@ -77,6 +84,8 @@ enum ExceptionStackFrame {
 #define SYSTICK_CTRL_CLKSOURCE	(1 << 2)
 #define SYSTICK_CTRL_COUNTFLAG	(1 << 16)
 
-#define SVCallActive()	(GET32(SCB_SHCSR) & SHCSR_SVCALLACT)
+#define EXCEPTION_NUMBER_SVCALL	11
 
+#define SVCallActive()	(GET32(SCB_SHCSR) & SHCSR_SVCALLACT)
+#define SVCallCurrent()	((GET32(SCB_ICSR) & ICSR_VECTACTIVE_MASK) == EXCEPTION_NUMBER_SVCALL)
 #endif
