@@ -439,7 +439,9 @@ static void WeveCrashedSetupDebuggingStuff(lua_State* L) {
 	// Servers, for implementation reasons, fill the servers array from the end backwards
 	mbuf_declare_member(L, "SuperPage", "firstServer", offsetof(SuperPage, servers[MAX_SERVERS-1]), sizeof(Server), "Server");
 	MBUF_MEMBER(SuperPage, rescheduleNeededOnSvcExit);
+#ifdef ARM
 	MBUF_MEMBER(SuperPage, svcPsrMode);
+#endif
 	MBUF_MEMBER(SuperPage, numDfcsPending);
 	// dfcThread has to be declared after Thread
 	MBUF_MEMBER_TYPE(SuperPage, inputRequest, "KAsyncRequest");
@@ -462,7 +464,9 @@ static void WeveCrashedSetupDebuggingStuff(lua_State* L) {
 	MBUF_MEMBER(Thread, exitReason);
 	MBUF_MEMBER_TYPE(Thread, savedRegisters, "regset");
 
+#ifdef ARM
 	MBUF_MEMBER_TYPE(SuperPage, dfcThread, "Thread");
+#endif
 
 	MBUF_NEW(SuperPage, TheSuperPage);
 	lua_setglobal(L, "TheSuperPage");
@@ -519,9 +523,11 @@ static void WeveCrashedSetupDebuggingStuff(lua_State* L) {
 	FORCE_OUTOFLINE_COPY(firstThreadForProcess);
 	FORCE_OUTOFLINE_COPY(processForThread);
 	FORCE_OUTOFLINE_COPY(processForServer);
+#ifdef ARM
 	FORCE_OUTOFLINE_COPY(getFAR);
 	FORCE_OUTOFLINE_COPY(getDFSR);
 	FORCE_OUTOFLINE_COPY(getIFSR);
+#endif
 
 	EXPORT_INT(L, USER_STACK_SIZE);
 	EXPORT_INT(L, USER_STACK_AREA_SHIFT);
@@ -536,6 +542,40 @@ static void WeveCrashedSetupDebuggingStuff(lua_State* L) {
 	EXPORT_INT(L, KUserHeapBase);
 	EXPORT_INT(L, KUserStacksBase);
 	EXPORT_INT(L, KPageAllocatorAddr);
+
+#ifdef ARMV7_M
+#define MBUF_DECLARE_SCB_REG(name, reg) mbuf_declare_member(L, "scb", name, (reg)-KSystemControlSpace, sizeof(uint32), NULL)
+	mbuf_declare_type(L, "SystemControlBlock", 4096); // Size if give or take
+	MBUF_DECLARE_SCB_REG("icsr", SCB_ICSR);
+	MBUF_DECLARE_SCB_REG("vtor", SCB_VTOR);
+	MBUF_DECLARE_SCB_REG("shpr1", SCB_SHPR1);
+	MBUF_DECLARE_SCB_REG("shpr2", SCB_SHPR2);
+	MBUF_DECLARE_SCB_REG("shpr3", SCB_SHPR3);
+	MBUF_DECLARE_SCB_REG("shcsr", SCB_SHCSR);
+	MBUF_DECLARE_SCB_REG("cfsr", SCB_CFSR);
+	MBUF_DECLARE_SCB_REG("hfsr", SCB_HFSR);
+	MBUF_DECLARE_SCB_REG("mmar", SCB_MMAR);
+	MBUF_DECLARE_SCB_REG("bfar", SCB_BFAR);
+	MBUF_DECLARE_SCB_REG("ctrl", SYSTICK_CTRL);
+	MBUF_DECLARE_SCB_REG("load", SYSTICK_LOAD);
+	MBUF_DECLARE_SCB_REG("val", SYSTICK_VAL);
+	MBUF_DECLARE_SCB_REG("calib", SYSTICK_CALIB);
+
+	MBUF_NEW(SystemControlBlock, KSystemControlSpace);
+	lua_setglobal(L, "scb");
+
+	MBUF_TYPE(ExceptionStackFrame);
+	MBUF_MEMBER(ExceptionStackFrame, r0);
+	MBUF_MEMBER(ExceptionStackFrame, r1);
+	MBUF_MEMBER(ExceptionStackFrame, r2);
+	MBUF_MEMBER(ExceptionStackFrame, r3);
+	MBUF_MEMBER(ExceptionStackFrame, r12);
+	MBUF_MEMBER(ExceptionStackFrame, lr);
+	MBUF_MEMBER(ExceptionStackFrame, returnAddress);
+	MBUF_MEMBER(ExceptionStackFrame, psr);
+
+	FORCE_OUTOFLINE_COPY(getThreadExceptionStackFrame);
+#endif
 
 	lua_getfield(L, -1, "require");
 	lua_pushliteral(L, "kluadebugger");

@@ -66,12 +66,15 @@ ASSERT_COMPILE(sizeof(ExceptionStackFrame) == 8*4);
 
 ExceptionStackFrame* getExceptionStackFrame(uint32* spmain, uint32 excReturn);
 int stackFrameSize(const ExceptionStackFrame* esf);
-#define getThreadExceptionStackFrame() getExceptionStackFrame(0, KExcReturnThreadProcess)
 
 // Valid values for the bottom 4 bits of EXC_RETURN
 #define KExcReturnHandler		(1)
 #define KExcReturnThreadMain	(9)
 #define KExcReturnThreadProcess	(0xD)
+
+static inline ExceptionStackFrame* getThreadExceptionStackFrame() {
+	return getExceptionStackFrame(0, KExcReturnThreadProcess);
+}
 
 // doc11057 p194
 #define SYSTICK_CTRL	0xE000E010

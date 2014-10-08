@@ -80,6 +80,10 @@ void dumpRegisters(uint32* regs, uint32 excReturn) {
 	if (cfsr & CFSR_MMARVALID) {
 		printk("MMAR: %X\n", GET32(SCB_MMAR));
 	}
+#ifdef KLUA
+	// First word of Heap structure is the top addr
+	printk("KLua heap top: %X\n", GET32(KLuaHeapBase));
+#endif
 
 	if (!TheSuperPage->marvin) {
 		// First time we hit this, populate crashRegisters

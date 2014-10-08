@@ -29,8 +29,6 @@ ProcessPage		20072000-20073000	(4k)
 
 #define KProcessesSection		0x20072000u
 
-#define KDfcThreadStack			0xF8092000u // TODO!
-
 #define KEndOfKernelMemory		0x20073000u
 
 
@@ -39,39 +37,21 @@ User memory map
 ---------------
 
 <pre>
-Unmapped						00000000-00007000
-BSS								00007000-00008000
-Heap							00008000-heapLimit
-Shared pages					0F000000-0F100000
-Thread stacks					0FE00000-10000000
+Inaccessible kernel stuff		00000000-20073000
+BSS								20073000-20074000
+Heap							20074000-heapLimit
+Thread stacks					Downwards from KUserMemLimit
+
+Inaccessible					20xxxxxx-FFFFFFFF
 </pre>
 */
 
-#define KUserBss				KEndOfKernelMemory
-// Heap assumed to be immediately following BSS in process_init()
-#define KUserHeapBase			(KEndOfKernelMemory + 0x1000)
+#define KUserBss				0x20073000u
+#define KUserHeapBase			0x20074000u
 
-//TODO fix these!
-#define KUserStacksBase			0x0FE00000u
-#define KUserMemLimit			0x10000000u
+#define KUserMemLimit			(KRamBase + KRamSize)
 
-/**
-I'm feeling generous.
-*/
-#define USER_STACK_SIZE (16*1024)
-
-#define USER_STACK_AREA_SHIFT 15 // 32kB
-
-/**
-The format of each user stack area is as follows. Note the svc stack for a
-thread is always 4kB, and that the area is rounded up to a power of 2 to make
-calculating the svc stack address simpler.
-
-	svc stack			1 page
-	guard page			---------------
-	user stack			USER_STACK_SIZE (16kB)
-	guard page			---------------
-	padding				--------------- (4kB)
-*/
+#define USER_STACK_SIZE			(KPageSize)
+#define USER_STACK_AREA_SHIFT	(KPageShift)
 
 #endif

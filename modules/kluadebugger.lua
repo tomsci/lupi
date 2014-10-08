@@ -72,6 +72,8 @@ Variables
     symbols             if the kernel was built with symbols enabled, the
                         symbolParser module will be set up and the symbols
                         loaded. If not, this will be nil.
+    scb                 On ARMv7-M platforms, this will point to the System
+                        Control Block. Otherwise will be nil.
 
 Syntax
 ------

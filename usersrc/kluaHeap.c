@@ -7,9 +7,9 @@
 // pointers. We shall see if it's good enough....
 
 typedef struct Heap {
+	uintptr top;
 	int nallocs;
 	int nfrees;
-	uintptr top;
 	long alloced;
 } Heap;
 

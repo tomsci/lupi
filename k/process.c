@@ -205,10 +205,12 @@ int process_new(const char* name, Process** resultProcess) {
 }
 
 static void freeThreadStacks(Thread* t) {
+#ifdef ARM
 	uintptr stackBase = userStackForThread(t);
 	Process* p = processForThread(t);
 	mmu_unmapPagesInProcess(Al, p, stackBase, USER_STACK_SIZE >> KPageShift);
 	mmu_unmapPagesInProcess(Al, p, svcStackBase(t->index), 1);
+#endif
 }
 
 static void process_exit(Process* p, int reason) {

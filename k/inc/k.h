@@ -56,9 +56,14 @@ void PUT32(uint32 addr, uint32 val);
 #define kabort() assertionFail(0, __FILE__, __LINE__, "(kabort)")
 #define kabort1(arg) assertionFail(1, __FILE__, __LINE__, "(kabort)", arg)
 
-#define ASSERT_USER_PTR8(x) ASSERT(((uintptr)(x) < KUserMemLimit), (uintptr)(x))
-#define ASSERT_USER_PTR32(x) ASSERT(((uintptr)(x) & 3) == 0 && ((uintptr)(x) < KUserMemLimit), (uintptr)(x))
-#define ASSERT_USER_PTR16(x) ASSERT(((uintptr)(x) & 1) == 0 && ((uintptr)(x) < KUserMemLimit), (uintptr)(x))
+// These are just helpers to make the macros easier to read
+#define ASSERT_U8(x) ASSERT(x >= KUserHeapBase && x < KUserMemLimit, x);
+#define ASSERT_U16(x) ASSERT(x >= KUserHeapBase && x < KUserMemLimit && !(x & 1), x);
+#define ASSERT_U32(x) ASSERT(x >= KUserHeapBase && x < KUserMemLimit && !(x & 3), x);
+
+#define ASSERT_USER_PTR8(x) ASSERT_U8((uintptr)(x))
+#define ASSERT_USER_PTR16(x) ASSERT_U16((uintptr)(x))
+#define ASSERT_USER_PTR32(x) ASSERT_U32((uintptr)(x))
 
 #define FOURCC(str) ((str[0]<<24)|(str[1]<<16)|(str[2]<<8)|(str[3]))
 #define IS_POW2(val) ((val & (val-1)) == 0)
@@ -230,11 +235,20 @@ ASSERT_COMPILE(sizeof(SuperPage) <= KPageSize);
 #define GetProcess(idx) ((Process*)(KProcessesSection + ((idx) << KPageShift)))
 #define indexForProcess(p) ((int)((((uintptr)(p)) >> KPageShift) & 0xFF))
 
+#ifdef ARM
+
 // NOTE: don't change these without also updating the asm in svc()
 #define svcStackOffset(threadIdx) (threadIdx << USER_STACK_AREA_SHIFT)
 #define svcStackBase(threadIdx) (KUserStacksBase + svcStackOffset(threadIdx))
 #define userStackBase(threadIdx) (svcStackBase(threadIdx) + 2*KPageSize)
 #define userStackForThread(t) userStackBase(t->index)
+
+#elif defined(ARMV7_M)
+
+#define userStackForThread(t) (KRamBase + KRamSize - (((t)->index + 1) << KPageShift))
+
+#endif
+
 
 static inline Thread* firstThreadForProcess(Process* p) {
 	return &p->threads[0];

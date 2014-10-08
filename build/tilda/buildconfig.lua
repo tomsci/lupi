@@ -19,7 +19,8 @@ config = {
 	extraStdInc = "build/tilda/stdinc",
 
 	klua = true,
-	kluaIncludesModules = true,
+	-- Not enough ram for our wasteful klua allocator to load modules
+	-- kluaIncludesModules = true,
 	ulua = false,
 
 	textSectionStart = 0x00080000, -- Must match KKernelCodeBase
