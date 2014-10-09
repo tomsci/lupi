@@ -63,6 +63,11 @@ static int panicFn(lua_State* L) {
 	return 0;
 }
 
+static int reboot_lua(lua_State* L) {
+	reboot();
+	return 0;
+}
+
 #ifndef ULUA_PRESENT
 
 void goDoLuaStuff() {
@@ -101,6 +106,8 @@ void interactiveLuaPrompt() {
 #endif
 	luaL_openlibs(L);
 	lua_atpanic(L, panicFn);
+	lua_pushcfunction(L, reboot_lua);
+	lua_setglobal(L, "reboot");
 	printk("klua> ");
 
 	char line[256];
@@ -330,11 +337,6 @@ static int switch_process_lua(lua_State* L) {
 		p = (Process*)ptr;
 	}
 	switch_process(p);
-	return 0;
-}
-
-static int reboot_lua(lua_State* L) {
-	reboot();
 	return 0;
 }
 

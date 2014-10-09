@@ -21,6 +21,7 @@
 // p169
 #define SCB_ICSR				0xE000ED04 // Interrupt & Control State Register
 #define SCB_VTOR				0xE000ED08 // Vector table offset register
+#define SCB_AIRCR				0xE000ED0C // App Interrupt & Reset Control Reg
 #define SCB_SHPR1				0xE000ED18 // System handler priority registers
 #define SCB_SHPR2				0xE000ED1C // (p181)
 #define SCB_SHPR3				0xE000ED20
@@ -34,6 +35,10 @@
 #define ICSR_PENDSVCLR			(1 << 27)
 #define ICSR_PENDSVSET			(1 << 28)
 #define ICSR_VECTACTIVE_MASK	(0x1F)
+
+// p176
+#define AIRCR_VECTKEY			(0x05FA << 16)
+#define AIRCR_SYSRESETREQ		(1 << 2)
 
 // p183
 #define SHCSR_USGFAULTENA		(1 << 18)

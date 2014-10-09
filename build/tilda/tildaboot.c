@@ -325,3 +325,7 @@ void usart0Interrupt() {
 	printk("usart0Interrupt!");
 }
 
+NORETURN reboot() {
+	PUT32(SCB_AIRCR, AIRCR_VECTKEY | AIRCR_SYSRESETREQ);
+	hang();
+}
