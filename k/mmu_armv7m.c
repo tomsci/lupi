@@ -4,16 +4,6 @@
 #include <pageAllocator.h>
 
 /**
-MMU-like APIs for the ARMv7-M MPU.
-*/
-
-#define MPU_TYPE		0xE000ED90u
-#define MPU_CTRL		0xE000ED94u
-#define MPU_RNR			0xE000ED98u
-#define MPU_RBAR		0xE000ED9Cu
-#define MPU_RASR		0xE000EDA0u
-
-/**
 Creates a new section map for the given index (where `sectionIdx` is the virtual address right-
 shifted by `KPageShift`) in the given Process.
 */

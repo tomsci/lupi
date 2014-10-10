@@ -37,9 +37,10 @@ static int process_init(Process* p, const char* processName) {
 
 	// Assume the Process page itself is already mapped, but nothing else necessarily is
 	p->pid = TheSuperPage->nextPid++;
+
+#ifdef HAVE_MMU
 	uint32* pde = (uint32*)PDE_FOR_PROCESS(p);
 	uint32* kernPtForTheUserPts = (uint32*)KERN_PT_FOR_PROCESS_PTS(p);
-	bool ok;
 	if (!p->pdePhysicalAddress) {
 		p->pdePhysicalAddress = mmu_mapPageInSection(Al, (uint32*)KProcessesPdeSection_pt, (uintptr)pde, KPageUserPde);
 		uintptr userPtsStart = (uintptr)PT_FOR_PROCESS(p, 0);
@@ -47,13 +48,14 @@ static int process_init(Process* p, const char* processName) {
 		//TODO check return code
 	}
 	zeroPage(pde);
-
 	mmu_mapPagesInProcess(Al, p, KUserBss, 1 + KNumPreallocatedUserPages);
+#endif // HAVE_MMU
+
 	p->heapLimit = KUserHeapBase;
 
 	// Setup initial thread
 	p->numThreads = 1;
-	ok = thread_init(p, 0);
+	bool ok = thread_init(p, 0);
 	if (!ok) return KErrNoMemory;
 
 	char* pname = p->name;
@@ -77,6 +79,7 @@ static bool thread_init(Process* p, int index) {
 	t->timeslice = THREAD_TIMESLICE;
 	t->completedRequests = 0;
 	uintptr stackBase = userStackForThread(t);
+#ifdef HAVE_MMU
 	bool ok = mmu_mapPagesInProcess(Al, p, stackBase, USER_STACK_SIZE >> KPageShift);
 	if (!ok) return false;
 	ok = mmu_mapSvcStack(Al, p, svcStackBase(index));
@@ -84,32 +87,14 @@ static bool thread_init(Process* p, int index) {
 		mmu_unmapPagesInProcess(Al, p, stackBase, USER_STACK_SIZE >> KPageShift);
 		return false;
 	}
+#endif // HAVE_MMU
 
 	t->savedRegisters[13] = stackBase + USER_STACK_SIZE;
 	thread_setState(t, EReady);
 	return true;
 }
 
-#ifdef ARM
-
-static NORETURN NAKED do_process_start(uint32 sp) {
-	ModeSwitch(KPsrModeUsr|KPsrFiqDisable);
-	// We are in user mode now! So no calling printk(), or doing privileged stuff
-	asm("MOV sp, r0");
-	asm("LDR r1, =newProcessEntryPoint");
-	asm("BLX r1");
-	// And we're off. We might return here if the module's main returns (with return code in r0)
-	asm("B exec_threadExit");
-	// Definitely don't return from here
-}
-
-#else
-
-static NORETURN NAKED do_process_start(uint32 sp) {
-	ASSERT(false);
-}
-
-#endif
+NORETURN do_process_start(uint32 sp);
 
 NORETURN process_start(Process* p) {
 	switch_process(p);
@@ -132,7 +117,8 @@ NORETURN process_start(Process* p) {
 	uint32 sp = t->savedRegisters[13];
 	do_process_start(sp);
 }
-#endif
+
+#endif // LUPI_NO_PROCESS
 
 bool process_grow_heap(Process* p, int incr) {
 	//printk("+process_grow_heap %d heapLimit=%p\n", incr, (void*)p->heapLimit);

@@ -2,6 +2,17 @@
 #include <mmu.h>
 #include <arm.h>
 
+NORETURN NAKED do_process_start(uint32 sp) {
+	ModeSwitch(KPsrModeUsr|KPsrFiqDisable);
+	// We are in user mode now! So no calling printk(), or doing privileged stuff
+	asm("MOV sp, r0");
+	asm("LDR r1, =newProcessEntryPoint");
+	asm("BLX r1");
+	// And we're off. We might return here if the module's main returns (with return code in r0)
+	asm("B exec_threadExit");
+	// Definitely don't return from here
+}
+
 // Assumes we were in IRQ mode with interrupts off to start with
 static NAKED NOINLINE void irq_saveSvcSpLr(uint32* splr) {
 	ModeSwitch(KPsrModeSvc | KPsrIrqDisable | KPsrFiqDisable);

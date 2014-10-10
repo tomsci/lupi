@@ -2,8 +2,6 @@
 #include <atags.h>
 #include <armv7-m.h>
 
-#define CONTROL_NPRIV 1
-
 // Sets up exception vectors, configures NVIC and MPU, then calls Boot()
 void NAKED _start() {
 	// First thing we have is the exception vector table. The CPU automatically
@@ -23,7 +21,7 @@ void NAKED _start() {
 	asm(".word svc"); // 11 = SVC
 	asm(".word unhandledException"); // 12 = Reserved
 	asm(".word 0"); // 13 = Reserved
-	asm(".word pendSV"); // 14 = PendSV (TODO)
+	asm(".word pendSV"); // 14 = PendSV
 	asm(".word sysTick"); // 15 = Sys tick
 	asm(".word unhandledException"); // 16 = IRQ 0
 	asm(".word unhandledException"); // 17 = IRQ 1
@@ -103,9 +101,6 @@ void Boot(uintptr atagsPhysAddr);
 
 void tildaBoot() {
 	// Reset begins in priviledged Thread mode. (p80 §12.6.2.1)
-
-	// asm("MOV r0, %0" : : "i" (CONTROL_NPRIV));
-	// asm("MSR CONTROL, r0"); // Thread mode unpriviledged
 
 	// Configure the RX and TX LEDs
 	PUT32(PIOA + PIO_PER, LED_TX);
@@ -204,125 +199,6 @@ void irq_init() {
 	//PUT32(SYSTICK_LOAD, oneMsInSysTicks * 1000); // 1s ticks
 	// Not setting SYSTICK_CTRL_CLKSOURCE means systick is running at MCLK/8
 	PUT32(SYSTICK_CTRL, SYSTICK_CTRL_ENABLE | SYSTICK_CTRL_TICKINT);
-}
-
-// TODO move to scheduler_armv7m.c
-
-
-/**
-The behaviour of this function is different depending on whether the current
-thread is in an SVC call, and what exception handler is currently running.
-
-* If we are being called from the SVCall handler to do an explicit block,
-  `savedRegisters` should be NULL. The exception return is unwound, ie we will
-  restore state to thread mode just after returning from the SVC and fix up the
-  stack pointer.
-* If we are being called from another handler (presumably SysTick) for a
-  preempt then `savedRegisters` should point to the {r4-r11} saved on the
-  handler stack.
-*/
-void saveCurrentRegistersForThread(void* savedRegisters) {
-	Thread* t = TheSuperPage->currentThread;
-	const ExceptionStackFrame* esf = getThreadExceptionStackFrame();
-	t->savedRegisters[0] = esf->r0;
-	t->savedRegisters[1] = esf->r1;
-	t->savedRegisters[2] = esf->r2;
-	t->savedRegisters[3] = esf->r3;
-	t->savedRegisters[12] = esf->r12;
-	t->savedRegisters[13] = ((uintptr)esf) + stackFrameSize(esf);
-	t->savedRegisters[14] = esf->lr;
-	t->savedRegisters[15] = esf->returnAddress;
-	t->savedRegisters[16] = esf->psr & (~(1 << 9)); // Clear stack frame padding bit
-	if (SVCallCurrent()) {
-		ASSERT(savedRegisters == NULL, (uintptr)savedRegisters);
-	} else {
-		uint32* regs = (uint32*)savedRegisters;
-		t->savedRegisters[4] = regs[0];
-		t->savedRegisters[5] = regs[1];
-		t->savedRegisters[6] = regs[2];
-		t->savedRegisters[7] = regs[3];
-		t->savedRegisters[8] = regs[4];
-		t->savedRegisters[9] = regs[5];
-		t->savedRegisters[10] = regs[6];
-		t->savedRegisters[11] = regs[7];
-	}
-}
-
-// TODO move to scheduler_armv7m.c
-NORETURN scheduleThread(Thread* t) {
-	ASSERT(false);
-}
-
-// TODO move to scheduler_armv7m.c
-void dfc_queue(DfcFn fn, uintptr arg1, uintptr arg2, uintptr arg3) {
-	printk("dfc_queue\n");
-	int mask = kern_disableInterrupts();
-	uint32 n = ++(TheSuperPage->numDfcsPending);
-	ASSERT(n <= MAX_DFCS);
-	Dfc* dfc = &TheSuperPage->dfcs[n-1];
-	dfc->fn = fn;
-	dfc->args[0] = arg1;
-	dfc->args[1] = arg2;
-	dfc->args[2] = arg3;
-	kern_restoreInterrupts(mask);
-	PUT32(SCB_ICSR, ICSR_PENDSVSET);
-}
-
-void pendSV() {
-	printk("pendSV\n");
-	Dfc dfcs[MAX_DFCS];
-	// Interrupts will always be enabled on entry to a configurable exception handler
-	kern_disableInterrupts();
-	const int n = TheSuperPage->numDfcsPending;
-	memcpy(dfcs, TheSuperPage->dfcs, n * sizeof(Dfc));
-	TheSuperPage->numDfcsPending = 0;
-	kern_enableInterrupts();
-
-	for (int i = 0; i < n; i++) {
-		Dfc* dfc = &dfcs[i];
-		dfc->fn(dfc->args[0], dfc->args[1], dfc->args[2]);
-	}
-}
-
-// static void reschedule_dfc(uintptr arg1, uintptr arg2, uintptr arg3) {
-// 	//TODO
-// }
-
-void NAKED sysTick() {
-	asm("PUSH {r4-r12, lr}");
-	asm("MOV r0, sp");
-	asm("MOV r1, lr");
-	asm("BL doTick");
-	asm("POP {r4-r12, pc}");
-}
-
-static void USED doTick(uint32* regs, uintptr excReturn) {
-	SuperPage* const s = TheSuperPage;
-	s->uptime++;
-	if (s->uptime == s->timerCompletionTime) {
-		s->timerCompletionTime = UINT64_MAX;
-		dfc_requestComplete(&s->timerRequest, 0);
-	}
-	Thread* t = s->currentThread;
-	if (t && t->state == EReady) {
-		if (t->timeslice > 0) {
-			t->timeslice--;
-		} else {
-			// This is only allowed if the thread is (still!) in an SVC,
-			bool threadWasInSvc = SVCallActive();
-			ASSERT(threadWasInSvc);
-			atomic_setbool(&TheSuperPage->rescheduleNeededOnSvcExit, true);
-		}
-		if (t->timeslice == 0) {
-			// Thread timeslice expired
-			thread_yield(t);
-			// TODO dfc_queue(reschedule_dfc, 0, 0, 0);
-		}
-	}
-}
-
-void usart0Interrupt() {
-	printk("usart0Interrupt!");
 }
 
 NORETURN reboot() {

@@ -31,6 +31,16 @@
 #define SCB_MMAR				0xE000ED34 // Mem Management Fault Address Reg
 #define SCB_BFAR				0xE000ED38 // Bus Fault Address Register
 
+// p200
+#define MPU_TYPE				0xE000ED90
+#define MPU_CTRL				0xE000ED94
+#define MPU_RNR					0xE000ED98 // Region Number Register
+#define MPU_RBAR				0xE000ED9C // Region Base Address Register
+#define MPU_RASR				0xE000EDA0 // Region Attribute and Size Register
+
+#define MPU_CTRL_PRIVDEFENA		(1 << 2)
+#define MPU_CTRL_ENABLE			(1 << 0)
+
 // p172
 #define ICSR_PENDSVCLR			(1 << 27)
 #define ICSR_PENDSVSET			(1 << 28)
@@ -49,6 +59,10 @@
 // pp186-189
 #define CFSR_BFARVALID			(1 << 15)
 #define CFSR_MMARVALID			(1 << 7)
+
+// p69
+#define CONTROL_PSP				(1 << 1)
+#define CONTROL_NPRIV			(1 << 0)
 
 #define WFI(reg)				asm("WFI")
 #define WFI_inline(val)			do { (void)val; asm("WFI"); } while(0)
@@ -96,4 +110,16 @@ static inline ExceptionStackFrame* getThreadExceptionStackFrame() {
 
 #define SVCallActive()	(GET32(SCB_SHCSR) & SHCSR_SVCALLACT)
 #define SVCallCurrent()	((GET32(SCB_ICSR) & ICSR_VECTACTIVE_MASK) == EXCEPTION_NUMBER_SVCALL)
+
+static inline uint32 getFAR() {
+	uint32 cfsr = GET32(SCB_CFSR);
+	if (cfsr & CFSR_MMARVALID) {
+		return GET32(SCB_MMAR);
+	} else if (cfsr & CFSR_BFARVALID) {
+		return GET32(SCB_BFAR);
+	} else {
+		return 0;
+	}
+}
+
 #endif

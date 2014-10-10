@@ -96,8 +96,9 @@ memCmpThumb2 = {
 kernelSources = {
 	{ path = "k/cpumode_arm.c", enabled = armOnly },
 	{ path = "k/cpumode_armv7m.c", enabled = armv7mOnly },
-	{ path = "k/mmu_arm.c", enabled = armOnly },
 	{ path = "k/scheduler_arm.c", enabled = armOnly },
+	{ path = "k/scheduler_armv7m.c", enabled = armv7mOnly },
+	{ path = "k/mmu_arm.c", enabled = armOnly },
 	{ path = "k/mmu_armv7m.c", enabled = armv7mOnly },
 	"k/debug.c",
 	"k/atomic.c",
@@ -107,6 +108,7 @@ kernelSources = {
 	"k/svc.c",
 	"k/kipc.c",
 	"k/ringbuf.c",
+	"k/uart_common.c",
 	{ path = "usersrc/memcpy_arm.S", user = true, enabled = armOnly },
 	{ path = "usersrc/memcmp_arm.S", user = true, enabled = armOnly },
 	{ path = "usersrc/memcpy_thumb2.c", user = true, enabled = armv7mOnly },

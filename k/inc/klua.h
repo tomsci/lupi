@@ -5,6 +5,6 @@
 
 void klua_runInterpreter();
 void klua_runInterpreterModule();
-void switchToKluaDebuggerMode(uintptr sp);
+void switchToKluaDebuggerMode();
 
 #endif

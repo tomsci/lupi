@@ -56,7 +56,7 @@ int checkBootMode(int bootMode) {
 		mmu_mapSectionContiguous(Al, KLuaDebuggerSection, KPageKluaHeap);
 		mmu_finishedUpdatingPageTables();
 		TheSuperPage->marvin = true; // Required for debugger functionality
-		switchToKluaDebuggerMode(KLuaDebuggerStackBase + 0x1000);
+		switchToKluaDebuggerMode();
 		klua_runInterpreterModule();
 #else
 		printk("Error: KLUA_DEBUGGER not defined\n");

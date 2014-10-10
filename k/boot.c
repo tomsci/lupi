@@ -125,6 +125,7 @@ void Boot(uintptr atagsPhysAddr) {
 	firstProcess->pdePhysicalAddress = 0;
 
 #if defined(KLUA)
+	kern_disableInterrupts(); // They get in the way...
 	klua_runInterpreter();
 #elif defined(LUPI_NO_PROCESS)
 	printk("Nothing to do...\n");
@@ -198,15 +199,25 @@ void iThinkYouOughtToKnowImFeelingVeryDepressed() {
 	if (!TheSuperPage->marvin) {
 		TheSuperPage->marvin = true;
 		// Make sure IRQs remain disabled in subsequent SVC calls by the klua debugger
+#if defined(ARM)
 		TheSuperPage->svcPsrMode |= KPsrIrqDisable;
+#elif defined(ARMV7_M)
+		// Promote SVC to high priority
+		PUT32(SCB_SHPR2, 0x1 << 28);
+		// And prevent anything else from running
+		uint32 pri = 2;
+		asm("MSR BASEPRI, %0" : : "r" (pri));
+#endif
 		TheSuperPage->rescheduleNeededOnSvcExit = false;
 #ifdef HAVE_SCREEN
 		screen_drawCrashed();
 #endif
+#ifdef HAVE_MMU
 		if (!mmu_mapSectionContiguous(Al, KLuaDebuggerSection, KPageKluaHeap)) {
 			printk("Failed to allocate memory for klua debugger heap, sorry.\n");
 			hang();
 		}
+#endif
 	}
 	if (TheSuperPage->trapAbort) {
 		TheSuperPage->exception = true;
@@ -219,7 +230,7 @@ void iThinkYouOughtToKnowImFeelingVeryDepressed() {
 	} else {
 		TheSuperPage->crashFar = far;
 		// We use a custom stack at the start of the debugger heap section
-		switchToKluaDebuggerMode(KLuaDebuggerStackBase + 0x1000);
+		switchToKluaDebuggerMode();
 		klua_runInterpreterModule();
 	}
 }
@@ -230,7 +241,7 @@ void iThinkYouOughtToKnowImFeelingVeryDepressed() {
 	hang();
 }
 
-#endif
+#endif // KLUA_DEBUGGER
 
 const char KAssertionFailed[] = "\nASSERTION FAILURE at %s:%d\nASSERT(%s)\n";
 
@@ -286,7 +297,7 @@ void NAKED assertionFail(int nextras, const char* file, int line, const char* co
 #endif
 	asm("STR r3, [r1], #4"); // For r15, which is not saved
 
-#ifdef ARM
+#ifdef ARM //TODO
 	// Finally, save CPSR
 	asm("MRS r3, cpsr");
 	asm("STR r3, [r1], #4");

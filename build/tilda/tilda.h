@@ -23,10 +23,6 @@
 
 #define KLuaHeapBase		(KUserHeapBase)
 
-// Because we have no MMU to remap addresses, we only use a single user-side
-// address space
-#define LUPI_SINGLE_PROCESS
-
 #define LUPI_NO_SECTION0 // Implies packed superpage and no MMU translation
 
 #define LUPI_NO_IPC // This is a temporary macro

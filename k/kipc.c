@@ -4,7 +4,7 @@
 #include <err.h>
 #include <pageAllocator.h>
 
-#ifndef LUPI_SINGLE_PROCESS
+#ifdef HAVE_MMU
 
 uintptr ipc_mapNewSharedPageInCurrentProcess() {
 	// First find an unused page
@@ -51,7 +51,7 @@ static int sharedPageIsValid(uintptr sharedPage, bool toServer) {
 	return sharedPageIdx;
 }
 
-#endif
+#endif // HAVE_MMU
 
 // returns server idx or err
 int ipc_createServer(uint32 id, Thread* thread) {

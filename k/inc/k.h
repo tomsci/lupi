@@ -17,10 +17,10 @@ Limiting to 256 running processes makes the maths quite nice - the ProcessList f
 and Process overhead is a maximum 1MB (sounds big but it's fixed). There's maybe also some
 cacheing tweaks we can do a la Multiple Memory Model on ARM11.
 */
-#ifdef LUPI_SINGLE_PROCESS
-#define MAX_PROCESSES 1
-#else
+#ifdef HAVE_MMU
 #define MAX_PROCESSES 256
+#else
+#define MAX_PROCESSES 1
 #endif
 
 /*

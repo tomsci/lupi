@@ -12,7 +12,7 @@
 #define indexForServer(server) (((uintptr)(server) - (uintptr)&TheSuperPage->servers[0])/sizeof(Server))
 #define userAddressForSharedPage(idx) (KSharedPagesBase + (idx << KPageShift))
 
-#ifndef LUPI_SINGLE_PROCESS
+#ifdef HAVE_MMU
 
 #define KSharedPageMappingServerIsSet (0x80)
 #define KSharedPageMappingPageOwned (0x40)
@@ -56,7 +56,7 @@ inline static Process* ownerForSharedPage(int idx) {
 	}
 }
 
-#endif // LUPI_SINGLE_PROCESS
+#endif // HAVE_MMU
 
 #endif // LUPI_NO_IPC
 

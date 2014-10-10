@@ -276,7 +276,8 @@ void klua_runInterpreter() {
 
 #ifdef KLUA_DEBUGGER
 
-void NAKED switchToKluaDebuggerMode(uintptr sp) {
+void NAKED switchToKluaDebuggerMode() {
+#ifdef ARM
 	// for the klua debugger, use a custom stack and run in system mode.
 	// This allows us access to all memory, but also means we can still do SVCs without
 	// corrupting registers. This is required because Lua is still in user config so expects
@@ -284,8 +285,14 @@ void NAKED switchToKluaDebuggerMode(uintptr sp) {
 	// this combination
 	asm("MOV r1, r14");
 	ModeSwitch(KPsrModeSystem | KPsrIrqDisable | KPsrFiqDisable);
-	asm("MOV r13, r0");
+	asm("LDR r13, .stackBase");
 	asm("BX r1");
+	LABEL_WORD(.stackBase, KLuaDebuggerStackBase + 0x1000);
+#elif defined(ARMV7_M)
+	asm("MOV r0, #0"); // Thread mode privileged
+	asm("MSR CONTROL, r0");
+	asm("BX lr");
+#endif
 }
 
 #define EXPORT_INT(L, val) lua_pushunsigned(L, val); lua_setglobal(L, #val)
@@ -539,11 +546,16 @@ static void WeveCrashedSetupDebuggingStuff(lua_State* L) {
 	EXPORT_INT(L, MAX_PROCESS_NAME);
 	EXPORT_INT(L, MAX_DFCS);
 	EXPORT_INT(L, THREAD_TIMESLICE);
+#ifdef ARM
 	EXPORT_INT(L, KKernelStackBase);
 	EXPORT_INT(L, KKernelStackSize);
-	EXPORT_INT(L, KUserHeapBase);
 	EXPORT_INT(L, KUserStacksBase);
-	EXPORT_INT(L, KPageAllocatorAddr);
+#endif
+#ifdef ARMV7_M
+	EXPORT_INT(L, KHandlerStackBase);
+#endif
+	EXPORT_INT(L, KUserHeapBase);
+	EXPORT_INT(L, (uintptr)Al);
 
 #ifdef ARMV7_M
 #define MBUF_DECLARE_SCB_REG(name, reg) mbuf_declare_member(L, "scb", name, (reg)-KSystemControlSpace, sizeof(uint32), NULL)
@@ -563,7 +575,7 @@ static void WeveCrashedSetupDebuggingStuff(lua_State* L) {
 	MBUF_DECLARE_SCB_REG("val", SYSTICK_VAL);
 	MBUF_DECLARE_SCB_REG("calib", SYSTICK_CALIB);
 
-	MBUF_NEW(SystemControlBlock, KSystemControlSpace);
+	mbuf_new(L, (void*)KSystemControlSpace, 4096, "SystemControlBlock");
 	lua_setglobal(L, "scb");
 
 	MBUF_TYPE(ExceptionStackFrame);

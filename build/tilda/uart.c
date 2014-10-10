@@ -1,4 +1,5 @@
 #include <k.h>
+#include <armv7-m.h>
 #include "pio.h"
 
 #define UART_CR		0x400E0800
@@ -13,6 +14,7 @@
 #define USART0_BASE	0x40098000
 #define USART0_CR	0x40098000
 #define USART0_MR	0x40098004
+#define USART0_IER	0x40098008
 #define USART0_CSR	0x40098014
 #define USART0_RHR	0x40098018
 #define USART0_THR	0x4009801C
@@ -37,7 +39,7 @@
 #define CHRL_8BIT	(3 << 6)
 #define OVER		(1 << 19)
 
-// UART_SR, USARTx_CSR (p849)
+// UART_SR, USARTx_CSR, USARTx_IER (p849)
 #define RXRDY		(1 << 0)
 #define TXRDY		(1 << 1)
 
@@ -54,8 +56,6 @@
 #endif
 
 void uart_init() {
-
-	// TODO configure NVIC
 
 #ifdef TILDA_USE_USART0
 
@@ -75,6 +75,11 @@ void uart_init() {
 
 	// Disable PDC just in case
 	//PUT32(USART0_BASE + PERIPH_PTCR, PERIPH_TXTDIS | PERIPH_RXTDIS);
+
+	// Finally, enable interrupts
+	PUT32(USART0_IER, RXRDY);
+	PUT32(NVIC_ISER0, 1 << PERIPHERAL_ID_USART0);
+
 #else
 
 	PUT32(UART_BRGR, 46); // Probably gives about 115200 baud
@@ -86,24 +91,11 @@ void uart_init() {
 
 #define UART_BUF_SIZE (sizeof(TheSuperPage->uartBuf) - 2)
 
-bool byteReady() {
-	SuperPage* s = TheSuperPage;
-	return !ring_empty(s->uartBuf, UART_BUF_SIZE) || (GET32(SR) & RXRDY);
+bool uart_byteReady() {
+	return GET32(SR) & RXRDY;
 }
 
-byte getch() {
-	SuperPage* s = TheSuperPage;
-	uint8 droppedChars = atomic_set8(&s->uartDroppedChars, 0);
-	if (droppedChars) {
-		printk("|Warning: %d dropped chars|", droppedChars);
-	}
-	if (!ring_empty(s->uartBuf, UART_BUF_SIZE)) {
-		return ring_pop(s->uartBuf, UART_BUF_SIZE);
-	}
-
-	while (!byteReady()) {
-		// Spin
-	}
+byte uart_getch() {
 	return (byte)GET32(RHR);
 }
 
@@ -113,4 +105,13 @@ void putbyte(byte c) {
 		if (GET32(SR) & TXRDY) break;
 	}
 	PUT32(THR, c);
+}
+
+void uart_got_char(byte b);
+
+void usart0Interrupt() {
+	//printk("usart0Interrupt got %c!\n", uart_getch());
+	if (uart_byteReady()) {
+		uart_got_char((byte)GET32(RHR));
+	}
 }
