@@ -8,6 +8,8 @@ local misc
 if not pcall(function() misc = require("misc") end) then
 	misc = require("modules/misc")
 end
+_ENV = misc.fixupEnvIfRunByHostLua(_ENV)
+
 local lt = misc.lessThanUnsigned
 
 symbols = nil
@@ -107,8 +109,4 @@ function dumpSymbolsTable()
 	return table.concat(tbl)
 end
 
--- These are the only fns that build.lua needs
-return {
-	getSymbolsFromReadElf = getSymbolsFromReadElf,
-	dumpSymbolsTable = dumpSymbolsTable,
-}
+return _ENV

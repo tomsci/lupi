@@ -1,3 +1,18 @@
+local function fixupEnv(env)
+	-- The lupi environment does this automatically, but standard lua doesn't
+	if _ENV == _G then
+		env = {}
+		local g = _G
+		setmetatable(env, { __index = g })
+	end
+	return env
+end
+
+_ENV = fixupEnv(_ENV)
+
+-- Now we've done that, we can actually declare stuff
+fixupEnvIfRunByHostLua = fixupEnv
+
 --[[**
 This function behaves like `ipairs`, except that it returns a third value, which
 is a function that removes the current value without messing up the iteration.
@@ -287,10 +302,4 @@ end
 
 -- Because we're used by the build system too, indirectly via symbolParser.lua,
 -- we have to adhere by the Lua 5.2 module convention
-return {
-	array = array,
-	class = class,
-	iter = iter,
-	lessThanUnsigned = lessThanUnsigned,
-	roundDownUnsigned = roundDownUnsigned,
-}
+return _ENV
