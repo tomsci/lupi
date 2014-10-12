@@ -186,7 +186,14 @@ static int lua_getObj(lua_State* L) {
 #ifdef KLUA_MODULES
 
 static lua_State* initModule(uintptr heapBase, const char* module) {
-#ifdef USE_HOST_MALLOC_FOR_LUA
+#if defined(USE_HOST_MALLOC_FOR_LUA)
+	lua_State* L = luaL_newstate();
+#elif defined(LUPI_USE_MALLOC_FOR_KLUA) && defined(ULUA_PRESENT)
+	// We need to nuke the malloc state because it may be in an inconsistant
+	// state due to the fact that we've crashed
+	zeroPage((void*)KUserBss);
+	// Don't have enough RAM to avoid stomping over user heap
+	TheSuperPage->currentProcess->heapLimit = KUserHeapBase;
 	lua_State* L = luaL_newstate();
 #else
 	klua_heapReset(heapBase);
@@ -289,9 +296,21 @@ void NAKED switchToKluaDebuggerMode() {
 	asm("BX r1");
 	LABEL_WORD(.stackBase, KLuaDebuggerStackBase + 0x1000);
 #elif defined(ARMV7_M)
-	asm("MOV r0, #0"); // Thread mode privileged
-	asm("MSR CONTROL, r0");
-	asm("BX lr");
+	asm("MOV r0, #0");
+	asm("MSR CONTROL, r0"); // Thread mode privileged (NPRIV=0)
+	asm("ISB");
+
+	// Clear all active and pending exceptions and bounce us into SVC
+	asm("LDR r0, .shcsr");
+	asm("LDR r1, .shcsr_val");
+	asm("STR r1, [r0]");
+
+	// And now drop to thread mode (using main handler stack)
+	RFE_TO_MAIN(lr);
+
+	LABEL_WORD(.shcsr, SCB_SHCSR);
+	LABEL_WORD(.shcsr_val, SHCSR_USGFAULTENA | SHCSR_BUSFAULTENA
+		| SHCSR_MEMFAULTENA | SHCSR_SVCALLACT);
 #endif
 }
 
@@ -558,7 +577,7 @@ static void WeveCrashedSetupDebuggingStuff(lua_State* L) {
 	EXPORT_INT(L, (uintptr)Al);
 
 #ifdef ARMV7_M
-#define MBUF_DECLARE_SCB_REG(name, reg) mbuf_declare_member(L, "scb", name, (reg)-KSystemControlSpace, sizeof(uint32), NULL)
+#define MBUF_DECLARE_SCB_REG(name, reg) mbuf_declare_member(L, "SystemControlBlock", name, (reg)-KSystemControlSpace, sizeof(uint32), NULL)
 	mbuf_declare_type(L, "SystemControlBlock", 4096); // Size if give or take
 	MBUF_DECLARE_SCB_REG("icsr", SCB_ICSR);
 	MBUF_DECLARE_SCB_REG("vtor", SCB_VTOR);

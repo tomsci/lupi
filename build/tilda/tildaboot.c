@@ -88,6 +88,7 @@ void NAKED _start() {
 					| (0x3F << 8) /* PLLA Count */ \
 					| (0x1) /* Divider bypassed */ )
 
+void PUT8(uint32 addr, byte val);
 void dummy();
 #define WaitForPMC(bit) do { dummy(); } while (!(GET32(PMC_SR) & (bit)))
 
@@ -149,25 +150,6 @@ void tildaBoot() {
 	Boot(0);
 }
 
-void NAKED dummy() {
-	asm("BX lr");
-}
-
-NOINLINE NAKED uint32 GET32(uint32 addr) {
-	asm("LDR r0, [r0]");
-	asm("BX lr");
-}
-
-NOINLINE NAKED void PUT32(uint32 addr, uint32 val) {
-    asm("STR r1, [r0]");
-    asm("BX lr");
-}
-
-NOINLINE NAKED byte GET8(uintptr ptr) {
-	asm("LDRB r0, [r0]");
-	asm("BX lr");
-}
-
 void parseAtags(uint32* ptr, AtagsParams* params) {
 	// We should look up what spec ATSAM we are, probably
 	params->totalRam = KRamSize;
@@ -175,9 +157,9 @@ void parseAtags(uint32* ptr, AtagsParams* params) {
 }
 
 static void setPeripheralInterruptPriority(int peripheralId, uint8 priority) {
-	ASSERT(priority <= 0xF);
+	ASSERT((priority & 0xF) == 0);
 	uint32 addr = NVIC_IPR0 + peripheralId;
-	PUT32(addr, priority << 4);
+	PUT32(addr, priority);
 }
 
 void irq_init() {
@@ -185,13 +167,14 @@ void irq_init() {
 	PUT32(SCB_SHCSR, SHCSR_USGFAULTENA | SHCSR_BUSFAULTENA | SHCSR_MEMFAULTENA);
 
 	// Highest priority - sys tick (0x4).
-	PUT32(SCB_SHPR3, (0x4 << 28) | (0xA << 20));
+	PUT8(SHPR_SYSTICK, KPrioritySysTick);
 
 	// Next highest, peripheral interrupts (0x8)
-	setPeripheralInterruptPriority(PERIPHERAL_ID_USART0, 0x8);
+	setPeripheralInterruptPriority(PERIPHERAL_ID_USART0, KPriorityPeripheral);
 
-	// Lowest, SVC (also pendSV above) 0xA
-	PUT32(SCB_SHPR2, 0xA << 28);
+	// Lowest, SVC and pendSV 0xA
+	PUT8(SHPR_SVCALL, KPrioritySvc);
+	PUT8(SHPR_PENDSV, KPrioritySvc);
 
 	// Spec suggests this reg contains 10ms but it's definitely only 1ms
 	uint32 oneMsInSysTicks = GET32(SYSTICK_CALIB) & 0x00FFFFFF;

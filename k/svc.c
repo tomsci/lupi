@@ -2,6 +2,9 @@
 #include <exec.h>
 #include <kipc.h>
 #include <err.h>
+#ifdef ARMV7_M
+#include <armv7-m.h>
+#endif
 
 void putbyte(byte b);
 bool byteReady();
@@ -10,17 +13,22 @@ static int getInt(int arg);
 
 NOINLINE NAKED uint64 readUserInt64(uintptr ptr) {
 	asm("MOV r2, r0");
+	// ARM supports a post-increment which we use on the first instruction,
+	// but THUMB2 only supports a pre-increment which we use on the second!
 #ifdef ARM
-	asm("LDRT r0, [r2], #4"); // I think this is the correct way round...
+	asm("LDRT r0, [r2], #4");
 	asm("LDRT r1, [r2]");
-#elif defined(ARMV7_M)
+#elif defined(THUMB2)
 	asm("LDRT r0, [r2]");
 	asm("LDRT r1, [r2, #4]");
+#else
+	#error "wtf?"
 #endif
 	asm("BX lr");
 }
 
 int64 handleSvc(int cmd, uintptr arg1, uintptr arg2, void* savedRegisters) {
+	// printk("+handleSvc %x\n", cmd);
 	if (cmd & KFastExec) {
 		cmd = cmd & ~KFastExec;
 	}
@@ -33,12 +41,14 @@ int64 handleSvc(int cmd, uintptr arg1, uintptr arg2, void* savedRegisters) {
 		case KExecSbrk:
 			if (arg1) {
 				uintptr oldLim = p->heapLimit;
+				// printk("sbrk oldLim=%X incr=%d\n", (uint)oldLim, (int)arg1);
 				bool ok = process_grow_heap(p, (int)arg1);
 				if (ok) result = oldLim;
 				else result = -1;
 			} else {
 				result = p->heapLimit;
 			}
+			// printk("sbrk p=%p returning %X\n", p, (uint)result);
 			break;
 		case KExecPrintString:
 			// TODO sanitise parameters!
@@ -198,6 +208,8 @@ int64 handleSvc(int cmd, uintptr arg1, uintptr arg2, void* savedRegisters) {
 		}
 	}
 
+#ifdef ARM
+	// This is handled by pendSV on ARMv7-M
 	kern_disableInterrupts();
 	// Now we're done servicing the SVC, check if rescheduleNeededOnSvcExit
 	// was set meaning our thread's timeslice expired during the SVC (but
@@ -213,6 +225,8 @@ int64 handleSvc(int cmd, uintptr arg1, uintptr arg2, void* savedRegisters) {
 		reschedule();
 	}
 	// The MOVS to return from SVC mode will reenable interrupts for us
+#endif
+	// printk("-handleSvc %x\n", cmd);
 	return result;
 }
 

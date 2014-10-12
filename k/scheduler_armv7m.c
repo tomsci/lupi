@@ -1,5 +1,6 @@
 #include <k.h>
 #include <armv7-m.h>
+#include <exec.h>
 
 #ifndef LUPI_NO_PROCESS
 NORETURN NAKED do_process_start(uint32 sp) {
@@ -11,12 +12,28 @@ NORETURN NAKED do_process_start(uint32 sp) {
 	asm("MOV r2, %0" : : "i" (CONTROL_PSP | CONTROL_NPRIV));
 	asm("MSR CONTROL, r2");
 	asm("ISB");
-	asm("LDR r1, =newProcessEntryPoint");
-	asm("BLX r1");
+	asm("LDR r0, =newProcessEntryPoint");
+	// Clear all other registers to make stack dumps clearer
+	asm("LDR r1, .clearReg");
+	asm("MOV r2, r1");
+	asm("MOV r3, r1");
+	asm("MOV r4, r1");
+	asm("MOV r5, r1");
+	asm("MOV r6, r1");
+	asm("MOV r7, r1");
+	asm("MOV r8, r1");
+	asm("MOV r9, r1");
+	asm("MOV r10, r1");
+	asm("MOV r11, r1");
+	asm("MOV r12, r1");
+
+	asm("BLX r0");
 	// Will only return here if thread returns
 	asm("B exec_threadExit");
+
+	LABEL_WORD(.clearReg, 0xA11FADED);
 }
-#endif
+#endif // LUPI_NO_PROCESS
 
 /**
 The behaviour of this function is different depending on whether the current
@@ -32,9 +49,10 @@ thread is in an SVC call, and what exception handler is currently running.
 void saveCurrentRegistersForThread(void* savedRegisters) {
 	Thread* t = TheSuperPage->currentThread;
 	const ExceptionStackFrame* esf = getThreadExceptionStackFrame();
-	// There's actually no need to save any of these, since they'e saved in the
-	// ESF already
-	// t->savedRegisters[0] = esf->r0;
+	// There's actually no need to save any of these, since they're saved in the
+	// ESF already. However in various places we set t->savedRegisters[0] as
+	// part of SVC return so we will save and restore that too.
+	t->savedRegisters[0] = esf->r0;
 	// t->savedRegisters[1] = esf->r1;
 	// t->savedRegisters[2] = esf->r2;
 	// t->savedRegisters[3] = esf->r3;
@@ -58,38 +76,96 @@ void saveCurrentRegistersForThread(void* savedRegisters) {
 	}
 }
 
-// Must be in handler mode
-static NORETURN NAKED doScheduleThread(uint32* savedRegistersR4, uintptr sp, uint32 excReturn) {
-	// Restore R4-R11
-	asm("LDM r0, {r4-r11}");
+static NORETURN NAKED doScheduleThread(uint32* savedRegisters) {
+	asm("MOV r12, r0"); // R12 = &savedRegisters[0]
+	asm("ADD r3, r12, %0" : : "i" (4 * 4)); // r3 = &savedRegisters[4]
+	asm("LDM r3, {r4-r11}"); // restore r4-r11
 	// Set the PSP to this thread's saved SP
-	asm("MSR PSP, r1");
+	asm("LDR r3, [r12, %0]" : : "i" (13 * 4)); // r3 = savedRegisters[13]
+	asm("MSR PSP, r3");
 	// Remember to clear exclusive 
 	asm("CLREX");
-	// And perform an exception return. Is this going to work?
+
+	// Reset the handler stack pointer, it'll be a bit of a mess by now
+	// This is ok as we are only ever called in svc or pendsv which are the
+	// lowest priority handler so there can never be any other handler active
+	asm("MOV r1, %0" : : "i" (KKernelCodeBase));
+	asm("LDR sp, [r1]");
+
+	// And perform an exception return
+	asm("LDR r2, .excReturnThreadProcess");
 	asm("BX r2");
+
+	LABEL_WORD(.excReturnThreadProcess, KExcReturnThreadProcess);
 }
 
-NORETURN scheduleThread(Thread* t) {
+static NORETURN USED scheduleThread(Thread* t) {
 	t->timeslice = THREAD_TIMESLICE;
 	TheSuperPage->currentThread = t;
-	doScheduleThread(&t->savedRegisters[4], t->savedRegisters[13], KExcReturnThreadProcess);
+	// Restore r0 in the exception frame from the saved registers. This is
+	// because we set savedRegisters[0] in various places to the svc return
+	// value, because the ARM model would always restore it as a matter of
+	// course. Under ARMv7-M this isn't the case so we will restore it
+	// explicitly in lieu of making a tidier generic mechanism that makes sense
+	// on both ARM and ARMv7-M.
+	getThreadExceptionStackFrame()->r0 = t->savedRegisters[0];
+	// printk("Scheduling thread\n");
+	doScheduleThread(t->savedRegisters);
+}
+
+Thread* findNextReadyThread();
+void PUT8(uint32 addr, byte val);
+
+NORETURN reschedule() {
+	Thread* t = findNextReadyThread();
+	if (t) {
+		scheduleThread(t);
+		// Doesn't return
+	}
+
+	TheSuperPage->currentThread = NULL;
+	// Bump pendsv priority so it can run during the WFI
+	PUT8(SHPR_PENDSV, KPriorityWfiPendsv);
+
+	while (t == NULL) {
+		WFI();
+		kern_disableInterrupts(); // Could use BASEPRI instead here
+		t = findNextReadyThread();
+		kern_enableInterrupts();
+	}
+
+	// Stop any further pendSVs during SVC
+	PUT8(SHPR_PENDSV, KPrioritySvc);
+	scheduleThread(t);
 }
 
 void pendSV() {
-	printk("pendSV\n");
+	// printk("pendSV\n");
 	Dfc dfcs[MAX_DFCS];
 	// Interrupts will always be enabled on entry to a configurable exception handler
 	kern_disableInterrupts();
 	const int n = TheSuperPage->numDfcsPending;
-	memcpy(dfcs, TheSuperPage->dfcs, n * sizeof(Dfc));
-	TheSuperPage->numDfcsPending = 0;
-	kern_enableInterrupts();
+	if (n) {
+		memcpy(dfcs, TheSuperPage->dfcs, n * sizeof(Dfc));
+		TheSuperPage->numDfcsPending = 0;
+		kern_enableInterrupts();
 
-	for (int i = 0; i < n; i++) {
-		Dfc* dfc = &dfcs[i];
-		dfc->fn(dfc->args[0], dfc->args[1], dfc->args[2]);
+		for (int i = 0; i < n; i++) {
+			Dfc* dfc = &dfcs[i];
+			dfc->fn(dfc->args[0], dfc->args[1], dfc->args[2]);
+		}
+	} else {
+		kern_enableInterrupts();
 	}
+
+	// Last thing the pendSV handler does is to check for thread timeslice
+	// expired during SVC
+	if (atomic_setbool(&TheSuperPage->rescheduleNeededOnSvcExit, false)) {
+		saveCurrentRegistersForThread(NULL);
+		// Save the result also
+		reschedule();
+	}
+
 }
 
 // static void reschedule_dfc(uintptr arg1, uintptr arg2, uintptr arg3) {
@@ -105,32 +181,40 @@ void NAKED sysTick() {
 }
 
 static void USED doTick(uint32* regs, uintptr excReturn) {
+	// printk("+Tick!\n");
 	SuperPage* const s = TheSuperPage;
 	s->uptime++;
 	if (s->uptime == s->timerCompletionTime) {
 		s->timerCompletionTime = UINT64_MAX;
 		dfc_requestComplete(&s->timerRequest, 0);
 	}
+	/*TODO
 	Thread* t = s->currentThread;
 	if (t && t->state == EReady) {
 		if (t->timeslice > 0) {
 			t->timeslice--;
 		} else {
 			// This is only allowed if the thread is (still!) in an SVC,
-			bool threadWasInSvc = SVCallActive();
+			bool threadWasInSvc = SvOrPendSvActive();
 			ASSERT(threadWasInSvc);
 			atomic_setbool(&TheSuperPage->rescheduleNeededOnSvcExit, true);
+			// And make sure PendSV is set
+			printk("Setting pendsv due to tick thread timeslice 0 in svc\n");
+			PUT32(SCB_ICSR, ICSR_PENDSVSET);
 		}
 		if (t->timeslice == 0) {
 			// Thread timeslice expired
+			printk("timeslice expired\n");
 			thread_yield(t);
 			// TODO dfc_queue(reschedule_dfc, 0, 0, 0);
 		}
 	}
+	*/
+	// printk("-Tick!\n");
 }
 
 void dfc_queue(DfcFn fn, uintptr arg1, uintptr arg2, uintptr arg3) {
-	printk("dfc_queue\n");
+	// printk("dfc_queue\n");
 	int mask = kern_disableInterrupts();
 	uint32 n = ++(TheSuperPage->numDfcsPending);
 	ASSERT(n <= MAX_DFCS);

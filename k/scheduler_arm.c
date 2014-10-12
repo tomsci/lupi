@@ -104,6 +104,30 @@ NORETURN scheduleThread(Thread* t) {
 }
 
 /**
+Perform a reschedule, ie causes a different thread to execute. Does not return.
+Interrupts may or may not be enabled. Must be in SVC mode.
+
+See also: [reschedule_irq()](#reschedule_irq)
+*/
+NORETURN NAKED reschedule() {
+	asm(".doReschedule:");
+	asm("BL findNextReadyThread");
+	asm("CMP r0, #0");
+	asm("BNE scheduleThread");
+
+	// If we get here, no more threads to run, need to just WFI
+	// But in order to do that we need to safely reenable interrupts
+	asm("LDR r1, .TheCurrentThreadAddr");
+	asm("STR r0, [r1]"); // currentThread = NULL
+	DSB(r0);
+	kern_enableInterrupts();
+	WFI(r0);
+	kern_disableInterrupts();
+	asm("B .doReschedule");
+	LABEL_WORD(.TheCurrentThreadAddr, &TheSuperPage->currentThread);
+}
+
+/**
 Call this instead of reschedule() to reschedule when in IRQ mode. Performs
 the appropriate cleanup and mode switching. Does not return, so should only be
 called at the very end of the IRQ handler.

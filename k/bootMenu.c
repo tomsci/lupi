@@ -53,8 +53,10 @@ int checkBootMode(int bootMode) {
 	}
 	if (bootMode == BootModeKlua) {
 #ifdef KLUA_DEBUGGER
+#ifdef HAVE_MMU
 		mmu_mapSectionContiguous(Al, KLuaDebuggerSection, KPageKluaHeap);
 		mmu_finishedUpdatingPageTables();
+#endif
 		TheSuperPage->marvin = true; // Required for debugger functionality
 		switchToKluaDebuggerMode();
 		klua_runInterpreterModule();

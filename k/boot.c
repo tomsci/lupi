@@ -186,12 +186,6 @@ void zeroPages(void* addr, int num) {
 	}
 }
 
-void NAKED hang() {
-	asm("MOV r0, #0");
-	WFI(r0); // Stops us spinning like crazy
-	asm("B hang");
-}
-
 #ifdef KLUA_DEBUGGER
 
 void iThinkYouOughtToKnowImFeelingVeryDepressed() {
@@ -203,10 +197,12 @@ void iThinkYouOughtToKnowImFeelingVeryDepressed() {
 		TheSuperPage->svcPsrMode |= KPsrIrqDisable;
 #elif defined(ARMV7_M)
 		// Promote SVC to high priority
-		PUT32(SCB_SHPR2, 0x1 << 28);
-		// And prevent anything else from running
-		uint32 pri = 2;
-		asm("MSR BASEPRI, %0" : : "r" (pri));
+		PUT32(SCB_SHPR2, KCrashedPrioritySvc << 24);
+		// Prevent anything else from running
+		uint32 pri = KCrashedBasePri;
+		WRITE_SPECIAL(BASEPRI, pri);
+		// Allow bouncing from nested exception directly to thread mode
+		PUT32(SCB_CCR, GET32(SCB_CCR) | CCR_NONBASETHRDENA);
 #endif
 		TheSuperPage->rescheduleNeededOnSvcExit = false;
 #ifdef HAVE_SCREEN

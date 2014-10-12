@@ -20,30 +20,6 @@ Thread* findNextReadyThread() {
 	return NULL;
 }
 
-/**
-Perform a reschedule, ie causes a different thread to execute. Does not return.
-Interrupts may or may not be enabled. Must be in SVC mode.
-
-See also: [reschedule_irq()](#reschedule_irq)
-*/
-NORETURN NAKED reschedule() {
-	asm(".doReschedule:");
-	asm("BL findNextReadyThread");
-	asm("CMP r0, #0");
-	asm("BNE scheduleThread");
-
-	// If we get here, no more threads to run, need to just WFI
-	// But in order to do that we need to safely reenable interrupts
-	asm("LDR r1, .TheCurrentThreadAddr");
-	asm("STR r0, [r1]"); // currentThread = NULL
-	DSB(r0);
-	kern_enableInterrupts();
-	WFI(r0);
-	kern_disableInterrupts();
-	asm("B .doReschedule");
-	LABEL_WORD(.TheCurrentThreadAddr, &TheSuperPage->currentThread);
-}
-
 static void dequeueFromReadyList(Thread* t) {
 	thread_dequeue(t, &TheSuperPage->readyList);
 }
@@ -118,7 +94,7 @@ int kern_disableInterrupts() {
 	return result;
 #elif defined(ARMV7_M)
 	int result;
-	asm("MRS %0, PRIMASK" : "=r" (result));
+	READ_SPECIAL(PRIMASK, result);
 	asm("CPSID i");
 	return result;
 #endif
@@ -140,7 +116,8 @@ void kern_restoreInterrupts(int mask) {
 #if defined(ARM)
 	ModeSwitchVar(mask);
 #elif defined(ARMV7_M)
-	if (mask) {
+	if (mask == 0) {
+		// PRIMASK of 0 means interrupts were enabled and thus should be restored
 		asm("CPSIE i");
 	}
 #endif
@@ -152,8 +129,12 @@ longer. Can only be called from SVC mode with interrupts enabled (otherwise
 timers can't fire).
 */
 void kern_sleep(int msec) {
-#ifdef ARM
+#if defined(ARM)
 	ASSERT((getCpsr() & 0xFF) == (KPsrModeSvc | KPsrFiqDisable));
+#elif defined(ARMV7_M)
+	uint32 primask;
+	READ_SPECIAL(PRIMASK, primask);
+	ASSERT(primask == 0);
 #endif
 	// Use volatile to prevent compiler inlining the while check below
 	volatile uint64* uptime = &TheSuperPage->uptime;
@@ -165,6 +146,7 @@ void kern_sleep(int msec) {
 }
 
 static void do_request_complete(uintptr arg1, uintptr arg2, uintptr arg3) {
+	// printk("do_request_complete\n");
 	KAsyncRequest req = {
 		.thread = (Thread*)arg1,
 		.userPtr = arg2,

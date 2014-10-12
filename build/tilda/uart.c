@@ -110,7 +110,6 @@ void putbyte(byte c) {
 void uart_got_char(byte b);
 
 void usart0Interrupt() {
-	//printk("usart0Interrupt got %c!\n", uart_getch());
 	if (uart_byteReady()) {
 		uart_got_char((byte)GET32(RHR));
 	}

@@ -6,6 +6,12 @@ static void dumpRegisters(uint32* regs, uint32 pc, uint32 dataAbortFar);
 
 // Contains code specific to the ARM register and CPU mode model
 
+void NAKED hang() {
+	asm("MOV r0, #0");
+	WFI(r0); // Stops us spinning like crazy
+	asm("B hang");
+}
+
 void NAKED dummy() {
 	asm("BX lr");
 }

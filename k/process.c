@@ -132,19 +132,30 @@ bool process_grow_heap(Process* p, int incr) {
 			amount = p->heapLimit - KUserHeapBase;
 		}
 		p->heapLimit = p->heapLimit - amount;
+#ifdef HAVE_MMU
 		mmu_unmapPagesInProcess(Al, p, p->heapLimit, amount >> KPageShift);
 		mmu_finishedUpdatingPageTables();
+#endif
 		return true;
 	} else {
 		const int npages = amount >> KPageShift;
+#ifdef HAVE_MMU
 		bool ok = mmu_mapPagesInProcess(Al, p, p->heapLimit, npages);
-		if (ok) {
-			mmu_finishedUpdatingPageTables();
-			zeroPages((void*)p->heapLimit, npages);
-			p->heapLimit += amount;
-			//printk("-process_grow_heap heapLimit=%p\n", (void*)p->heapLimit);
+		if (!ok) {
+			return false;
 		}
-		return ok;
+		mmu_finishedUpdatingPageTables();
+#else
+		const uint32 heapLim = userStackForThread(&p->threads[p->numThreads-1]);
+		if (p->heapLimit + amount > heapLim) {
+			printk("OOM @ heapLimit = %X incr = %d!\n", (uint)p->heapLimit, incr);
+			return false;
+		}
+#endif
+		zeroPages((void*)p->heapLimit, npages);
+		p->heapLimit += amount;
+		//printk("-process_grow_heap heapLimit=%p\n", (void*)p->heapLimit);
+		return true;
 	}
 }
 
@@ -228,7 +239,7 @@ static void process_exit(Process* p, int reason) {
 	//printk("Process %s exited with %d", p->name, reason);
 }
 
-static void dfc_threadExit(uintptr arg1, uintptr arg2, uintptr arg3) {
+static void threadExit_dfc(uintptr arg1, uintptr arg2, uintptr arg3) {
 	Thread* t = (Thread*)arg1;
 	switch_process(processForThread(t));
 	freeThreadStacks(t);
@@ -256,7 +267,7 @@ NORETURN thread_exit(Thread* t, int reason) {
 	thread_setState(t, EDying);
 	// We can't free the thread stacks directly because we're using the svc one.
 	// So queue a DFC to do it for us.
-	dfc_queue(dfc_threadExit, (uint32)t, 0, 0);
+	dfc_queue(threadExit_dfc, (uint32)t, 0, 0);
 	reschedule();
 }
 

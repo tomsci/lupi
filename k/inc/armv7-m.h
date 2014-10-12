@@ -22,6 +22,7 @@
 #define SCB_ICSR				0xE000ED04 // Interrupt & Control State Register
 #define SCB_VTOR				0xE000ED08 // Vector table offset register
 #define SCB_AIRCR				0xE000ED0C // App Interrupt & Reset Control Reg
+#define SCB_CCR					0xE000ED14 // Configuration and Control Register
 #define SCB_SHPR1				0xE000ED18 // System handler priority registers
 #define SCB_SHPR2				0xE000ED1C // (p181)
 #define SCB_SHPR3				0xE000ED20
@@ -50,11 +51,20 @@
 #define AIRCR_VECTKEY			(0x05FA << 16)
 #define AIRCR_SYSRESETREQ		(1 << 2)
 
+// p179
+#define CCR_NONBASETHRDENA		(1 << 0)
+#define CCR_STKALIGN			(1 << 9)
+
 // p183
 #define SHCSR_USGFAULTENA		(1 << 18)
 #define SHCSR_BUSFAULTENA		(1 << 17)
 #define SHCSR_MEMFAULTENA		(1 << 16)
+#define SHCSR_PENDSVACT			(1 << 10)
 #define SHCSR_SVCALLACT			(1 << 7)
+
+#define SHPR_SVCALL				(SCB_SHPR2 + 3)
+#define SHPR_PENDSV				(SCB_SHPR3 + 2)
+#define SHPR_SYSTICK			(SCB_SHPR3 + 3)
 
 // pp186-189
 #define CFSR_BFARVALID			(1 << 15)
@@ -64,10 +74,12 @@
 #define CONTROL_PSP				(1 << 1)
 #define CONTROL_NPRIV			(1 << 0)
 
-#define WFI(reg)				asm("WFI")
+#define WFI()					ASM_JFDI("WFI")
 #define WFI_inline(val)			do { (void)val; asm("WFI"); } while(0)
 #define DSB(reg)				asm("DSB")
 #define DMB(reg)				asm("DMB")
+#define READ_SPECIAL(reg, var)	asm("MRS %0, " #reg : "=r" (var))
+#define WRITE_SPECIAL(reg, var)	asm("MSR " #reg ", %0" : : "r" (var))
 
 // See p643 of the ARM arch v7m
 typedef struct ExceptionStackFrame {
@@ -86,10 +98,10 @@ ASSERT_COMPILE(sizeof(ExceptionStackFrame) == 8*4);
 ExceptionStackFrame* getExceptionStackFrame(uint32* spmain, uint32 excReturn);
 int stackFrameSize(const ExceptionStackFrame* esf);
 
-// Valid values for the bottom 4 bits of EXC_RETURN
-#define KExcReturnHandler		(1)
-#define KExcReturnThreadMain	(9)
-#define KExcReturnThreadProcess	(0xD)
+// Valid values for EXC_RETURN
+#define KExcReturnHandler		(0xFFFFFFF1)
+#define KExcReturnThreadMain	(0xFFFFFFF9)
+#define KExcReturnThreadProcess	(0xFFFFFFFD)
 
 static inline ExceptionStackFrame* getThreadExceptionStackFrame() {
 	return getExceptionStackFrame(0, KExcReturnThreadProcess);
@@ -109,6 +121,7 @@ static inline ExceptionStackFrame* getThreadExceptionStackFrame() {
 #define EXCEPTION_NUMBER_SVCALL	11
 
 #define SVCallActive()	(GET32(SCB_SHCSR) & SHCSR_SVCALLACT)
+#define SvOrPendSvActive() (GET32(SCB_SHCSR) & (SHCSR_SVCALLACT | SHCSR_PENDSVACT))
 #define SVCallCurrent()	((GET32(SCB_ICSR) & ICSR_VECTACTIVE_MASK) == EXCEPTION_NUMBER_SVCALL)
 
 static inline uint32 getFAR() {
@@ -121,5 +134,15 @@ static inline uint32 getFAR() {
 		return 0;
 	}
 }
+
+#define RFE_TO_MAIN(addrReg) \
+	asm("MOV r1, " #addrReg); \
+	asm("MOV r0, sp"); \
+	asm("ADD sp, sp, #40"); \
+	asm("BL pushDummyExceptionStackFrame"); /* returns esf addr */ \
+	asm("MOV sp, r0"); \
+	/* Compiler is smart enough to make this MOV a MVN.w */ \
+	asm("MOV r0, %0" : : "i" (KExcReturnThreadMain)); \
+	asm("BX r0")
 
 #endif

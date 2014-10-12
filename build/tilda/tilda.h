@@ -31,6 +31,8 @@
 
 // #define HAVE_SCREEN
 
+#define LUPI_USE_MALLOC_FOR_KLUA
+
 //#define MCLK		84000000
 
 #define PIO_PER		0x00 // PIO enable
@@ -73,5 +75,12 @@
 
 #define GPIO_LED_TX (PIOA | 21)
 #define GPIO_LED_RX (PIOC | 30)
+
+#define KCrashedPrioritySvc	(0x1 << 4)
+#define KCrashedBasePri		(0x2 << 4)
+#define KPrioritySysTick	(0x4 << 4)
+#define KPriorityPeripheral	(0x8 << 4)
+#define KPriorityWfiPendsv	(0x9 << 4)
+#define KPrioritySvc		(0xA << 4)
 
 #endif
