@@ -17,6 +17,25 @@
 #include <lupi/membuf.h>
 #include <lupi/int64.h>
 
+// #define MEM_DEBUG
+
+#ifdef MEM_DEBUG
+
+void malloc_stats();
+
+inline int getLuaMem(lua_State* L) {
+	int mem = lua_gc(L, LUA_GCCOUNT, 0) * 1024;
+	mem += lua_gc(L, LUA_GCCOUNTB, 0);
+	return mem;
+}
+#define PRINT_MEM_STATS(args...) printk(args, getLuaMem(L)); malloc_stats()
+
+#else
+
+#define PRINT_MEM_STATS(args...)
+
+#endif // MEM_DEBUG
+
 void putbyte(byte b);
 byte getch();
 
@@ -195,6 +214,7 @@ static lua_State* initModule(uintptr heapBase, const char* module) {
 	// Don't have enough RAM to avoid stomping over user heap
 	TheSuperPage->currentProcess->heapLimit = KUserHeapBase;
 	lua_State* L = luaL_newstate();
+	PRINT_MEM_STATS("Mem used after klua newstate = %d B\n");
 #else
 	klua_heapReset(heapBase);
 	lua_State* L = lua_newstate(klua_alloc_fn, (void*)heapBase);
@@ -202,8 +222,8 @@ static lua_State* initModule(uintptr heapBase, const char* module) {
 	lua_atpanic(L, panicFn);
 	newLuaStateForModule(module, L);
 	lua_call(L, 1, 1);
+	PRINT_MEM_STATS("Mem used after module '%s' init = %d B\n", module);
 	// the interpreter module is now at top of L stack
-	ASSERT(L != NULL);
 
 	lua_pushcfunction(L, putch_lua);
 	lua_setglobal(L, "putch");
@@ -390,6 +410,8 @@ static int executeFn(lua_State* L) {
 }
 
 static void WeveCrashedSetupDebuggingStuff(lua_State* L) {
+	PRINT_MEM_STATS("Mem usage pre WeveCrashedSetupDebuggingStuff = %d B\n");
+
 	// Interpreter module at top of stack
 	lua_getfield(L, -1, "require");
 	lua_pushliteral(L, "membuf");
@@ -609,6 +631,8 @@ static void WeveCrashedSetupDebuggingStuff(lua_State* L) {
 
 	FORCE_OUTOFLINE_COPY(getThreadExceptionStackFrame);
 #endif
+
+	PRINT_MEM_STATS("Mem usage pre require kluadebugger = %d B\n");
 
 	lua_getfield(L, -1, "require");
 	lua_pushliteral(L, "kluadebugger");

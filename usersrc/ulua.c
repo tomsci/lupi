@@ -8,12 +8,32 @@
 #include <lupi/int64.h>
 #include <lupi/exec.h>
 
+// #define MEM_DEBUG
+
+#ifdef MEM_DEBUG
+
+void malloc_stats();
+#include <stdlib.h>
+
+inline int getLuaMem(lua_State* L) {
+	int mem = lua_gc(L, LUA_GCCOUNT, 0) * 1024;
+	mem += lua_gc(L, LUA_GCCOUNTB, 0);
+	return mem;
+}
+#define PRINT_MEM_STATS(fmt) PRINTL(fmt, getLuaMem(L)); malloc_stats()
+
+#else
+
+#define PRINT_MEM_STATS(fmt)
+
+#endif // MEM_DEBUG
+
 void exec_putch(uint ch);
 int exec_getch();
 int exec_createProcess(const char* name);
 int exec_getUptime();
 void exec_getch_async(AsyncRequest* request);
-void exec_abort();
+NORETURN exec_abort();
 void exec_reboot();
 int exec_getInt(ExecGettableValue val);
 void exec_threadYield();
@@ -21,7 +41,7 @@ void exec_threadYield();
 uint32 user_ProcessPid;
 char user_ProcessName[32];
 
-void abort() {
+NORETURN abort() {
 	exec_abort();
 }
 
@@ -99,6 +119,8 @@ int newProcessEntryPoint() {
 	const char* moduleName = user_ProcessName;
 	lua_State* L = newLuaStateForModule(moduleName, NULL);
 
+	PRINT_MEM_STATS("Lua mem usage after module init %d B");
+
 	// I'm sure a whole bunch of stuff will need setting up here...
 	// TODO need a better way of managing the serial port...
 	static const luaL_Reg globals[] = {
@@ -143,6 +165,8 @@ int newProcessEntryPoint() {
 	if (!lua_isfunction(L, -1)) {
 		luaL_error(L, "Module %s does not have a main function!", moduleName);
 	}
+	PRINT_MEM_STATS("Lua mem usage after main() fn %d B");
+
 	lua_call(L, 0, 1);
 	return lua_tointeger(L, -1);
 }

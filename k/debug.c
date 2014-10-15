@@ -88,6 +88,10 @@ void printk(const char* fmt, ...) {
 		case '%': {
 			char formatChar = *fmt++;
 			int isLong = 0;
+			while (formatChar >= '0' && formatChar <= '9') {
+				// We ignore format specifiers
+				formatChar = *fmt++;
+			}
 			while (formatChar == 'l') {
 				isLong++;
 				formatChar = *fmt++;

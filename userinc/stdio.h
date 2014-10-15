@@ -22,4 +22,10 @@ static inline int fclose(FILE* f) { return 0; }
 #define ferror(f) (1)
 #define stdin (0)
 
+// Malloc hack
+#ifdef DLMALLOC_VERSION
+void printk(const char* fmt, ...) ATTRIBUTE_PRINTF(1, 2);
+#define fprintf(dontcare, args...) printk(args)
+#endif // DLMALLOC_VERSION
+
 #endif

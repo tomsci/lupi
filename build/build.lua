@@ -76,7 +76,7 @@ mallocSource = {
 		"-DUSE_BUILTIN_FFS=1",
 		"-DLACKS_UNISTD_H",
 		"-DLACKS_SYS_PARAM_H",
-		"-DNO_MALLOC_STATS=1", -- Avoids fprintf dep
+		-- "-DNO_MALLOC_STATS=1", -- Avoids fprintf dep
 		"-DMALLOC_FAILURE_ACTION=", -- no errno
 		"-DUSE_LOCKS=1",
 	},
