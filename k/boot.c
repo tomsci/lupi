@@ -71,8 +71,6 @@ void Boot(uintptr atagsPhysAddr) {
 
 #ifdef LUPI_NO_SECTION0
 	initSuperPage(&atags);
-	pageAllocator_init(Al, KRamSize >> KPageShift);
-	pageAllocator_alloc(Al, KPageSect0, 3); // Handler stack, SuperPage, ProcessPage
 	Process* firstProcess = GetProcess(0);
 #else
 	const int numPagesRam = atags.totalRam >> KPageShift;

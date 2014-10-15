@@ -143,6 +143,10 @@ NORETURN NAKED reschedule_irq() {
 	LABEL_WORD(.irqStack, KIrqStackBase + KPageSize);
 }
 
+void thread_writeSvcResult(Thread* t, uintptr result) {
+	t->savedRegisters[0] = result;
+}
+
 // This runs in IRQ context remember
 bool tick() {
 	SuperPage* const s = TheSuperPage;

@@ -9,7 +9,7 @@ void uart_got_char(byte b) {
 	SuperPage* s = TheSuperPage;
 	Thread* t = atomic_set_thread(&s->blockedUartReceiveIrqHandler, NULL);
 	if (t) {
-		t->savedRegisters[0] = b;
+		thread_writeSvcResult(t, b);
 		thread_setState(t, EReady);
 		// The returning WFI in reschedule() should take care of the rest
 	} else if (s->uartRequest.userPtr) {

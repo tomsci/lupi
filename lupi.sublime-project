@@ -17,7 +17,7 @@
 			[
 				"/usr/local/bin/fish",
 				"-c",
-				"lua ./build/build.lua -j 64 -i tilda"
+				"lua ./build/build.lua -j 64 -i tilda -l -m"
 			],
 			"file_regex": "^(?:bin/luac: |lua: )?([^:]+)(?::([0-9]+)):",
 			"name": "build.lua (tilda)",

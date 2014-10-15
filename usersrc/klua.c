@@ -79,6 +79,9 @@ void* klua_alloc_fn(void *ud, void *ptr, size_t osize, size_t nsize);
 static int panicFn(lua_State* L) {
 	const char* str = lua_tostring(L, lua_gettop(L));
 	printk("\nLua panic: %s\n", str);
+	// If we've got here, there's nothing we can really do which won't go
+	// recursive except hang.
+	hang();
 	return 0;
 }
 
@@ -210,7 +213,8 @@ static lua_State* initModule(uintptr heapBase, const char* module) {
 #elif defined(LUPI_USE_MALLOC_FOR_KLUA) && defined(ULUA_PRESENT)
 	// We need to nuke the malloc state because it may be in an inconsistant
 	// state due to the fact that we've crashed
-	zeroPage((void*)KUserBss);
+	memset((void*)KUserBss, 0, KPageSize - (KUserBss & 0xFFF));
+
 	// Don't have enough RAM to avoid stomping over user heap
 	TheSuperPage->currentProcess->heapLimit = KUserHeapBase;
 	lua_State* L = luaL_newstate();
@@ -350,6 +354,7 @@ static int GetProcess_lua(lua_State* L) {
 	return 1;
 }
 
+#ifdef HAVE_MMU
 static int pageStats_getCounts(lua_State* L) {
 	int count[KPageNumberOfTypes];
 	for (int i = 0; i < KPageNumberOfTypes; i++) count[i] = 0;
@@ -371,6 +376,7 @@ static int pageStats_getCounts(lua_State* L) {
 	}
 	return 1;
 }
+#endif
 
 static int switch_process_lua(lua_State* L) {
 	Process* p;
@@ -447,6 +453,19 @@ static void WeveCrashedSetupDebuggingStuff(lua_State* L) {
 	mbuf_declare_member(L, "regset", "r15", 60, 4, NULL);
 	mbuf_declare_member(L, "regset", "cpsr", 64, 4, NULL);
 
+#ifdef ARMV7_M
+	mbuf_declare_type(L, "threadregset", sizeof(uint32)*9);
+	mbuf_declare_member(L, "threadregset", "r4", 0, 4, NULL);
+	mbuf_declare_member(L, "threadregset", "r5", 4, 4, NULL);
+	mbuf_declare_member(L, "threadregset", "r6", 8, 4, NULL);
+	mbuf_declare_member(L, "threadregset", "r7", 12, 4, NULL);
+	mbuf_declare_member(L, "threadregset", "r8", 16, 4, NULL);
+	mbuf_declare_member(L, "threadregset", "r9", 20, 4, NULL);
+	mbuf_declare_member(L, "threadregset", "r10", 24, 4, NULL);
+	mbuf_declare_member(L, "threadregset", "r11", 28, 4, NULL);
+	mbuf_declare_member(L, "threadregset", "r13", 32, 4, NULL);
+#endif
+
 	MBUF_TYPE(KAsyncRequest);
 	MBUF_MEMBER(KAsyncRequest, thread);
 	MBUF_MEMBER(KAsyncRequest, userPtr);
@@ -512,7 +531,11 @@ static void WeveCrashedSetupDebuggingStuff(lua_State* L) {
 	MBUF_MEMBER_TYPE(Thread, state, "ThreadState");
 	MBUF_MEMBER(Thread, timeslice);
 	MBUF_MEMBER(Thread, exitReason);
+#ifdef ARMV7_M
+	MBUF_MEMBER_TYPE(Thread, savedRegisters, "threadregset");
+#else
 	MBUF_MEMBER_TYPE(Thread, savedRegisters, "regset");
+#endif
 
 #ifdef ARM
 	MBUF_MEMBER_TYPE(SuperPage, dfcThread, "Thread");
@@ -544,6 +567,7 @@ static void WeveCrashedSetupDebuggingStuff(lua_State* L) {
 	MBUF_MEMBER_TYPE(Server, id, "char[]");
 	MBUF_MEMBER_TYPE(Server, serverRequest, "KAsyncRequest");
 
+#ifdef HAVE_MMU
 	MBUF_TYPE(PageAllocator);
 	MBUF_MEMBER(PageAllocator, numPages);
 	MBUF_MEMBER(PageAllocator, firstFreePage);
@@ -562,9 +586,10 @@ static void WeveCrashedSetupDebuggingStuff(lua_State* L) {
 	MBUF_ENUM(PageType, KPageKernPtForProcPts);
 	MBUF_ENUM(PageType, KPageSharedPage);
 	MBUF_ENUM(PageType, KPageThreadSvcStack);
+	DECLARE_FN(L, pageStats_getCounts, "pageStats_getCounts");
+#endif
 
 	DECLARE_FN(L, GetProcess_lua, "GetProcess");
-	DECLARE_FN(L, pageStats_getCounts, "pageStats_getCounts");
 	DECLARE_FN(L, switch_process_lua, "switch_process");
 	DECLARE_FN(L, processForThread_lua, "processForThread");
 
@@ -596,7 +621,9 @@ static void WeveCrashedSetupDebuggingStuff(lua_State* L) {
 	EXPORT_INT(L, KHandlerStackBase);
 #endif
 	EXPORT_INT(L, KUserHeapBase);
+#ifdef HAVE_MMU
 	EXPORT_INT(L, (uintptr)Al);
+#endif
 
 #ifdef ARMV7_M
 #define MBUF_DECLARE_SCB_REG(name, reg) mbuf_declare_member(L, "SystemControlBlock", name, (reg)-KSystemControlSpace, sizeof(uint32), NULL)

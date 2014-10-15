@@ -49,39 +49,20 @@ thread is in an SVC call, and what exception handler is currently running.
 void saveCurrentRegistersForThread(void* savedRegisters) {
 	Thread* t = TheSuperPage->currentThread;
 	const ExceptionStackFrame* esf = getThreadExceptionStackFrame();
-	// There's actually no need to save any of these, since they're saved in the
-	// ESF already. However in various places we set t->savedRegisters[0] as
-	// part of SVC return so we will save and restore that too.
-	t->savedRegisters[0] = esf->r0;
-	// t->savedRegisters[1] = esf->r1;
-	// t->savedRegisters[2] = esf->r2;
-	// t->savedRegisters[3] = esf->r3;
-	// t->savedRegisters[12] = esf->r12;
-	t->savedRegisters[13] = (uintptr)esf;
-	// t->savedRegisters[14] = esf->lr;
-	// t->savedRegisters[15] = esf->returnAddress;
-	// t->savedRegisters[16] = esf->psr & (~(1 << 9)); // Clear stack frame padding bit
+	t->savedRegisters[KSavedR13] = (uintptr)esf;
 	if (SVCallCurrent()) {
 		ASSERT(savedRegisters == NULL, (uintptr)savedRegisters);
 	} else {
 		uint32* regs = (uint32*)savedRegisters;
-		t->savedRegisters[4] = regs[0];
-		t->savedRegisters[5] = regs[1];
-		t->savedRegisters[6] = regs[2];
-		t->savedRegisters[7] = regs[3];
-		t->savedRegisters[8] = regs[4];
-		t->savedRegisters[9] = regs[5];
-		t->savedRegisters[10] = regs[6];
-		t->savedRegisters[11] = regs[7];
+		memcpy(t->savedRegisters, regs, 8*sizeof(uint32));
 	}
 }
 
 static NORETURN NAKED doScheduleThread(uint32* savedRegisters) {
 	asm("MOV r12, r0"); // R12 = &savedRegisters[0]
-	asm("ADD r3, r12, %0" : : "i" (4 * 4)); // r3 = &savedRegisters[4]
-	asm("LDM r3, {r4-r11}"); // restore r4-r11
+	asm("LDM r12, {r4-r11}"); // restore r4-r11
 	// Set the PSP to this thread's saved SP
-	asm("LDR r3, [r12, %0]" : : "i" (13 * 4)); // r3 = savedRegisters[13]
+	asm("LDR r3, [r12, %0]" : : "i" (KSavedR13 * 4)); // r3 = savedRegisters[8]
 	asm("MSR PSP, r3");
 	// Remember to clear exclusive 
 	asm("CLREX");
@@ -102,15 +83,13 @@ static NORETURN NAKED doScheduleThread(uint32* savedRegisters) {
 static NORETURN USED scheduleThread(Thread* t) {
 	t->timeslice = THREAD_TIMESLICE;
 	TheSuperPage->currentThread = t;
-	// Restore r0 in the exception frame from the saved registers. This is
-	// because we set savedRegisters[0] in various places to the svc return
-	// value, because the ARM model would always restore it as a matter of
-	// course. Under ARMv7-M this isn't the case so we will restore it
-	// explicitly in lieu of making a tidier generic mechanism that makes sense
-	// on both ARM and ARMv7-M.
-	getThreadExceptionStackFrame()->r0 = t->savedRegisters[0];
 	// printk("Scheduling thread\n");
 	doScheduleThread(t->savedRegisters);
+}
+
+void thread_writeSvcResult(Thread* t, uintptr result) {
+	ExceptionStackFrame* esf = (ExceptionStackFrame*)(t->savedRegisters[KSavedR13]);
+	esf->r0 = result;
 }
 
 Thread* findNextReadyThread();

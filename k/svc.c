@@ -83,7 +83,7 @@ int64 handleSvc(int cmd, uintptr arg1, uintptr arg2, void* savedRegisters) {
 			int err = process_new(name, &p);
 			if (err == 0) {
 				saveCurrentRegistersForThread(savedRegisters);
-				t->savedRegisters[0] = p->pid;
+				thread_writeSvcResult(t, p->pid);
 				process_start(p); // effectively causes a reschedule
 				// We should never get here because when the calling thread gets rescheduled,
 				// it goes straight back into user mode (because that's how we roll - no

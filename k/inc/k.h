@@ -72,6 +72,16 @@ typedef struct Process Process;
 typedef struct Thread Thread;
 typedef struct PageAllocator PageAllocator;
 
+#if defined(ARMV7_M)
+// 0-7 are r4-r11, 8 is r13
+#define KSavedR13 8
+#define NUM_SAVED_REGS 9
+#elif defined(ARM)
+// 0-15 are r0-r15, 16 is PSR
+#define KSavedR13 13
+#define NUM_SAVED_REGS 17
+#endif
+
 typedef struct Thread {
 	Thread* prev;
 	Thread* next;
@@ -80,7 +90,7 @@ typedef struct Thread {
 	uint8 timeslice;
 	uint8 completedRequests;
 	int exitReason; // Also holds blockedReason if state is EBlockedFromSvc
-	uint32 savedRegisters[17];
+	uint32 savedRegisters[NUM_SAVED_REGS];
 } Thread;
 
 typedef enum ThreadState {
@@ -218,7 +228,9 @@ typedef struct SuperPage {
 #ifdef LUPI_NO_SECTION0
 	// We compact some other data structures into the superpage when we're
 	// on a mem-constrained platform
-	uint8 pageAllocatorMem[pageAllocator_size(KRamSize >> KPageShift)];
+	// uint8 pageAllocatorMem[pageAllocator_size(KRamSize >> KPageShift)];
+	Process mainProcess;
+	byte pad[680];
 #endif
 } SuperPage;
 
@@ -227,13 +239,15 @@ ASSERT_COMPILE(sizeof(SuperPage) <= KPageSize);
 #define TheSuperPage ((SuperPage*)KSuperPageAddress)
 
 #ifdef LUPI_NO_SECTION0
-#define Al ((PageAllocator*)TheSuperPage->pageAllocatorMem)
+//#define Al ((PageAllocator*)TheSuperPage->pageAllocatorMem)
+#define GetProcess(idx) (&TheSuperPage->mainProcess)
+#define indexForProcess(p) (0)
 #else
 #define Al ((PageAllocator*)KPageAllocatorAddr)
-#endif
-
 #define GetProcess(idx) ((Process*)(KProcessesSection + ((idx) << KPageShift)))
 #define indexForProcess(p) ((int)((((uintptr)(p)) >> KPageShift) & 0xFF))
+#endif
+
 
 #ifdef ARM
 
@@ -255,12 +269,16 @@ static inline Thread* firstThreadForProcess(Process* p) {
 }
 
 static inline Process* processForThread(Thread* t) {
+#ifdef LUPI_NO_SECTION0
+	return GetProcess(0);
+#else
 	if ((uintptr)t < KProcessesSection) {
 		// Special case. The DFC thread doesn't have an associated process
 		return NULL;
 	}
 	// Otherwise, threads are within their process page, so simply mask off and cast
 	return (Process*)(((uintptr)t) & ~(KPageSize - 1));
+#endif
 }
 
 static inline Process* processForServer(Server* s) {
@@ -278,6 +296,7 @@ void thread_setBlockedReason(Thread* t, ThreadBlockedReason reason);
 void thread_enqueueBefore(Thread* t, Thread* before);
 void thread_dequeue(Thread* t, Thread** head);
 void thread_yield(Thread* t);
+void thread_writeSvcResult(Thread* t, uintptr result);
 
 int kern_disableInterrupts();
 void kern_enableInterrupts();

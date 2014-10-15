@@ -28,7 +28,7 @@
 #define KPeripheralBase		0xF2000000
 //#define KTimerBase		0xF2003000
 
-#ifdef KLUA
+#if defined(KLUA) || defined(KLUA_DEBUGGER)
 #define KLuaHeapBase		0x00200000
 #endif
 

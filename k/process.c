@@ -89,7 +89,12 @@ static bool thread_init(Process* p, int index) {
 	}
 #endif // HAVE_MMU
 
-	t->savedRegisters[13] = stackBase + USER_STACK_SIZE;
+	t->savedRegisters[KSavedR13] = stackBase + USER_STACK_SIZE;
+	if ((KUserBss & ~0xFFF) == stackBase) {
+		// Special case for the case where we stuff the BSS into the top of the
+		// stack page
+		t->savedRegisters[KSavedR13] = KUserBss;
+	}
 	thread_setState(t, EReady);
 	return true;
 }
@@ -101,7 +106,10 @@ NORETURN process_start(Process* p) {
 	Thread* t = firstThreadForProcess(p);
 	TheSuperPage->currentThread = t;
 	// Now we've switched process and mapped the BSS, we first need to zero all initial memory
-	zeroPages((void*)KUserBss, 1 + KNumPreallocatedUserPages);
+	if ((KUserBss & 0xFFF) == 0) {
+		// If BSS is mapped to a page boundary, assume we need to clear it
+		zeroPages((void*)KUserBss, 1 + KNumPreallocatedUserPages);
+	}
 	zeroPages((void*)userStackForThread(t), USER_STACK_SIZE >> KPageShift);
 
 	// And we can set up the user_* variables
@@ -114,7 +122,7 @@ NORETURN process_start(Process* p) {
 		ch = *pname++;
 		*userpname++ = ch;
 	} while (ch);
-	uint32 sp = t->savedRegisters[13];
+	uint32 sp = t->savedRegisters[KSavedR13];
 	do_process_start(sp);
 }
 
@@ -215,8 +223,10 @@ static void process_exit(Process* p, int reason) {
 	ipc_processExited(Al, p);
 #endif
 
+#ifdef HAVE_MMU
 	// Now reclaim the heap
 	mmu_unmapPagesInProcess(Al, p, KUserBss, 1 + ((p->heapLimit - KUserHeapBase) >> KPageShift));
+#endif
 
 	// Currently there's no way for the process to die unless all its threads
 	// are already dead and cleaned up, but do this anyway in case we ever add
@@ -229,8 +239,10 @@ static void process_exit(Process* p, int reason) {
 		}
 	}
 
+#ifdef HAVE_MMU
 	// Cleans up caches and page tables etc
 	mmu_processExited(Al, p);
+#endif
 
 	if (TheSuperPage->currentProcess == p) {
 		TheSuperPage->currentProcess = NULL;
@@ -302,7 +314,7 @@ void thread_requestSignal(KAsyncRequest* request) {
 	//printk("Thread %s signalled nreq=%d state=%d\n", processForThread(t)->name, t->completedRequests, t->state);
 	request->userPtr = 0;
 	if (t->state == EWaitForRequest) {
-		t->savedRegisters[0] = t->completedRequests;
+		thread_writeSvcResult(t, t->completedRequests);
 		t->completedRequests = 0;
 		thread_setState(t, EReady);
 		// Next reschedule will run it

@@ -31,6 +31,7 @@ typedef _Bool bool;
 
 #define ATTRIBUTE_PRINTF(str, check)	__attribute__((format(printf, str, check)))
 #define NAKED							__attribute__((naked))
+#define NORETURN						void __attribute__((noreturn))
 #define NOIGNORE						__attribute__((warn_unused_result))
 
 #define ASSERT_COMPILE(x) extern int __compiler_assert(int[(x)?1:-1])

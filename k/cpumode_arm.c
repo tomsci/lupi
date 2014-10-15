@@ -2,7 +2,7 @@
 #include <arm.h>
 
 void iThinkYouOughtToKnowImFeelingVeryDepressed();
-static void dumpRegisters(uint32* regs, uint32 pc, uint32 dataAbortFar);
+void dumpRegisters(uint32* regs, uint32 pc, uint32 dataAbortFar);
 
 // Contains code specific to the ARM register and CPU mode model
 
@@ -192,7 +192,7 @@ static uintptr stackBaseForMode(uint32 mode) {
 	}
 }
 
-static void dumpRegisters(uint32* regs, uint32 pc, uint32 dataAbortFar) {
+void dumpRegisters(uint32* regs, uint32 pc, uint32 dataAbortFar) {
 	uint32 spsr, r13, r14;
 	asm("MRS %0, spsr" : "=r" (spsr));
 	const uint32 crashMode = spsr & KPsrModeMask;
