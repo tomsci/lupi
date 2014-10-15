@@ -1,4 +1,6 @@
-require "runloop"
+if lupi then
+	require "runloop"
+end
 
 prompt = "lua> "
 

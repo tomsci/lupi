@@ -150,8 +150,10 @@ Usage:
 */
 lua_State* newLuaStateForModule(const char* moduleName, lua_State* L) {
 
-	if (L == NULL) L = luaL_newstate();
-	luaL_openlibs(L);
+	if (L == NULL) {
+		L = luaL_newstate();
+		luaL_openlibs(L);
+	}
 
 	// Replace package.searchers with one which works for us
 	lua_getglobal(L, "package");

@@ -224,6 +224,20 @@ static lua_State* initModule(uintptr heapBase, const char* module) {
 	lua_State* L = lua_newstate(klua_alloc_fn, (void*)heapBase);
 #endif
 	lua_atpanic(L, panicFn);
+	// Don't use luaL_openlibs, that opens extra modules we don't need and it
+	// saves a smidgeon of RAM to pick and choose
+	static const luaL_Reg libsWeDontHate[] = {
+		{"_G", luaopen_base},
+		{LUA_LOADLIBNAME, luaopen_package},
+		{LUA_TABLIBNAME, luaopen_table},
+		{LUA_STRLIBNAME, luaopen_string},
+		{LUA_BITLIBNAME, luaopen_bit32},
+		{NULL, NULL}
+	};
+	for (const luaL_Reg* lib = libsWeDontHate; lib->func; lib++) {
+		luaL_requiref(L, lib->name, lib->func, 1);
+		lua_pop(L, 1);  /* remove lib */
+	}
 	newLuaStateForModule(module, L);
 	lua_call(L, 1, 1);
 	PRINT_MEM_STATS("Mem used after module '%s' init = %d B\n", module);
@@ -659,8 +673,12 @@ static void WeveCrashedSetupDebuggingStuff(lua_State* L) {
 	FORCE_OUTOFLINE_COPY(getThreadExceptionStackFrame);
 #endif
 
-	PRINT_MEM_STATS("Mem usage pre require kluadebugger = %d B\n");
+	if (TheSuperPage->totalRam < 256*1024) {
+		lua_pushboolean(L, 1);
+		lua_setglobal(L, "OhGodNoRam");
+	}
 
+	PRINT_MEM_STATS("Mem usage pre require kluadebugger = %d B\n");
 	lua_getfield(L, -1, "require");
 	lua_pushliteral(L, "kluadebugger");
 	lua_call(L, 1, 0);

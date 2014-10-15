@@ -156,7 +156,7 @@ bool process_grow_heap(Process* p, int incr) {
 #else
 		const uint32 heapLim = userStackForThread(&p->threads[p->numThreads-1]);
 		if (p->heapLimit + amount > heapLim) {
-			printk("OOM @ heapLimit = %X incr = %d!\n", (uint)p->heapLimit, incr);
+			//printk("OOM @ heapLimit = %X incr = %d!\n", (uint)p->heapLimit, incr);
 			return false;
 		}
 #endif
