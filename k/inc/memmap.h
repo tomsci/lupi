@@ -1,10 +1,6 @@
 #ifndef MEMMAP_H
 #define MEMMAP_H
 
-// I don't think we'll be worrying about huge pages
-#define KPageSize 4096
-#define KPageShift 12
-
 /**
 Kernel memory map
 -----------------

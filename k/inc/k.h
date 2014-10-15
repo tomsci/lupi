@@ -5,10 +5,8 @@
 #include <std.h>
 #endif
 
-#ifdef LUPI_NO_SECTION0
-// Needed because it's embedded in the superpage
-#include <pageAllocator.h>
-#endif
+#define KPageSize 4096
+#define KPageShift 12
 
 #define LUPI_VERSION_STRING "LuPi 0.21"
 
