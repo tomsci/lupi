@@ -24,6 +24,6 @@ config = {
 	ulua = true,
 
 	textSectionStart = 0x00080000, -- Must match KKernelCodeBase
-	bssSectionStart = 0x20087DE0, -- Must match KUserBss
+	bssSectionStart = 0x20000DE0, -- Must match KUserBss
 
 }

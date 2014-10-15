@@ -228,11 +228,16 @@ typedef struct SuperPage {
 	// on a mem-constrained platform
 	// uint8 pageAllocatorMem[pageAllocator_size(KRamSize >> KPageShift)];
 	Process mainProcess;
-	byte pad[680];
+	// User BSS follows (but is not explicitly included in the struct definition)
 #endif
 } SuperPage;
 
+#ifdef LUPI_NO_SECTION0
+// Must be enough space to jam the BSS data in
+ASSERT_COMPILE(sizeof(SuperPage) <= KPageSize - KUserBssSize);
+#else
 ASSERT_COMPILE(sizeof(SuperPage) <= KPageSize);
+#endif
 
 #define TheSuperPage ((SuperPage*)KSuperPageAddress)
 

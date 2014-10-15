@@ -213,7 +213,7 @@ static lua_State* initModule(uintptr heapBase, const char* module) {
 #elif defined(LUPI_USE_MALLOC_FOR_KLUA) && defined(ULUA_PRESENT)
 	// We need to nuke the malloc state because it may be in an inconsistant
 	// state due to the fact that we've crashed
-	memset((void*)KUserBss, 0, KPageSize - (KUserBss & 0xFFF));
+	memset((void*)KUserBss, 0, KUserBssSize);
 
 	// Don't have enough RAM to avoid stomping over user heap
 	TheSuperPage->currentProcess->heapLimit = KUserHeapBase;

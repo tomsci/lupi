@@ -116,7 +116,8 @@ Inaccessible					20088000-FFFFFFFF
 </pre>
 */
 
-#define KUserBss				0x20087DE0
+#define KUserBssSize			0x220
+#define KUserBss				(KSuperPageAddress + KPageSize - KUserBssSize)
 
 #define KUserHeapBase			0x20072000
 #define KLuaHeapBase			(KUserHeapBase)
