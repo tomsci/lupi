@@ -338,12 +338,9 @@ void NAKED switchToKluaDebuggerMode() {
 	asm("MSR CONTROL, r0"); // Thread mode privileged (NPRIV=0)
 	asm("ISB");
 
-	// Clear all active and pending exceptions and bounce us into SVC
-	asm("LDR r0, .shcsr");
-	asm("LDR r1, .shcsr_val");
-	asm("STR r1, [r0]");
-
 	// And now drop to thread mode (using main handler stack)
+	// We can do this even if there were nested exceptions because we have set
+	// CCR_NONBASETHRDENA
 	RFE_TO_MAIN(lr);
 
 	LABEL_WORD(.shcsr, SCB_SHCSR);
@@ -683,6 +680,7 @@ static void WeveCrashedSetupDebuggingStuff(lua_State* L) {
 	lua_pushliteral(L, "kluadebugger");
 	lua_call(L, 1, 0);
 
+	PRINT_MEM_STATS("Mem usage fully setup = %d B\n");
 }
 
 #endif // KLUA_DEBUGGER

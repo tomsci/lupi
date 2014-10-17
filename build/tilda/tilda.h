@@ -18,6 +18,7 @@
 #define TILDA_USE_USART0
 
 // #define HAVE_SCREEN
+#define HAVE_MPU
 
 #define LUPI_USE_MALLOC_FOR_KLUA
 
@@ -92,15 +93,20 @@ Handler stack	20071000-20072000	(4k)
 #define KRamBase				KPhysicalRamBase
 #define KRamSize				(96 * 1024)
 
-#define KHandlerStackBase		0x20071000
 #define KKernelCodeBase			0x00080000
 #define KKernelCodesize			0x00040000
 #define KLogKernelCodesize		(18)
 
 // Note this is an alias for 20070000 - we use it because
 // 20000000 can be loaded into a register in one instruction
-#define KSuperPageAddress		0x20000000u
-#define KEndOfKernelMemory		0x20072000u
+#define KSuperPageAddress		0x20000000
+// And put handler stack next to it (rather than at 20071000) so that we can
+// map it as a single contiguous region in the MPU
+#define KHandlerStackBase		0x20001000
+
+#define KEndOfKernelMemory		0x20072000
+
+#define KPeripheralBase			0x40000000
 
 /**
 User memory map
@@ -110,7 +116,7 @@ User memory map
 Inaccessible kernel stuff		00000000-20072000
 Heap							20072000-heapLimit
 Thread stacks					Downwards from KUserMemLimit
-User BSS						20087DE0-20088000
+User BSS						20000DE0-20001000
 
 Inaccessible					20088000-FFFFFFFF
 </pre>

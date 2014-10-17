@@ -22,8 +22,6 @@
 
 #define KERN_PT_FOR_PROCESS_PTS(p) (KKernPtForProcPts | MASKED_PROC_PTR(p))
 
-#define ICACHE_IS_STILL_BROKEN
-
 typedef struct PageAllocator PageAllocator;
 
 /**

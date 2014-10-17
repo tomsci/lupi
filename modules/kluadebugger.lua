@@ -276,3 +276,7 @@ function interpreter.handleCtrlX()
 	print("")
 	reboot()
 end
+
+-- print(collectgarbage("count"))
+-- collectgarbage()
+-- print(collectgarbage("count"))

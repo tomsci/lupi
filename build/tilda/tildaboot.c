@@ -99,6 +99,7 @@ void dummy();
 #define CLR_RX() PUT32(PIOC + PIO_CODR, LED_RX)
 
 void Boot(uintptr atagsPhysAddr);
+void mmu_init();
 
 void tildaBoot() {
 	// Reset begins in priviledged Thread mode. (p80 §12.6.2.1)
@@ -146,6 +147,8 @@ void tildaBoot() {
 
 	// Set VTOR so we can unmap address zero
 	PUT32(SCB_VTOR, KKernelCodeBase);
+
+	mmu_init();
 
 	Boot(0);
 }

@@ -43,6 +43,10 @@ void Boot(uintptr atagsPhysAddr) {
 
 	printk("\n\n" LUPI_VERSION_STRING);
 
+#ifdef HAVE_MPU
+	mmu_enable();
+#endif
+
 #if defined(ARM) && !defined(ICACHE_IS_STILL_BROKEN)
 	// Remove the temporary identity mapping for the first code page
 	printk("Identity mapping going bye-bye\n");

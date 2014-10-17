@@ -32,16 +32,6 @@
 #define SCB_MMAR				0xE000ED34 // Mem Management Fault Address Reg
 #define SCB_BFAR				0xE000ED38 // Bus Fault Address Register
 
-// p200
-#define MPU_TYPE				0xE000ED90
-#define MPU_CTRL				0xE000ED94
-#define MPU_RNR					0xE000ED98 // Region Number Register
-#define MPU_RBAR				0xE000ED9C // Region Base Address Register
-#define MPU_RASR				0xE000EDA0 // Region Attribute and Size Register
-
-#define MPU_CTRL_PRIVDEFENA		(1 << 2)
-#define MPU_CTRL_ENABLE			(1 << 0)
-
 // p172
 #define ICSR_PENDSVCLR			(1 << 27)
 #define ICSR_PENDSVSET			(1 << 28)
@@ -69,6 +59,25 @@
 // pp186-189
 #define CFSR_BFARVALID			(1 << 15)
 #define CFSR_MMARVALID			(1 << 7)
+
+// p200
+#define MPU_TYPE				0xE000ED90
+#define MPU_CTRL				0xE000ED94
+#define MPU_RNR					0xE000ED98 // Region Number Register
+#define MPU_RBAR				0xE000ED9C // Region Base Address Register
+#define MPU_RASR				0xE000EDA0 // Region Attribute and Size Register
+
+// p202
+#define MPU_CTRL_PRIVDEFENA		(1 << 2)
+#define MPU_CTRL_ENABLE			(1 << 0)
+
+// p206
+#define RASR_XN					(1 << 28)
+#define RASR_S					(1 << 18)
+#define RASR_C					(1 << 17)
+#define RASR_B					(1 << 16)
+#define RASR_ENABLE				(1 << 0)
+#define RASR_SIZESHIFT			(1)
 
 // p69
 #define CONTROL_PSP				(1 << 1)
