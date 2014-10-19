@@ -56,6 +56,14 @@ luaModules = {
 	"modules/passwordManager/keychain.lua",
 }
 
+local kluaCopts = {} -- Filled in later
+
+kluaDebuggerModule = {
+	path = "modules/kluadebugger.lua",
+	native = "usersrc/kluadebugger.c",
+	copts = kluaCopts,
+}
+
 local function armOnly() return machineIs("arm") end
 local function armv7mOnly() return machineIs("armv7-m") end
 local function kluaPresent() return config.klua end
@@ -629,7 +637,7 @@ function build_kernel()
 		end
 		if includeModules then
 			if config.ulua and config.klua then
-				table.insert(luaModules, "modules/kluadebugger.lua")
+				table.insert(luaModules, kluaDebuggerModule)
 			end
 			if bootMode ~= 0 then
 				addBootMenuSources(sources, luaModules)
@@ -653,11 +661,33 @@ function build_kernel()
 	else
 		table.insert(includes, "-DLUPI_NO_PROCESS")
 	end
+	if config.klua then
+		-- klua.c is a special case as it sits between kernel and user code,
+		-- and needs to access bits of both. It is primarily user (has user
+		-- includes) but additionally has access to kernel headers
+		if config.ulua then
+			table.insert(kluaCopts, "-DULUA_PRESENT")
+			table.insert(kluaCopts, "-DKLUA_DEBUGGER")
+		end
+		if includeModules then
+			table.insert(kluaCopts, "-DKLUA_MODULES")
+		end
+		if config.include then
+			table.insert(kluaCopts, "-include "..qrp("build/"..config.name.."/"..config.include))
+		end
+		table.insert(kluaCopts, "-isystem "..qrp("k/inc"))
+
+		table.insert(sources, {
+			path = "usersrc/klua.c",
+			user = true,
+			copts = kluaCopts,
+		})
+	end
 	if includeModules then
 		-- Add any modules with native code
 		for _, module in ipairs(luaModules) do
 			if type(module) == "table" and module.native then
-				table.insert(sources, { path = module.native, user = true })
+				table.insert(sources, { path = module.native, user = true, copts = module.copts })
 			end
 		end
 	end
@@ -684,7 +714,7 @@ function build_kernel()
 
 	local objs = {}
 	if config.entryPoint then
-		--# Make sure it gets compiled first
+		-- Make sure it gets compiled first
 		local obj
 		if config.entryPoint:match("%.s$") then
 			obj = assemble(config.entryPoint)
@@ -692,31 +722,6 @@ function build_kernel()
 			obj = compilec(config.entryPoint, includes)
 		end
 		table.insert(objs, obj)
-	end
-
-	if config.klua then
-		-- klua.c is a special case as it sits between kernel and user code,
-		-- and needs to access bits of both. It is primarily user (has user
-		-- includes) but additionally has access to kernel headers
-		local kluaCopts = {}
-		if config.ulua then
-			table.insert(kluaCopts, "-DULUA_PRESENT")
-			table.insert(kluaCopts, "-DKLUA_DEBUGGER")
-		end
-		if includeModules then
-			table.insert(kluaCopts, "-DKLUA_MODULES")
-		end
-		if config.include then
-			table.insert(kluaCopts, "-include "..qrp("build/"..config.name.."/"..config.include))
-		end
-		table.insert(kluaCopts, "-isystem "..qrp("k/inc"))
-
-		table.insert(sources, {
-			path = "usersrc/klua.c",
-			user = true,
-			copts = kluaCopts,
-		})
-
 	end
 
 	for i, source in ipairs(sources) do
