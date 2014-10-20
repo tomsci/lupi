@@ -999,28 +999,34 @@ local function calculateBaseDir()
 	baseDir = table.concat(cmps, "/").."/"
 end
 
+local opts = {
+	{ s = 'v', l = "verbose", bool = "verbose" },
+	{ s = 'l', l = "listing", bool = "listing" },
+	{ s = 'm', l = "modules", bool = "compileModules" },
+	{ s = 'p', l = "preprocess", bool = "preprocess" },
+	{ s = 's', l = "symbols", bool = "includeSymbols" },
+	{ s = 'i', l = "incremental", bool = "incremental" },
+	{ s = 'j', l = "jobs", int = "maxJobs" },
+	{ s = 'b', l = "bootmode", int = "bootMode" },
+}
+
 function run()
 	calculateBaseDir()
 	local platforms = {}
+	local shortOpts, longOpts = {}, {}
+	for _, opt in ipairs(opts) do
+		opt.variable = opt.bool or opt.int
+		shortOpts[opt.s], longOpts[opt.l] = opt, opt
+	end
 	for i,a in ipairs(cmdargs) do
-		if a == "-v" or a == "--verbose" then
-			verbose = true
-		elseif a == "-l" or a == "--listing" then
-			listing = true
-		elseif a == "-m" or a == "--modules" then
-			compileModules = true
-		elseif a == "-p" or a == "--preprocess" then
-			preprocess = true
-		elseif a == "-j" then
-			maxJobs = assert(tonumber(cmdargs[i+1]))
-			table.remove(cmdargs, i+1)
-		elseif a == "-b" or a == "--bootmode" then
-			bootMode = assert(tonumber(cmdargs[i+1]))
-			table.remove(cmdargs, i+1)
-		elseif a == "-s" or a == "--symbols" then
-			includeSymbols = true
-		elseif a == "-i" or a == "--incremental" then
-			incremental = true
+		local opt = longOpts[a:match("^%-%-(.+)")] or shortOpts[a:match("^%-(.)")]
+		if opt then
+			if opt.int then
+				_ENV[opt.variable] = assert(tonumber(cmdargs[i+1]))
+				table.remove(cmdargs, i+1)
+			else
+				_ENV[opt.variable] = true
+			end
 		else
 			table.insert(platforms, a)
 		end
