@@ -26,5 +26,6 @@ config = {
 
 	textSectionStart = 0xF8008000,
 	bssSectionStart = 0x00007000,
+	maxCodeSize = 512*1024, -- We've only allowed 512KB in the memory map
 
 }

@@ -25,5 +25,6 @@ config = {
 
 	textSectionStart = 0x00080000, -- Must match KKernelCodeBase
 	bssSectionStart = 0x20000DE0, -- Must match KUserBss
+	maxCodeSize = 512*1024, -- We only have 512KB of flash
 
 }

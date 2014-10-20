@@ -777,8 +777,8 @@ function build_kernel()
 		cmd = string.format("%s -a -W %s > %s", config.readelf, qrp(elf), qrp(readElfOutput))
 		ok = exec(cmd)
 		if not ok then error("Readelf failed!") end
-		checkElfSize(readElfOutput, config.textSectionStart, 0x00040000)
 
+		local imgFileSize
 		if includeSymbols then
 			assert(includeModules, "Cannot include the symbols module unless modules are being built")
 			-- Symbols get appended on the end of the kernel image, and the
@@ -790,21 +790,42 @@ function build_kernel()
 			local f = assert(io.open(luaFile, "w+"))
 			assert(f:write(moduleText))
 			f:close()
+			local data
+			if compileModules then
+				local obj = objForSrc(luaFile, ".luac")
+				local compileCmd = "bin/luac -o "..qrp(obj).." "..qrp(luaFile)
+				local ok = exec(compileCmd)
+				if not ok then error("Failed to compile symbols module") end
+				f = assert(io.open(obj, "rb"))
+				data = f:read("*a")
+				f:close()
+			else
+				data = moduleText
+			end
 
 			local moduleTableSymbol = findModulesTableSymbol(syms)
 			if verbose then
 				print(string.format("Found KLuaModulesTable at %x", moduleTableSymbol.addr))
 			end
 			local imageFile = assert(io.open(baseDir..img, "r+b"))
-			local fileSize = imageFile:seek("end")
-			-- Note we're not currently compiling the symbols modules
+			imgFileSize = imageFile:seek("end")
 			imageFile:seek("set", moduleTableSymbol.addr - config.textSectionStart+ 4)
-			local symbolsAddress = config.textSectionStart + fileSize
+			local symbolsAddress = config.textSectionStart + imgFileSize
 			assert(imageFile:write(le32(symbolsAddress)))
-			assert(imageFile:write(le32(#moduleText)))
+			assert(imageFile:write(le32(#data)))
 			imageFile:seek("end")
-			assert(imageFile:write(moduleText))
+			assert(imageFile:write(data))
 			imageFile:close()
+			imgFileSize = imgFileSize + #data
+		end
+		if config.maxCodeSize then
+			if not imageFileSize then
+				-- We've already calculated imgFileSize if we compiled symbols
+				local imageFile = assert(io.open(baseDir..img, "r+b"))
+				imgFileSize = imageFile:seek("end")
+				imageFile:close()
+			end
+			assert(imgFileSize < config.maxCodeSize, "Kernel image exceeded maximum size "..tonumber(config.maxCodeSize))
 		end
 
 		if listing then
@@ -968,24 +989,6 @@ const LuaModule* getLuaModule(const char* moduleName) {
 
 	waitForAllJobs() -- To make sure the c files have been created before we try to compile them
 	return results
-end
-
-function checkElfSize(readElfOutput, codeBase, maxCodeSize)
-	local f = assert(io.open(readElfOutput))
-	local found
-	for line in f:lines() do
-		--# Looking for the .rodata section
-		--#   [ 3] .rodata           PROGBITS        f8024e90 024e90 006f70
-		local addr, size = line:match("^  %[%s*%d+%] %.rodata%s+PROGBITS%s+(%w+) %w+ (%w+)")
-		if addr then
-			found = true
-			local endPos = tonumber(addr, 16) + tonumber(size, 16)
-			assert(endPos <= codeBase + maxCodeSize, string.format("Kernel code size is too big! %X > %X", endPos - codeBase, maxCodeSize))
-			break
-		end
-	end
-	assert(found, "Couldn't find .rodata segment!")
-	f:close()
 end
 
 local function calculateBaseDir()
