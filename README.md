@@ -161,7 +161,7 @@ Syntax:
 		-l | --listing      Create assembly listings.
 		-p | --preprocess   Preprocess sources only.
 		-v | --verbose      Verbose mode.
-		-j <number>         Run <number> of compiles in parallel.
+		-j | --jobs <n>     Run <n> of compiles in parallel.
 		-b | --bootmode <n> Set the boot mode.
 		-i | --incremental  Enable incremental build.
 
@@ -179,6 +179,14 @@ Targets are built in the order specified on the command line, so if you specify
 `clean`, it should be first. Eg:
 
 	./build/build.lua -m clean pi
+
+The command-line parsing also supports combining short options together, so the
+following are all equivalent:
+
+	./build/build.lua -i -m -j 64 pi
+	./build/build.lua -im -j64 pi
+	./build/build.lua -imj 64 pi
+	./build/build.lua -imj64 pi
 
 Incremental builds are enabled by specifying the `-i` or `--incremental`
 command-line options. When enabled, the build will output an additional file

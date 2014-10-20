@@ -805,7 +805,7 @@ function build_kernel()
 
 			local moduleTableSymbol = findModulesTableSymbol(syms)
 			if verbose then
-				print(string.format("Found KLuaModulesTable at %x", moduleTableSymbol.addr))
+				print(string.format("symbols: found KLuaModulesTable at %x", moduleTableSymbol.addr))
 			end
 			local imageFile = assert(io.open(baseDir..img, "r+b"))
 			imgFileSize = imageFile:seek("end")
@@ -1019,13 +1019,40 @@ function run()
 		shortOpts[opt.s], longOpts[opt.l] = opt, opt
 	end
 	for i,a in ipairs(cmdargs) do
-		local opt = longOpts[a:match("^%-%-(.+)")] or shortOpts[a:match("^%-(.)")]
+		local opt = longOpts[a:match("^%-%-(.+)")]
+		local shopt = (opt == nil) and a:match("^%-([^-].*)")
 		if opt then
 			if opt.int then
 				_ENV[opt.variable] = assert(tonumber(cmdargs[i+1]))
 				table.remove(cmdargs, i+1)
 			else
 				_ENV[opt.variable] = true
+			end
+		elseif shopt then
+			-- Iterate through possibly multiple short opts combined together
+			local j = 1
+			while j <= #shopt do
+				local ch = shopt:sub(j, j)
+				opt = shortOpts[ch]
+				if opt then
+					if opt.bool then
+						_ENV[opt.variable] = true
+						j = j + 1
+					elseif opt.int then
+						local num = shopt:match("[%xx]+", j+1)
+						if num == nil then
+							-- Must be in next cmdarg
+							num = cmdargs[i+1]
+							table.remove(cmdargs, i+1)
+						end
+						_ENV[opt.variable] = assert(tonumber(num), "Syntax error: Bad number "..(num or shopt:sub(j+1)))
+						j = j + 1 + #num
+					else
+						error("I'm confused")
+					end
+				else
+					error("Unrecognised short option -"..ch)
+				end
 			end
 		else
 			table.insert(platforms, a)
