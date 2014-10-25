@@ -59,7 +59,7 @@ implemented in a user process.
 All user-side processes are implemented as Lua modules. Some of the system
 modules also contain native C code.
 
-### Kernel data structures
+### Kernel data structures - MMU variant
 
 Because there is no generic malloc-style allocator in the kernel, all kernel
 memory is tracked at the page (4 KB) or section (1 MB) granularity.
@@ -109,6 +109,27 @@ MMU either (because it will always look at the current process's user PDE in
 TTBR1 instead). We stuff the shared page mappings in this 1 KB region - just to
 be safe we ensure the bottom few bits of every word is still zero which would
 prevent the MMU from getting upset even if it were accessed.
+
+### Kernel data structures - non-MMU variant
+
+On platforms without an MMU, the kernel data structures are much simpler because
+there is no need to track MMU-related configuration. On the ARMv7-M, the only
+non-MMU architecture we support, we only use 2 pages of RAM kernel-side, one for
+the SuperPage and one for the Handler stack. There can only be one `Process`
+object, because there's no MMU to provide process isolation, so the Process is
+packed into the SuperPage. There is no `PageAllocator` because we don't need to
+track physical and virtual memory separately, and obviously there are no page
+tables. `Thread` objects are also half the size, allowing the `Process` to fit
+within the `SuperPage`, because less registers need to be saved on context
+switch due to the ARMv7-M's exception-based rather than banked register-based
+model.
+
+Memory access is still restricted by the ARMv7-M's MPU, meaning user-side memory
+is separated from kernel memory, and only the code segment is executable. Due to
+the MPU's ability to do sub-page access control, the user BSS (global data)
+is also packed into the SuperPage to save space without compromising the
+user-kernel memory split.
+
 
 ### Thread scheduling
 
@@ -199,16 +220,6 @@ more recent than that of the object file). Sources are also rebuilt if the
 command line used to build them has changed (for example, due to a different
 bootMode being specified). A non-incremental build will not calculate the
 dependencies and will delete dependencyCache.lua if it exists.
-
-There are two implicit assumptions that the build script makes, related to the
-linking options for the kernel. These must match the definitions used inside the
-kernl itself. Firstly, that BSS for user processes will always be located at
-address `0x7000`. This corresponds to `KUserBss` in `memmap.h`. Secondly, that
-the kernel code segment will be located at `0xF8008000`, which is
-`KKernelCodeBase` in `memmap.h`. Note this is the _virtual_ address, which is
-not the same as the _physical_ address where the bootloader initially loads the
-kernel image. The early boot code is especially careful not to assume code is
-located at `0xF8008000` prior to it enabling the MMU.
 
 The system requirements for running build.lua are:
 
