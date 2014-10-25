@@ -20,7 +20,7 @@
 // masks off all bits except those that distinguish one Process from another
 #define MASKED_PROC_PTR(p) (((uintptr)(p)) & 0x000FF000)
 
-#define KERN_PT_FOR_PROCESS_PTS(p) (KKernPtForProcPts | MASKED_PROC_PTR(p))
+#define KERN_PT_FOR_PROCESS_PTS(p) ((uint32*)(KKernPtForProcPts | MASKED_PROC_PTR(p)))
 
 typedef struct PageAllocator PageAllocator;
 

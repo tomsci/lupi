@@ -244,6 +244,8 @@ static int getInt(int arg) {
 		return TheSuperPage->screenWidth;
 	case EValScreenHeight:
 		return TheSuperPage->screenHeight;
+	case EValScreenFormat:
+		return TheSuperPage->screenFormat;
 	default:
 		ASSERT(false, arg);
 	}

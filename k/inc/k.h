@@ -211,6 +211,7 @@ typedef struct SuperPage {
 #ifdef ARM
 	byte svcPsrMode; // settable so we don't accidentally enable interrupts when crashed
 #endif
+	uint8 screenFormat;
 	uint32 numDfcsPending;
 #ifdef ARM
 	// DFCs implemented using PendSV rather than a Thread in ARMv7-M

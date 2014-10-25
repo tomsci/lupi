@@ -12,7 +12,8 @@ Bitmap* bitmap_create(uint16 width, uint16 height) {
 	if (!width) width = exec_getInt(EValScreenWidth);
 	if (!height) height = exec_getInt(EValScreenHeight);
 
-	void* mem = malloc(offsetof(Bitmap, data) + width * height * 2);
+	int bufSize = width * height * 2;
+	void* mem = malloc(offsetof(Bitmap, data) + bufSize);
 	if (!mem) return NULL;
 	Bitmap* b = (Bitmap*)mem;
 	rect_set(&b->bounds, 0, 0, width, height);
@@ -20,6 +21,7 @@ Bitmap* bitmap_create(uint16 width, uint16 height) {
 	b->colour = BLACK;
 	b->bgcolour = WHITE;
 	b->autoBlit = false;
+	b->format = (uint8)format;
 	rect_zero(&b->dirtyRect);
 	return b;
 }
@@ -222,11 +224,15 @@ int exec_driverCmd(uint32 driverHandle, uint32 arg1, uint32 arg2);
 
 void bitmap_blitToScreen(Bitmap* b, const Rect* r) {
 	if (!b->screenDriverHandle) {
-		b->screenDriverHandle = exec_driverConnect(FOURCC("pTFT"));
+		b->screenDriverHandle = exec_driverConnect(FOURCC("SCRN"));
 	}
-	uint32 op[] = { (uint32)&b->data, b->bounds.w, b->bounds.x + r->x,
-		b->bounds.y + r->y, r->x, r->y, r->w, r->h };
-	exec_driverCmd(b->screenDriverHandle, KExecDriverTftBlit, (uint32)&op);
+	if (b->format == EOneBitColumnPacked) {
+	} else {
+		// { dataPtr, bitmapWidth, screenx, screeny, x, y, w, h }
+		uint32 op[] = { (uint32)&b->data, b->bounds.w, b->bounds.x + r->x,
+			b->bounds.y + r->y, r->x, r->y, r->w, r->h };
+		exec_driverCmd(b->screenDriverHandle, KExecDriverScreenBlit, (uint32)&op);
+	}
 }
 
 void bitmap_blitDirtyToScreen(Bitmap* b) {

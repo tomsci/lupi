@@ -103,6 +103,7 @@ static void tft_gpioInterruptDfcFn(uintptr arg1, uintptr arg2, uintptr arg3);
 void screen_init() {
 	TheSuperPage->screenWidth = WIDTH;
 	TheSuperPage->screenHeight = HEIGHT;
+	TheSuperPage->screenFormat = EFiveSixFive;
 
 	// Configure GPIOs for SPI pins
 	uint32 gfpsel0 = GET32(GPFSEL0);
@@ -203,7 +204,7 @@ void screen_init() {
 	tsc_register_write(FIFO_CTRL_STA, FIFO_RESET);
 	tsc_register_write(FIFO_CTRL_STA, 0);
 
-	kern_registerDriver(FOURCC("pTFT"), tft_handleSvc);
+	kern_registerDriver(FOURCC("SCRN"), tft_handleSvc);
 }
 
 void tft_gpioHandleInterrupt() {
@@ -312,7 +313,7 @@ static int doInputRequest(uintptr arg2);
 
 static DRIVER_FN(tft_handleSvc) {
 	switch(arg1) {
-		case KExecDriverTftBlit:
+		case KExecDriverScreenBlit:
 			return doBlit(arg2);
 		case KExecDriverTftInputRequest:
 			return doInputRequest(arg2);
@@ -324,17 +325,17 @@ static DRIVER_FN(tft_handleSvc) {
 static int doBlit(uintptr arg2) {
 	// Format of *arg2 is { dataPtr, bitmapWidth, screenx, screeny, x, y, w, h }
 
-	ASSERT(arg2 < KUserMemLimit && !(arg2 & 3), arg2);
+	ASSERT_USER_PTR32(arg2);
 	uint32* op = (uint32*)arg2;
 	uint16* data = (uint16*)op[0];
 	ASSERT_USER_PTR16(data);
-	int bwidth = op[1];
-	int screenx = op[2];
-	int screeny = op[3];
-	int x = op[4];
-	int y = op[5];
-	int w = op[6];
-	int h = op[7];
+	const int bwidth = op[1];
+	const int screenx = op[2];
+	const int screeny = op[3];
+	const int x = op[4];
+	const int y = op[5];
+	const int w = op[6];
+	const int h = op[7];
 	//printk("Blitting %d,%d,%dx%d to %d,%d\n", x, y, w, h, screenx, screeny);
 
 	if (w == bwidth) {

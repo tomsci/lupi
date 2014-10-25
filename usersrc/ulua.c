@@ -99,7 +99,7 @@ static int reboot_lua(lua_State* L) {
 }
 
 static int getInt(lua_State* L) {
-	int result = exec_getInt(lua_tointeger(L, 1));
+	int result = exec_getInt(luaL_checkinteger(L, 1));
 	lua_pushinteger(L, result);
 	return 1;
 }
@@ -154,6 +154,7 @@ int newProcessEntryPoint() {
 	SET_INT(L, "BootMode", EValBootMode);
 	SET_INT(L, "ScreenWidth", EValScreenWidth);
 	SET_INT(L, "ScreenHeight", EValScreenHeight);
+	SET_INT(L, "ScreenFormat", EValScreenFormat);
 	lua_setglobal(L, "lupi");
 
 	// The debug table is evil and must be excised, except for debug.traceback

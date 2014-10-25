@@ -37,7 +37,7 @@ static int newInputRequest(lua_State* L) {
 	runloop_newAsyncRequest(L);
 	InputRequest* req = (InputRequest*)runloop_checkRequest(L, -1);
 	req->maxSamples = maxSamples;
-	req->driverHandle = exec_driverConnect(FOURCC("pTFT"));
+	req->driverHandle = exec_driverConnect(FOURCC("SCRN"));
 
 	mbuf_new(L, req->data, dataSize, NULL);
 	lua_setfield(L, -2, "data");

@@ -38,6 +38,7 @@ typedef struct Bitmap {
 	uint16 bgcolour; // Background colour, when drawing text
 	Rect dirtyRect;
 	bool autoBlit; // Flush every draw operation straight to the screen (debug)
+	uint8 format; // a ScreenBufferFormat
 	uint16 data[1]; // Extends beyond the struct
 } Bitmap;
 

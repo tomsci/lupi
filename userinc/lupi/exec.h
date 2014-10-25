@@ -35,9 +35,15 @@ typedef enum {
 	EValBootMode,
 	EValScreenWidth,
 	EValScreenHeight,
+	EValScreenFormat,
 } ExecGettableValue;
 
-#define KExecDriverTftBlit		0
+typedef enum {
+	EFiveSixFive,
+	EOneBitColumnPacked,
+} ScreenBufferFormat;
+
+#define KExecDriverScreenBlit		0
 #define KExecDriverTftInputRequest	1
 
 #endif
