@@ -10,5 +10,5 @@
 #define KErrAlreadyExists	(-11)
 #define KErrBadName			(-28)
 
-#define KErrProcessLimit	(-60)
+#define KErrResourceLimit	(-60)
 #endif

@@ -37,6 +37,8 @@ NORETURN exec_abort();
 void exec_reboot();
 int exec_getInt(ExecGettableValue val);
 void exec_threadYield();
+int exec_threadCreate(void* newThreadState);
+void exec_threadExit(int reason);
 
 uint32 user_ProcessPid;
 char user_ProcessName[32];
@@ -107,7 +109,10 @@ static int yield_lua(lua_State* L) {
 	return 0;
 }
 
+static int threadCreate_lua(lua_State* L);
+
 lua_State* newLuaStateForModule(const char* moduleName, lua_State* L);
+int traceback_lua(lua_State* L);
 
 #define SET_INT(L, name, val) lua_pushinteger(L, val); lua_setfield(L, -2, name);
 
@@ -133,6 +138,7 @@ int newProcessEntryPoint() {
 	static const luaL_Reg lupi_funcs[] = {
 		{ "getProcessName", getProcessName },
 		{ "createProcess", createProcess },
+		{ "createThread", threadCreate_lua },
 		{ "getUptime", getUptime },
 		{ "getInt", getInt },
 		{ "yield", yield_lua },
@@ -170,4 +176,120 @@ int newProcessEntryPoint() {
 	lua_call(L, 0, 1);
 	return lua_tointeger(L, -1);
 }
+
+static void copyArg(lua_State* oldL, int arg, lua_State* newL);
+
+static int threadCreate_lua(lua_State* L) {
+	// Create a new state sharing the same malloc but nothing else and pass it
+	// to the thread create - it will be passed back to newThreadEntryPoint
+
+	// Args are a single function (which must have no upvalues) and any number
+	// of arguments, which will be deep copied into the new Lua state
+	luaL_checktype(L, 1, LUA_TFUNCTION);
+
+	lua_State* newL = newLuaStateForModule(NULL, NULL);
+
+	const int n = lua_gettop(L);
+	for (int i = 1; i <= n; i++) {
+		copyArg(L, i, newL);
+	}
+	exec_threadCreate(newL);
+	return 0;
+}
+
+static int dumpToBuf(lua_State* oldL, const void* p, size_t sz, void* ud) {
+	luaL_addlstring((luaL_Buffer*)ud, (const char*)p, sz);
+	return 0;
+}
+
+static void copyArg(lua_State* oldL, int arg, lua_State* newL) {
+	arg = lua_absindex(oldL, arg);
+	int type = lua_type(oldL, arg);
+	switch (type) {
+		case LUA_TNIL:
+			lua_pushnil(newL);
+			break;
+		case LUA_TNUMBER: {
+			lua_Number num = lua_tonumber(oldL, arg);
+			lua_pushnumber(newL, num);
+			break;
+		}
+		case LUA_TBOOLEAN: {
+			int b = lua_toboolean(oldL, arg);
+			lua_pushboolean(newL, b);
+			break;
+		}
+		case LUA_TSTRING: {
+			size_t len;
+			const char* str = lua_tolstring(oldL, arg, &len);
+			lua_pushlstring(newL, str, len);
+			break;
+		}
+		case LUA_TTABLE: {
+			if (lua_getmetatable(oldL, arg)) {
+				luaL_error(oldL, "Copying tables with metatables is not supported");
+			}
+			lua_newtable(newL);
+			int newTblIdx = lua_absindex(newL, -1);
+			lua_pushnil(oldL);  /* first key */
+			while (lua_next(oldL, arg) != 0) {
+				const int key = -2;
+				const int val = -1;
+				copyArg(oldL, key, newL);
+				copyArg(oldL, val, newL);
+				lua_settable(newL, newTblIdx);
+				/* removes 'value'; keeps 'key' for next iteration */
+				lua_pop(oldL, 1);
+			}
+			break;
+		}
+		case LUA_TFUNCTION: {
+			// We expect exactly one upvalue, being _ENV
+			const char* upvalueName = lua_getupvalue(oldL, 1, 2);
+			if (upvalueName) {
+				luaL_error(oldL, "function passed to threadCreate cannot have any upvalues (except _ENV), like '%s'", upvalueName);
+			}
+			// Functions we serialise
+			luaL_Buffer buf;
+			luaL_buffinit(newL, &buf); // Use the new stack for buf
+			lua_pushvalue(oldL, arg); // Get fn at top
+			lua_dump(oldL, dumpToBuf, &buf);
+			luaL_pushresult(&buf);
+			lua_pop(oldL, 1); // Remove fn
+			size_t len;
+			const char* ptr = lua_tolstring(newL, -1, &len);
+			int err = luaL_loadbuffer(newL, ptr, len, "thread");
+			if (err) {
+				lua_pop(newL, 1);
+				luaL_error(oldL, "Error %d loading function into new thread", err);
+				return;
+			}
+			lua_remove(newL, -2); // buf (since function is now on top)
+			break;
+		}
+		case LUA_TLIGHTUSERDATA: {
+			// I guess these are ok...?
+			void* ptr = lua_touserdata(oldL, arg);
+			lua_pushlightuserdata(newL, ptr);
+			break;
+		}
+		default:
+			luaL_error(oldL, "Type '%s' not supported by copyArg", lua_typename(oldL, type));
+	}
+}
+
+void newThreadEntryPoint(lua_State* L) {
+	// First 2 items on stack are _ENV and the fn
+	int nargs = lua_gettop(L) - 2;
+	lua_pushcfunction(L, traceback_lua);
+	lua_insert(L, 1); // stack pos 1 is now the trace fn
+	int err = lua_pcall(L, nargs, 0, 1);
+	if (err) {
+		PRINTL("Error: %s", lua_tostring(L, -1));
+		lua_pop(L, 1);
+	}
+	lua_close(L);
+	exec_threadExit(0);
+}
+
 #endif

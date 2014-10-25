@@ -40,8 +40,12 @@ typedef _Bool bool;
 
 #define PRINTL(args...) \
 	do { \
-		lua_getglobal(L, "print"); \
+		int printPos = lua_gettop(L) + 1; \
+		/* Make sure to call lua_pushfstring before perturbing the stack */ \
+		/* in case args uses negative indexes */ \
 		lua_pushfstring(L, args); \
+		lua_getglobal(L, "print"); \
+		lua_insert(L, printPos); \
 		lua_call(L, 1, 0); \
 	} while(0)
 #define FOURCC(str) ((str[0]<<24)|(str[1]<<16)|(str[2]<<8)|(str[3]))

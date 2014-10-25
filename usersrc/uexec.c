@@ -20,10 +20,13 @@ typedef struct AsyncRequest AsyncRequest;
 
 #endif // ARMV7_M
 
-#define SLOW_EXEC1(code) \
-	asm("MOV r1, r0"); \
+#define SLOW_EXEC(code) \
 	asm("MOV r0, %0" : : "i" (code)); \
 	DO_EXEC()
+
+#define SLOW_EXEC1(code) \
+	asm("MOV r1, r0"); \
+	SLOW_EXEC(code)
 
 #define SLOW_EXEC2(code) \
 	asm("MOV r2, r1"); \
@@ -50,7 +53,7 @@ void NAKED exec_putch(uint ch) {
 }
 
 uint NAKED exec_getch() {
-	SLOW_EXEC1(KExecGetch);
+	SLOW_EXEC(KExecGetch);
 }
 
 void NAKED exec_getch_async(AsyncRequest* request) {
@@ -62,7 +65,7 @@ int NAKED exec_createProcess(const char* name) {
 }
 
 uint64 NAKED exec_getUptime() {
-	SLOW_EXEC1(KExecGetUptime);
+	SLOW_EXEC(KExecGetUptime);
 }
 
 void NAKED exec_threadExit(int reason) {
@@ -75,19 +78,23 @@ int NAKED exec_waitForAnyRequest() {
 }
 
 void NAKED exec_abort() {
-	SLOW_EXEC1(KExecAbort);
+	SLOW_EXEC(KExecAbort);
 }
 
 void NAKED exec_reboot() {
-	SLOW_EXEC1(KExecReboot);
+	SLOW_EXEC(KExecReboot);
 }
 
 void NAKED exec_threadYield() {
-	SLOW_EXEC1(KExecThreadYield);
+	SLOW_EXEC(KExecThreadYield);
+}
+
+int NAKED exec_threadCreate(void* newThreadState) {
+	SLOW_EXEC1(KExecThreadCreate);
 }
 
 uintptr NAKED exec_newSharedPage() {
-	SLOW_EXEC1(KExecNewSharedPage);
+	SLOW_EXEC(KExecNewSharedPage);
 }
 
 int NAKED exec_createServer(uint32 serverId) {

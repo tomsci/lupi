@@ -94,6 +94,10 @@ int64 handleSvc(int cmd, uintptr arg1, uintptr arg2, void* savedRegisters) {
 			}
 			break;
 		}
+		case KExecThreadCreate: {
+			Thread* result = NULL;
+			return thread_new(p, arg1, &result);
+		}
 		case KExecThreadExit:
 			thread_exit(t, (int)arg1); // Never returns
 			break;

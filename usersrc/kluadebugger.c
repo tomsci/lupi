@@ -289,11 +289,16 @@ int init_module_kluadebugger(lua_State* L) {
 	MBUF_MEMBER(Process, heapLimit);
 	MBUF_MEMBER_TYPE(Process, name, "char[]");
 	MBUF_MEMBER(Process, numThreads);
-	mbuf_declare_member(L, "Process", "firstThread", offsetof(Process, threads), sizeof(Thread), "Thread");
+	//mbuf_declare_member(L, "Process", "firstThread", offsetof(Process, threads), sizeof(Thread), "Thread");
 
 	for (int i = 0; i < TheSuperPage->numValidProcessPages; i++) {
-		MBUF_NEW(Process, GetProcess(i));
+		Process* p = GetProcess(i);
+		MBUF_NEW(Process, p);
 		lua_pop(L, 1);
+		for (int j = 0; j < p->numThreads; j++) {
+			MBUF_NEW(Thread, &p->threads[j]);
+			lua_pop(L, 1);
+		}
 	}
 	for (int i = 0; i < MAX_DRIVERS; i++) {
 		if (TheSuperPage->drivers[i].id) {

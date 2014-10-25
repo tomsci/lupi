@@ -17,7 +17,9 @@ extern uint32 user_ProcessPid;
 extern char user_ProcessName[];
 
 #ifndef LUPI_NO_PROCESS
-static bool thread_init(Process* p, int index);
+static bool thread_init(Thread* t);
+NORETURN do_process_start(uint32 sp);
+void do_thread_new(Thread* t, uintptr context);
 #endif
 
 int strlen(const char *s);
@@ -55,7 +57,7 @@ static int process_init(Process* p, const char* processName) {
 
 	// Setup initial thread
 	p->numThreads = 1;
-	bool ok = thread_init(p, 0);
+	bool ok = thread_init(&p->threads[0]);
 	if (!ok) return KErrNoMemory;
 
 	char* pname = p->name;
@@ -65,24 +67,26 @@ static int process_init(Process* p, const char* processName) {
 		*pname++ = ch;
 	} while (ch);
 
+	thread_setState(&p->threads[0], EReady);
+
 	return 0;
 #endif // LUPI_NO_PROCESS
 }
 
 #ifndef LUPI_NO_PROCESS
 
-static bool thread_init(Process* p, int index) {
-	Thread* t = &p->threads[index];
+static bool thread_init(Thread* t) {
 	t->prev = NULL;
 	t->next = NULL;
-	t->index = index;
+	t->state = EDead;
 	t->timeslice = THREAD_TIMESLICE;
 	t->completedRequests = 0;
 	uintptr stackBase = userStackForThread(t);
 #ifdef HAVE_MMU
+	Process* p = processForThread(t);
 	bool ok = mmu_mapPagesInProcess(Al, p, stackBase, USER_STACK_SIZE >> KPageShift);
 	if (!ok) return false;
-	ok = mmu_mapSvcStack(Al, p, svcStackBase(index));
+	ok = mmu_mapSvcStack(Al, p, svcStackBase(t->index));
 	if (!ok) {
 		mmu_unmapPagesInProcess(Al, p, stackBase, USER_STACK_SIZE >> KPageShift);
 		return false;
@@ -95,11 +99,8 @@ static bool thread_init(Process* p, int index) {
 		// stack page
 		t->savedRegisters[KSavedR13] = KUserBss;
 	}
-	thread_setState(t, EReady);
 	return true;
 }
-
-NORETURN do_process_start(uint32 sp);
 
 NORETURN process_start(Process* p) {
 	switch_process(p);
@@ -116,7 +117,7 @@ NORETURN process_start(Process* p) {
 	user_ProcessPid = p->pid;
 	char* userpname = user_ProcessName;
 	const char* pname = p->name;
-	// Poor man's memcpy
+	// Poor man's strcpy
 	char ch;
 	do {
 		ch = *pname++;
@@ -154,9 +155,10 @@ bool process_grow_heap(Process* p, int incr) {
 		}
 		mmu_finishedUpdatingPageTables();
 #else
+		// With no MMU heap grows until it hits the stacks
 		const uint32 heapLim = userStackForThread(&p->threads[p->numThreads-1]);
 		if (p->heapLimit + amount > heapLim) {
-			//printk("OOM @ heapLimit = %X incr = %d!\n", (uint)p->heapLimit, incr);
+			printk("OOM @ heapLimit = %X incr = %d!\n", (uint)p->heapLimit, incr);
 			return false;
 		}
 #endif
@@ -195,7 +197,7 @@ int process_new(const char* name, Process** resultProcess) {
 #endif
 
 	if (!p) {
-		return KErrProcessLimit;
+		return KErrResourceLimit;
 	}
 
 	if (p) {
@@ -207,6 +209,37 @@ int process_new(const char* name, Process** resultProcess) {
 		*resultProcess = p;
 	}
 	return err;
+}
+
+int thread_new(Process* p, uintptr context, Thread** resultThread) {
+	// See if there are any dead threads we can reuse
+	*resultThread = NULL;
+	Thread* t = NULL;
+
+	for (int i = 0; i < p->numThreads; i++) {
+		if (p->threads[i].state == EDead) {
+			t = &p->threads[i];
+			break;
+		}
+	}
+	if (!t && p->numThreads < MAX_THREADS) {
+		t = &p->threads[p->numThreads];
+		t->state = EDead; // won't be ready till it's inited
+		t->index = p->numThreads;
+		p->numThreads++;
+	}
+
+	if (t) {
+		bool ok = thread_init(t);
+		if (!ok) return KErrNoMemory;
+		do_thread_new(t, context);
+		thread_setState(t, EReady);
+		*resultThread = t;
+		return 0;
+	} else {
+		return KErrResourceLimit;
+	}
+
 }
 
 static void freeThreadStacks(Thread* t) {
@@ -265,6 +298,7 @@ static void threadExit_dfc(uintptr arg1, uintptr arg2, uintptr arg3) {
 			break;
 		}
 	}
+	// printk("Thread %d exited, process dead=%d\n", t->index, (int)dead);
 	if (dead) {
 		process_exit(p, t->exitReason);
 	}

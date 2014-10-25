@@ -59,9 +59,6 @@ Process* switch_process(Process* p) {
 	if (!p) return NULL;
 	Process* oldp = TheSuperPage->currentProcess;
 	if (p == oldp) return NULL;
-
-	// Anything...?
-
 	TheSuperPage->currentProcess = p;
 	return oldp;
 }

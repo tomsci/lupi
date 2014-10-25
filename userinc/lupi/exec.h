@@ -26,8 +26,9 @@
 #define KExecReboot				18
 #define KExecGetInt				19
 #define KExecThreadYield		20
+#define KExecThreadCreate		21
 
-#define KExecDriverConnect		21
+#define KExecDriverConnect		22
 
 typedef enum {
 	EValTotalRam,

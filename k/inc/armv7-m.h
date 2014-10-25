@@ -106,6 +106,7 @@ ASSERT_COMPILE(sizeof(ExceptionStackFrame) == 8*4);
 
 ExceptionStackFrame* getExceptionStackFrame(uint32* spmain, uint32 excReturn);
 int stackFrameSize(const ExceptionStackFrame* esf);
+ExceptionStackFrame* pushDummyExceptionStackFrame(uint32* sp, uint32 returnAddr);
 
 // Valid values for EXC_RETURN
 #define KExcReturnHandler		(0xFFFFFFF1)

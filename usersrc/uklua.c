@@ -31,6 +31,18 @@ static int requireFn(lua_State* L) {
 	return 1; // The copy of module we moved to the bottom
 }
 
+int traceback_lua(lua_State* L) {
+	const char *msg = lua_tostring(L, 1);
+	if (msg) {
+		luaL_traceback(L, L, msg, 1);
+	} else if (!lua_isnoneornil(L, 1)) {  /* is there an error object? */
+		if (!luaL_callmeta(L, 1, "__tostring")) {  /* try its 'tostring' metamethod */
+			lua_pushliteral(L, "(no error message)");
+		}
+	}
+	return 1;
+}
+
 static int loaderFn(lua_State* L) {
 	// Custom loader that gives every module a separate _ENV, and makes sure that
 	// package.loaded[modName] will always be set to that _ENV unless the module returns a table.
@@ -138,8 +150,8 @@ caller can make any needed changes to the environment before loading the first
 bit of code.
 
 `L` can be NULL in which case a new state is constructed using `luaL_newstate()`.
-You may pass in an already-construted `lua_State`, if for example you need to use
-a custom allocator.
+You may pass in an already-constructed `lua_State`, if for example you need to
+use a custom allocator.
 
 Usage:
 
@@ -177,7 +189,9 @@ lua_State* newLuaStateForModule(const char* moduleName, lua_State* L) {
 	// main module for the process and save duplicating code. Note we bootstrap with global
 	// require here to get us into module context. Every subsequent call to require from inside
 	// the module will go via moduleFn above.
-	lua_getglobal(L, "require");
-	lua_pushstring(L, moduleName);
+	if (moduleName) {
+		lua_getglobal(L, "require");
+		lua_pushstring(L, moduleName);
+	}
 	return L;
 }

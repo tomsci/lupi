@@ -33,6 +33,15 @@ NORETURN NAKED do_process_start(uint32 sp) {
 
 	LABEL_WORD(.clearReg, 0xA11FADED);
 }
+
+void do_thread_new(Thread* t, uintptr context) {
+	uintptr entryPoint;
+	asm("LDR %0, =newThreadEntryPoint" : "=r" (entryPoint));
+	ExceptionStackFrame* esf = pushDummyExceptionStackFrame((uint32*)t->savedRegisters[KSavedR13], entryPoint);
+	esf->r0 = context;
+	t->savedRegisters[KSavedR13] = (uintptr)esf;
+}
+
 #endif // LUPI_NO_PROCESS
 
 /**

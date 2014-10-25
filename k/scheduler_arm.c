@@ -13,6 +13,13 @@ NORETURN NAKED do_process_start(uint32 sp) {
 	// Definitely don't return from here
 }
 
+void do_thread_new(Thread* t, uintptr context) {
+	t->savedRegisters[0] = context;
+	uintptr entryPoint;
+	asm("LDR %0, =newThreadEntryPoint" : "=r" (entryPoint));
+	t->savedRegisters[15] = entryPoint;
+}
+
 // Assumes we were in IRQ mode with interrupts off to start with
 static NAKED NOINLINE void irq_saveSvcSpLr(uint32* splr) {
 	ModeSwitch(KPsrModeSvc | KPsrIrqDisable | KPsrFiqDisable);
