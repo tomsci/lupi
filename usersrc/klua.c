@@ -223,7 +223,12 @@ static lua_State* initModule(uintptr heapBase, const char* module) {
 
 // A variant of interactiveLuaPrompt that lets us write the actual intepreter loop as a lua module
 void klua_runInterpreterModule() {
-	lua_State* L = initModule(KLuaHeapBase, "interpreter");
+#ifndef KLuaHeapBase
+	const uintptr heapBase = KLuaDebuggerSectionHeap;
+#else
+	const uintptr heapBase = KLuaHeapBase;
+#endif
+	lua_State* L = initModule(heapBase, "interpreter");
 	lua_pushliteral(L, "klua> ");
 	lua_setfield(L, -2, "prompt");
 
