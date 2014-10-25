@@ -18,6 +18,7 @@ void do_thread_new(Thread* t, uintptr context) {
 	uintptr entryPoint;
 	asm("LDR %0, =newThreadEntryPoint" : "=r" (entryPoint));
 	t->savedRegisters[15] = entryPoint;
+	t->savedRegisters[16] = KPsrModeUsr|KPsrFiqDisable;
 }
 
 // Assumes we were in IRQ mode with interrupts off to start with
