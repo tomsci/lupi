@@ -1,3 +1,9 @@
+--[[**
+A command line interpreter module. Supports basic cursor navigation and command-
+line history.
+]]
+
+
 if lupi then
 	require "runloop"
 end
@@ -36,6 +42,33 @@ function printPrompt()
 	for i = 1, #p do
 		putch(p:byte(i))
 	end
+end
+
+gprint = print
+local stopThePrint = {}
+setmetatable(stopThePrint, { __tostring = error })
+local function printNoNewline(obj)
+	pcall(gprint, obj, stopThePrint)
+end
+
+--[[**
+In order to seamlessly support printing large MemBuf objects using their
+[description()](membuf.lua#MemBuf_description) API rather than `tostring`, we
+have to override the default print function with a `description`-aware version.
+]]
+function print(...)
+	local nargs = select("#", ...)
+	for i = 1, nargs do
+		if i > 1 then printNoNewline("\t") end
+		local obj = select(i, ...)
+		if getmetatable(obj) ~= nil and obj.description ~= nil then
+			-- Use description rather than normal tostring
+			obj:description(gprint)
+		else
+			printNoNewline(obj)
+		end
+	end
+	gprint("")
 end
 
 local function moveCursor(delta)
@@ -208,7 +241,7 @@ function main()
 		rl:queue(chreq)
 		rl:run()
 	else
-		--# Run blocking (klua doesn't support async)
+		-- Run blocking (klua doesn't support async)
 		while true do
 			gotChar(getch())
 		end

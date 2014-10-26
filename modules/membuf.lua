@@ -174,7 +174,9 @@ function MemBuf._valueForMember(self, m)
 	end
 end
 
-function MemBuf:_descriptionForMember(m)
+function MemBuf:_descriptionForMember(m, printer, linePrefix)
+	local linePrefix = string.format("%s%s = ", linePrefix or "", m.name)
+
 	local val = self:_valueForMember(m)
 	local str
 	local t = type(val)
@@ -196,12 +198,17 @@ function MemBuf:_descriptionForMember(m)
 			str = string.format("%08x", val)
 		end
 	elseif t == "userdata" then
-		str = tostring(val)
+		if getmetatable(val) == MemBuf then
+			MemBuf.description(val, printer, linePrefix)
+			return
+		else
+			str = tostring(val)
+		end
 	else
 		str = "??"
 	end
 
-	local desc = string.format("%s = %s", m.name, str)
+	local desc = string.format("%s%s", linePrefix, str)
 	-- See if type has any decription of the value
 	local memberType = MemBuf._types[m.type]
 	local valueName = memberType and memberType._values and memberType._values[val]
@@ -209,7 +216,7 @@ function MemBuf:_descriptionForMember(m)
 	if valueName then
 		desc = desc .. string.format(" (%s)", valueName)
 	end
-	return desc
+	printer(desc)
 end
 
 --[[**
@@ -218,33 +225,61 @@ its members will be enumerated and listed. Otherwise it returns a single-line
 description.
 ]]
 function MemBuf:__tostring()
+	local result = {}
+	local function arrayConcat(str)
+		table.insert(result, str)
+	end
+	self:description(arrayConcat)
+	return table.concat(result, "\n")
+end
+
+--[[**
+The textual representation of MemBuf objects can be dozens of lines long, and
+on severely memory-contrained devices the simple approach of constructing the
+text as one big string (via `tostring()`) then printing it can take too much
+memory to even run.
+
+Instead, MemBufs support a streaming `description` function which outputs each
+line as it's constructed by calling `printer(line)`. `linePrefix` is an optional
+parameter used when you already have some text that should appear on the first
+line of the output.
+
+For example the following code:
+
+	local buf = MemBuf.null
+	buf:description(print, "This is a ")
+
+would print the following:
+
+	This is a MemBuf(00000000, 0)
+]]
+function MemBuf:description(printer, linePrefix)
 	local bufType = self:getType()
 	if bufType then
-		--# Do we have any members?
+		-- Do we have any members?
 		if bufType[1] == nil then
-			--# If not, assume we've got some values declared, eg we're representing an enum
+			-- If not, assume we've got some values declared, eg we're representing an enum
 			local val = self:_valueForMember({ offset = 0, size = self:getLength() })
 			local result = bufType._values and bufType._values[val]
 			if result then
-				return string.format("%s (%s)", tostring(val), result)
+				printer(string.format("%s%s (%s)", linePrefix or "", tostring(val), result))
+				return
 			end
 		else
-			local result = { string.format("%08X %s:", self:getAddress(), bufType._type) }
+			printer(string.format("%s%08X %s:", linePrefix or "", self:getAddress(), bufType._type))
 			lvl = lvl + 1
 			for _, m in ipairs(bufType) do
-				local s = string.format("%08X:%s%s",
+				local linePrefix = string.format("%08X:%s",
 					self:getAddress() + m.offset,
-					string.rep("| ", lvl),
-					self:_descriptionForMember(m)
-				)
-				table.insert(result, s)
+					string.rep("| ", lvl))
+				self:_descriptionForMember(m, printer, linePrefix)
 			end
 			lvl = lvl - 1
-			return table.concat(result, "\n")
+			return
 		end
 	end
 
-	return string.format("MemBuf(%08X, %d)", self:getAddress(), self:getLength())
+	printer(string.format("MemBuf(%08X, %d)", self:getAddress(), self:getLength()))
 end
 
 function MemBuf.__index(mbuf, key)

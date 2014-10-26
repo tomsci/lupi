@@ -164,6 +164,8 @@ int init_module_membuf(lua_State* L) {
 	luaL_setfuncs(L, fns, 0);
 	lua_pushinteger(L, sizeof(void*));
 	lua_setfield(L, -2, "_PTR_SIZE");
+	mbuf_new(L, NULL, 0, NULL);
+	lua_setfield(L, -2, "null");
 	lua_setfield(L, -2, "MemBuf");
 	return 0;
 }
@@ -176,18 +178,18 @@ MemBuf* mbuf_new(lua_State* L, void* ptr, int len, const char* type) {
 	luaL_setmetatable(L, MemBufMetatable);
 	buf->ptr = ptr;
 	buf->len = len;
-	int bufIdx = lua_gettop(L);
-	pushMemBuf(L);
 	if (type) {
+		int bufIdx = lua_gettop(L);
+		pushMemBuf(L);
 		lua_getfield(L, -1, "_types");
 		lua_getfield(L, -1, type);
 		lua_setuservalue(L, bufIdx);
 		lua_pop(L, 1); // _types
+		lua_getfield(L, -1, "_newObject");
+		lua_pushvalue(L, bufIdx);
+		CALL(L, 1, 0);
+		lua_pop(L, 1); // The last MemBufMetatable
 	}
-	lua_getfield(L, -1, "_newObject");
-	lua_pushvalue(L, bufIdx);
-	CALL(L, 1, 0);
-	lua_pop(L, 1); // The last MemBufMetatable
 	// Returns with the new buf on the Lua stack
 	return buf;
 }
