@@ -98,8 +98,25 @@ static int reboot_lua(lua_State* L) {
 	return 0;
 }
 
+// Must match enum ExecGettableValue
+static const char* KGetIntEnums[] = {
+	"TotalRam",
+	"BootMode",
+	"ScreenWidth",
+	"ScreenHeight",
+	"ScreenFormat",
+	NULL // Must be last
+};
+
 static int getInt(lua_State* L) {
-	int result = exec_getInt(luaL_checkinteger(L, 1));
+	int type = lua_type(L, 1);
+	int arg;
+	if (type == LUA_TSTRING) {
+		arg = luaL_checkoption(L, 1, NULL, KGetIntEnums);
+	} else {
+		arg = luaL_checkinteger(L, 1);
+	}
+	int result = exec_getInt(arg);
 	lua_pushinteger(L, result);
 	return 1;
 }
@@ -110,6 +127,7 @@ static int yield_lua(lua_State* L) {
 }
 
 static int threadCreate_lua(lua_State* L);
+static void setupGlobals(lua_State* L);
 
 lua_State* newLuaStateForModule(const char* moduleName, lua_State* L);
 int traceback_lua(lua_State* L);
@@ -125,7 +143,20 @@ int newProcessEntryPoint() {
 	lua_State* L = newLuaStateForModule(moduleName, NULL);
 
 	PRINT_MEM_STATS("Lua mem usage after module init %d B");
+	setupGlobals(L);
 
+	lua_call(L, 1, 1); // Loads module, _ENV is now on top
+	lua_getfield(L, -1, "main");
+	if (!lua_isfunction(L, -1)) {
+		luaL_error(L, "Module %s does not have a main function!", moduleName);
+	}
+	PRINT_MEM_STATS("Lua mem usage after main() fn %d B");
+
+	lua_call(L, 0, 1);
+	return lua_tointeger(L, -1);
+}
+
+static void setupGlobals(lua_State* L) {
 	// I'm sure a whole bunch of stuff will need setting up here...
 	// TODO need a better way of managing the serial port...
 	static const luaL_Reg globals[] = {
@@ -150,11 +181,6 @@ int newProcessEntryPoint() {
 	lua_pop(L, 1); // pops globals
 	lua_newtable(L);
 	luaL_setfuncs(L, lupi_funcs, 0);
-	SET_INT(L, "TotalRam", EValTotalRam);
-	SET_INT(L, "BootMode", EValBootMode);
-	SET_INT(L, "ScreenWidth", EValScreenWidth);
-	SET_INT(L, "ScreenHeight", EValScreenHeight);
-	SET_INT(L, "ScreenFormat", EValScreenFormat);
 	lua_setglobal(L, "lupi");
 
 	// The debug table is evil and must be excised, except for debug.traceback
@@ -166,16 +192,6 @@ int newProcessEntryPoint() {
 	lua_setfield(L, newDebugTable, "traceback");
 	lua_settop(L, newDebugTable);
 	lua_setglobal(L, "debug");
-
-	lua_call(L, 1, 1); // Loads module, _ENV is now on top
-	lua_getfield(L, -1, "main");
-	if (!lua_isfunction(L, -1)) {
-		luaL_error(L, "Module %s does not have a main function!", moduleName);
-	}
-	PRINT_MEM_STATS("Lua mem usage after main() fn %d B");
-
-	lua_call(L, 0, 1);
-	return lua_tointeger(L, -1);
 }
 
 static void copyArg(lua_State* oldL, int arg, lua_State* newL);
@@ -280,6 +296,7 @@ static void copyArg(lua_State* oldL, int arg, lua_State* newL) {
 }
 
 void newThreadEntryPoint(lua_State* L) {
+	setupGlobals(L);
 	// First 2 items on stack are _ENV and the fn
 	int nargs = lua_gettop(L) - 2;
 	lua_pushcfunction(L, traceback_lua);
