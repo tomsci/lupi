@@ -7,10 +7,11 @@ crashes. It reuses the user interpreter and membuf modules to provide an
 interactive Lua prompt that can view all the kernel data structures. It also
 contains various helper functions to aid debugging.
 
-In terms of implementation, it runs with interrupts disabled in System mode,
-which means it is privileged and can access the entire address space, but can
-still make SVC calls. This is important because it means it can reuse the same
-Lua binary that is used user-side.
+In terms of implementation, it runs with interrupts disabled in System mode, (on
+ARMv6) or in privileged thread mode with BASEPRI set to only allow SVC (on
+ARMv7-M), meaning it can access the entire address space, but can still make SVC
+calls. This is important because it means it can reuse the same Lua binary that
+is used user-side.
 
 The available syntax is below.
 
