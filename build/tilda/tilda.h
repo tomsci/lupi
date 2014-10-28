@@ -118,9 +118,10 @@ User memory map
 
 <pre>
 Inaccessible kernel stuff		00000000-20072000
+
+User BSS						20000DE0-20001000
 Heap							20072000-heapLimit
 Thread stacks					Downwards from KUserMemLimit
-User BSS						20000DE0-20001000
 
 Inaccessible					20088000-FFFFFFFF
 </pre>
@@ -134,7 +135,11 @@ Inaccessible					20088000-FFFFFFFF
 
 #define KUserMemLimit			(KRamBase + KRamSize)
 
-#define USER_STACK_SIZE			(KPageSize)
-#define USER_STACK_AREA_SHIFT	(KPageShift)
+// #define USER_STACK_SIZE			(KPageSize)
+// #define USER_STACK_AREA_SHIFT	(KPageShift)
+
+#define USER_STACK_SIZE			(2048)
+#define USER_STACK_AREA_SHIFT	(11)
+
 
 #endif
