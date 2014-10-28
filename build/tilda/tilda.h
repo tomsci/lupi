@@ -37,6 +37,10 @@
 #define PIO_ABSR	0x70 // Peripheral A/B select
 #define PIO_OWER	0xA0 // Output write enable
 
+// Aliases because I keep screwing up PER/PDR
+#define PIO_ENABLE			PIO_PER
+#define PERIPHERAL_ENABLE	PIO_PDR
+
 // p656
 #define PIOA		0x400E0E00
 #define PIOB		0x400E1000

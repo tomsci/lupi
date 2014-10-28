@@ -59,7 +59,7 @@ void uart_init() {
 
 #ifdef TILDA_USE_USART0
 
-    PUT32(PIOA + PIO_PDR, USART0_RXD | USART0_TXD); // PIO disable (peripheral enable)
+    PUT32(PIOA + PERIPHERAL_ENABLE, USART0_RXD | USART0_TXD); // PIO disable (peripheral enable)
 	PUT32(PIOA + PIO_IDR, USART0_RXD | USART0_TXD); // Disable interrupts
 
     // Must use pull-up on TXD (p780)

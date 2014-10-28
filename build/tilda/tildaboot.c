@@ -105,10 +105,10 @@ void tildaBoot() {
 	// Reset begins in priviledged Thread mode. (p80 §12.6.2.1)
 
 	// Configure the RX and TX LEDs
-	PUT32(PIOA + PIO_PER, LED_TX);
+	PUT32(PIOA + PIO_ENABLE, LED_TX);
 	PUT32(PIOA + PIO_OER, LED_TX);
 	PUT32(PIOA + PIO_CODR, LED_TX);
-	PUT32(PIOC + PIO_PER, LED_RX);
+	PUT32(PIOC + PIO_ENABLE, LED_RX);
 	PUT32(PIOC + PIO_OER, LED_RX);
 	PUT32(PIOC + PIO_CODR, LED_RX);
 
