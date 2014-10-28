@@ -148,6 +148,28 @@ void bitmap_getTextRect(Bitmap* b, int numChars, Rect* result) {
 	result->w = numChars * CHAR_WIDTH;
 }
 
+void bitmap_drawXbmData(Bitmap* b, uint16 x, uint16 y, const Rect* r, const uint8* xbm, uint16 xbm_width) {
+	 // Bitmap is allowed to go offscreen, but must start onscreen
+	if (x >= bitmap_getWidth(b) || y >= bitmap_getHeight(b)) return;
+	const uint16 bwidth = bitmap_getWidth(b);
+	const uint16 bheight = bitmap_getHeight(b);
+	const int xbm_stride = (xbm_width + 7) & ~7;
+
+	for (int yidx = 0; yidx < r->h; yidx++) {
+		if (y+yidx >= bheight) break; // rest of xbm will be outside bitmap
+		for (int xidx = 0; xidx < r->w; xidx++) {
+			if (x+xidx >= bwidth) break; // rest of xbm is outside bitmap
+			int bitIdx = (r->y + yidx) * xbm_stride + r->x + xidx;
+			uint16 colour = getBit(xbm, bitIdx) ? b->colour : b->bgcolour;
+			b->data[(y+yidx) * bwidth + x + xidx] = colour;
+		}
+	}
+
+	Rect drawnRect = rect_make(x, y, r->w, r->h);
+	rect_union(&b->dirtyRect, &drawnRect);
+	if (b->autoBlit) bitmap_blitDirtyToScreen(b);
+}
+
 #define plot(ptr,col,x,y) ptr[y*b->bounds.w + x] = col
 
 void bitmap_drawLine(Bitmap* b, uint16 x0, uint16 y0, uint16 x1, uint16 y1) {

@@ -18,8 +18,7 @@ static inline void rect_set(Rect* r, uint16 x, uint16 y, uint16 w, uint16 h) {
 }
 
 static inline Rect rect_make(uint16 x, uint16 y, uint16 w, uint16 h) {
-	Rect ret; rect_set(&ret, x, y, w, h);
-	return ret;
+	return (Rect){ .x = x, .y = y, .w = w, .h = h };
 }
 
 static inline bool rect_isEmpty(const Rect* r) {
@@ -58,9 +57,20 @@ static inline uint16 bitmap_getHeight(Bitmap* b) { return rect_getHeight(&b->bou
 void bitmap_drawLine(Bitmap* b, uint16 x0, uint16 y0, uint16 x1, uint16 y1);
 void bitmap_drawRect(Bitmap* b, const Rect* r);
 void bitmap_drawText(Bitmap* b, uint16 x, uint16 y, const char* text);
+void bitmap_drawXbmData(Bitmap* b, uint16 x, uint16 y, const Rect* r, const uint8* xbm, uint16 xbm_width);
 void bitmap_getTextRect(Bitmap* b, int numChars, Rect* result);
 void bitmap_blitToScreen(Bitmap* b, const Rect* r);
 void bitmap_blitDirtyToScreen(Bitmap* b);
 
 static inline void bitmap_setAutoBlit(Bitmap* b, bool flag) { b->autoBlit = flag; }
+
+#define bitmap_drawXbm(b, x, y, r, xbmName) \
+	bitmap_drawXbmData(b, x, y, r, xbmName ## _bits, xbmName ## _width)
+
+#ifdef lua_h
+
+Bitmap* bitmap_check(lua_State* L, int idx);
+
+#endif
+
 #endif

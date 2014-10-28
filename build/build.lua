@@ -54,6 +54,7 @@ luaModules = {
 	"modules/passwordManager/window.lua",
 	"modules/passwordManager/gui.lua",
 	"modules/passwordManager/keychain.lua",
+	{ path = "modules/bapple/bapple.lua", native = "modules/bapple/bapple.c" },
 }
 
 local kluaCopts = {} -- Filled in later
