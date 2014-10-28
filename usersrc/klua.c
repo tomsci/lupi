@@ -62,6 +62,10 @@ void* malloc(size_t len) {
 	return realloc(NULL, len);
 }
 
+static int reboot_lua(lua_State* L) {
+	reboot();
+}
+
 #endif // HOSTED && !ULUA_PRESENT
 
 #ifndef USE_HOST_MALLOC_FOR_LUA

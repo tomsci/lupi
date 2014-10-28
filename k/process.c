@@ -212,6 +212,10 @@ int process_new(const char* name, Process** resultProcess) {
 }
 
 int thread_new(Process* p, uintptr context, Thread** resultThread) {
+#ifdef LUPI_NO_PROCESS
+	return KErrNotSupported;
+#else
+
 	// See if there are any dead threads we can reuse
 	*resultThread = NULL;
 	Thread* t = NULL;
@@ -239,7 +243,7 @@ int thread_new(Process* p, uintptr context, Thread** resultThread) {
 	} else {
 		return KErrResourceLimit;
 	}
-
+#endif // LUPI_NO_PROCESS
 }
 
 static void freeThreadStacks(Thread* t) {
