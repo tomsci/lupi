@@ -10,14 +10,14 @@ falls apart. These concepts are, roughly:
 
 * The kernel should contain only functionality which cannot be implemented
 user-side.
-* Kernel simplicity is more imporant than maximum functionality.
+* Kernel simplicity is more important than maximum functionality.
 * User-side code should only be in C if it cannot be implemented in Lua.
 * Everything else should be written in Lua.
 
 Further to those concepts, it is a microkernel architecture that (currently)
-only runs on the Raspberry Pi. There is no x86 support, no device tree or
-dynamic libraries or any kind, no paging (swap memory), and no file system.
-And definitely no POSIX support or fork/exec.
+only runs on the Raspberry Pi and the TiLDA MkE. There is no x86 support, no
+device tree or dynamic libraries or any kind, no paging (swap memory), and no
+file system. And definitely no POSIX support or fork/exec.
 
 Kernel design
 -------------
@@ -45,10 +45,10 @@ be made but only at the cost of simplicity and legibility of the code - in these
 cases generally the simpler design is preferred even if it is slightly less
 memory efficient.
 
-Currently all kernel code runs in privileged mode with interrupts disabled,
-which means there is almost no locking required in the kernel, other than the
-interrupt-disabling provided by default by the SVC instruction, although this
-may change in the future for performance reasons.
+SVCs run mostly with interrupts enabled, although interrupt handlers are not
+allowed to cause a reschedule of a thread currently executing an SVC. Therefore
+there is only limited concurrency within the kernel as no thread may preempt
+another thread in an SVC.
 
 As an example of the principle that anything that can be pushed out of the
 kernel should be, timers are handled mostly user-side. At the lowest level the
@@ -57,7 +57,8 @@ the multiple timer-based requests of the rest of the system are instead
 implemented in a user process.
 
 All user-side processes are implemented as Lua modules. Some of the system
-modules also contain native C code.
+modules also contain native C code. For example the `bitmap` module contains
+native routines for basic drawing primitives.
 
 ### Kernel data structures - MMU variant
 
@@ -140,8 +141,8 @@ reschedules directly back to user mode when the thread unblocks. This,
 combined with there being no preemption while threads are in supervisor mode,
 means that there is never a need to save a supervisor register set, which
 saves space in the kernel `Thread` objects. There are no kernel threads except
-for the DFC thread, which is handled as a special case (and cannot block because
-we don't handle preemption of threads running a privileged mode).
+for the DFC thread (on ARMv6), which is handled as a special case (and cannot
+block because we don't handle preemption of threads running a privileged mode).
 
 ### DFCs and interrupts
 
@@ -158,14 +159,18 @@ will block other IRQs. To handle this we have Deferred Function Calls (DFCs)
 which can be scheduled by IRQ code. Any DFCs scheduled by IRQ code run
 immediately after the interrupt handler completes. Similar to how SVCs are
 currently handled, DFCs run with interrupts enabled, but they cannot be
-preempted. They use a dummy Thread structure without associated Process, and
-execute using a custom stack located at `KDfcThreadStack`.
+preempted. On ARMv6 they use a dummy Thread structure without associated
+Process, and execute using a custom stack located at `KDfcThreadStack`. On
+ARMv7-M they use the `PendSV` exception mode to achieve the same effect in a
+much more straight-forward fashion.
 
-DFCs can also be scheduled by SVC code, in which case they will get picked up
-after the next interrupts fires. Not ideal but adequate for now.
+DFCs can also be scheduled by SVC code. On ARMv6 these will get picked up
+after the next interrupts fires, which is not ideal but adequate for now. On
+ARMv7-M they will get serviced immediately after the SVC call returns.
 
-The 'kernel' stack is only used during boot-up before the first process has
-started, and during rescheduling.
+The ARMv6 'kernel' stack is only used during boot-up before the first process
+has started, and during rescheduling. On ARMv7-M the Handler stack is used for
+all exception modes including SVC.
 
 Build process
 -------------
@@ -235,7 +240,8 @@ The system requirements for running build.lua are:
 The One True Style.
 
 * Indentation with tabs (at four spaces per tab) except in strings that can be
-  printed at runtime, which should use spaces. LFs only.
+  printed at runtime, which should use spaces.
+* LFs only, non-ASCII characters must be escaped.
 * Aim for 80 character lines unless it looks worse to split it up.
 * Documentation comments should be maximum 80 characters.
 * Documentation comments should start at the margin, ie don't put a `*` at the
@@ -246,7 +252,7 @@ The One True Style.
 * Lua: constant-style variables should be CapitalisedCamelCase.
 * Struct (C) and metatable (Lua) definitions should be CapitalisedCamelCase.
 * C: functions may use a pseudo-namespace-style prefix with an underscore, such
-  as `runloop_checkRequestPending()`.
+  as `runloop_checkRequestPending()` but should otherwise be lowerCamelCase.
 * C: basic `#define`s should be `SHOUTY_CASE` or `KSomeConstant` style.
 * C: Function-like and variable-like macros can be in CapitalisedCamelCase if
   they look better like that.
@@ -371,7 +377,8 @@ Note that link paths are to the source file containing the documentation (ie not
 to the generated `.html` file), relative to the source file containing the link.
 You will need to add the applicable number of `../` as necessary. The
 documentation build target will error if it encounters a broken link in any of
-the documentation.
+the documentation. The Lua Markdown parsing is done using Niklas Frykholm's
+[markdown.lua](build/doc/markdown.lua).
 
 [markdown]: http://daringfireball.net/projects/markdown/
 

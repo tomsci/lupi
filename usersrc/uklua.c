@@ -153,6 +153,9 @@ bit of code.
 You may pass in an already-constructed `lua_State`, if for example you need to
 use a custom allocator.
 
+`moduleName` can be NULL in which case no module will be loaded, and what will
+be returned will be an empty environment with nothing on the stack.
+
 Usage:
 
 	lua_State* L = newLuaStateForModule("init", NULL);

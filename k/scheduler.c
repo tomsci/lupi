@@ -82,9 +82,9 @@ void thread_setState(Thread* t, ThreadState s) {
 /**
 Disables interrupts if they were enabled, otherwise does nothing. Can be called
 from any privileged mode; the mode will not be changed by calling this
-function. Returns the previous mode which when passed to
-[kern_restoreInterrupts()](#kern_restoreInterrupts) will restore the previous
-mode and interrupt state.
+function. Returns the previous interrupt state which when passed to
+[kern_restoreInterrupts()](#kern_restoreInterrupts) will restore interrupts if
+they were enabled when `kern_disableInterrupts()` was called.
 */
 int kern_disableInterrupts() {
 #if defined(ARM)
