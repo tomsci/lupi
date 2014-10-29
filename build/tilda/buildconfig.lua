@@ -13,7 +13,7 @@ config = {
 	sources = {
 		"build/tilda/uart.c",
 		"build/tilda/pio.c",
-		--"build/tilda/lcd.c",
+		"build/tilda/lcd.c",
 	},
 
 	extraStdInc = "build/tilda/stdinc",

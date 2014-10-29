@@ -8,11 +8,20 @@
 
 int exec_getInt(ExecGettableValue val);
 
+#define PixelType uint16
+#define bitmap_getPixels(b) ((uint16*)(b->data))
+#define datasize(w, h) ((w) * (h) * 2)
+#define set_pixel(ptr, bwidth, x, y, col) (ptr)[(y)*(bwidth) + (x)] = (col)
+
 Bitmap* bitmap_create(uint16 width, uint16 height) {
 	if (!width) width = exec_getInt(EValScreenWidth);
 	if (!height) height = exec_getInt(EValScreenHeight);
-
-	int bufSize = width * height * 2;
+	ScreenBufferFormat format = (ScreenBufferFormat)exec_getInt(EValScreenFormat);
+	int bufSize = datasize(width, height);
+	if (format == EOneBitColumnPacked) {
+		// We need an extra buf to transform to the packed format before blitting
+		bufSize += width * ((height + 7) >> 3);
+	}
 	void* mem = malloc(offsetof(Bitmap, data) + bufSize);
 	if (!mem) return NULL;
 	Bitmap* b = (Bitmap*)mem;
@@ -80,6 +89,20 @@ void rect_clipToParent(Rect* r, const Rect* parent) {
 	if (r->y + r->h > parenth) r->h = parenth - r->h;
 }
 
+void rect_clip(Rect* r, const Rect* clipr) {
+	int dx = (int)clipr->x - (int)r->x;
+	if (dx > 0) { r->x += dx; r->w -= dx; }
+
+	dx = (int)r->x + (int)r->w - (int)clipr->x - (int)clipr->w;
+	if (dx > 0) r->w -= dx;
+
+	int dy = (int)clipr->y - (int)r->y;
+	if (dy > 0) { r->y += dy; r->h -= dy; }
+
+	dy = (int)r->y + (int)r->h - (int)clipr->y - (int)clipr->h;
+	if (dy > 0) r->h -= dy;
+}
+
 void bitmap_drawRect(Bitmap* b, const Rect* r) {
 	// Line by line, by the numbers
 	Rect bounds = *r;
@@ -88,10 +111,10 @@ void bitmap_drawRect(Bitmap* b, const Rect* r) {
 	const uint16 yend = bounds.y + bounds.h;
 	const uint16 col = b->colour;
 	const uint16 bwidth = bitmap_getWidth(b);
-	uint16* data = b->data;
+	PixelType* data = bitmap_getPixels(b);
 	for (int yidx = bounds.y; yidx < yend; yidx++) {
 		for (int xidx = bounds.x; xidx < xend; xidx++) {
-			data[yidx * bwidth + xidx] = col;
+			set_pixel(data, bwidth, xidx, yidx, col);
 		}
 	}
 	rect_union(&b->dirtyRect, &bounds);
@@ -113,13 +136,14 @@ static inline void drawch(Bitmap* b, uint16 x, uint16 y, int chIdx) {
 
 	const uint16 bwidth = bitmap_getWidth(b);
 	const uint16 bheight = bitmap_getHeight(b);
+	PixelType* data = bitmap_getPixels(b);
 	for (int yidx = 0; yidx < CHAR_HEIGHT; yidx++) {
 		if (y+yidx >= bheight) break; // rest of char is outside bitmap
 		for (int xidx = 0; xidx < CHAR_WIDTH; xidx++) {
 			if (x+xidx >= bwidth) break; // rest of char is outside bitmap
 			int bitIdx = (chy + yidx) * font_width + chx + xidx;
 			uint16 colour = getBit(font_bits, bitIdx) ? b->colour : b->bgcolour;
-			b->data[(y+yidx) * bwidth + x + xidx] = colour;
+			set_pixel(data, bwidth, x + xidx, y + yidx, colour);
 		}
 	}
 }
@@ -139,6 +163,7 @@ void bitmap_drawText(Bitmap* b, uint16 x, uint16 y, const char* text) {
 		x += CHAR_WIDTH;
 	}
 	Rect r = rect_make(xstart, y, (chptr - text - 1) * CHAR_WIDTH, CHAR_HEIGHT);
+	rect_clip(&r, &b->bounds);
 	rect_union(&b->dirtyRect, &r);
 	if (b->autoBlit) bitmap_blitDirtyToScreen(b);
 }
@@ -149,28 +174,28 @@ void bitmap_getTextRect(Bitmap* b, int numChars, Rect* result) {
 }
 
 void bitmap_drawXbmData(Bitmap* b, uint16 x, uint16 y, const Rect* r, const uint8* xbm, uint16 xbm_width) {
-	 // Bitmap is allowed to go offscreen, but must start onscreen
-	if (x >= bitmap_getWidth(b) || y >= bitmap_getHeight(b)) return;
+	 // xbm drawing is allowed to continue outside the bitmap, but must start inside
 	const uint16 bwidth = bitmap_getWidth(b);
 	const uint16 bheight = bitmap_getHeight(b);
+	if (x >= bwidth || y >= bheight) return;
 	const int xbm_stride = (xbm_width + 7) & ~7;
 
+	PixelType* data = bitmap_getPixels(b);
 	for (int yidx = 0; yidx < r->h; yidx++) {
 		if (y+yidx >= bheight) break; // rest of xbm will be outside bitmap
 		for (int xidx = 0; xidx < r->w; xidx++) {
 			if (x+xidx >= bwidth) break; // rest of xbm is outside bitmap
 			int bitIdx = (r->y + yidx) * xbm_stride + r->x + xidx;
 			uint16 colour = getBit(xbm, bitIdx) ? b->colour : b->bgcolour;
-			b->data[(y+yidx) * bwidth + x + xidx] = colour;
+			set_pixel(data, bwidth, x + xidx, y + yidx, colour);
 		}
 	}
 
 	Rect drawnRect = rect_make(x, y, r->w, r->h);
+	rect_clip(&drawnRect, &b->bounds);
 	rect_union(&b->dirtyRect, &drawnRect);
 	if (b->autoBlit) bitmap_blitDirtyToScreen(b);
 }
-
-#define plot(ptr,col,x,y) ptr[y*b->bounds.w + x] = col
 
 void bitmap_drawLine(Bitmap* b, uint16 x0, uint16 y0, uint16 x1, uint16 y1) {
 	// Prof Bresenham, we salute you
@@ -217,20 +242,21 @@ void bitmap_drawLine(Bitmap* b, uint16 x0, uint16 y0, uint16 x1, uint16 y1) {
 	const int TwoDinc = 2 * dinc;
 	const int TwoDincMinusTwoDscan = 2 * dinc - 2 * dscan;
 	const uint16 colour = b->colour;
-	uint16 *const data = &b->data[0];
+	const int bwidth = bitmap_getWidth(b);
+	PixelType* data = bitmap_getPixels(b);
 
 	int D = TwoDinc - dscan;
-	plot(data, colour, x0, y0);
-	plot(data, colour, x1, y1);
+	set_pixel(data, bwidth, x0, y0, colour);
+	set_pixel(data, bwidth, x1, y1, colour);
 
 	for (scan = scanStart; scan != scanEnd; scan += scanIncr) {
 		//PRINTL("scan=%d inc=%d D=%d", (int)scan, (int)inc, D);
 		if (D > 0) {
 			inc = inc + incr;
-			plot(data, colour, *x, *y);
+			set_pixel(data, bwidth, *x, *y, colour);
 			D = D + TwoDincMinusTwoDscan;
 		} else {
-			plot(data, colour, *x, *y);
+			set_pixel(data, bwidth, *x, *y, colour);
 			D = D + TwoDinc;
 		}
 	}
@@ -249,10 +275,42 @@ void bitmap_blitToScreen(Bitmap* b, const Rect* r) {
 		b->screenDriverHandle = exec_driverConnect(FOURCC("SCRN"));
 	}
 	if (b->format == EOneBitColumnPacked) {
+		// Need to transform into the packed format, copy that into the temp
+		// buf past the end of the bitmap data, then send that to the driver
+		//ASSERT((b->bounds.y & 7) == 0); // Otherwise the compositing is too nasty to contemplate
+		const int bwidth = bitmap_getWidth(b);
+		uint8* buf = (uint8*)b->data + datasize(bwidth, bitmap_getHeight(b));
+		const int starty = r->y & ~0x7; // Round down to 8px boundary
+		const int endy = (r->y + r->h + 7) & ~0x7;
+		PixelType* data = bitmap_getPixels(b);
+		for (int y = starty; y < endy; y += 8) {
+			for (int x = r->x; x < r->x + r->w; x++) {
+				// Each byte has bits for col x, rows y thru y+7
+				byte pageByte = 0;
+				for (int i = 0; i < 8; i++) {
+					if (data[(y+i)*bwidth + x] == BLACK) {
+						pageByte |= 1 << i;
+					}
+				}
+				int bufIdx = (y >> 3) * bwidth + x;
+				buf[bufIdx] = pageByte;
+			}
+		}
+		// { dataPtr, bitmapWidth, screenx, screeny, x, y, w, h }
+		uint32 op[] = {
+			(uint32)buf, bwidth,
+			b->bounds.x + r->x, b->bounds.y + starty,
+			r->x, starty, r->w, endy-starty
+		};
+		exec_driverCmd(b->screenDriverHandle, KExecDriverScreenBlit, (uint32)&op);
+		return;
 	} else {
 		// { dataPtr, bitmapWidth, screenx, screeny, x, y, w, h }
-		uint32 op[] = { (uint32)&b->data, b->bounds.w, b->bounds.x + r->x,
-			b->bounds.y + r->y, r->x, r->y, r->w, r->h };
+		uint32 op[] = {
+			(uint32)&b->data, b->bounds.w,
+			b->bounds.x + r->x, b->bounds.y + r->y,
+			r->x, r->y, r->w, r->h
+		};
 		exec_driverCmd(b->screenDriverHandle, KExecDriverScreenBlit, (uint32)&op);
 	}
 }

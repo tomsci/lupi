@@ -29,12 +29,13 @@ static inline uint16 rect_getWidth(const Rect* r) { return r->w; }
 static inline uint16 rect_getHeight(const Rect* r) { return r->h; }
 
 void rect_union(Rect* r, const Rect* r2);
+void rect_clip(Rect* r, const Rect* clipRect);
 
 typedef struct Bitmap {
 	Rect bounds;
 	uint32 screenDriverHandle; // Doesn't really belong here, but hey
 	uint16 colour; // Current pen colour
-	uint16 bgcolour; // Background colour, when drawing text
+	uint16 bgcolour; // Background colour, when drawing text or XBMs
 	Rect dirtyRect;
 	bool autoBlit; // Flush every draw operation straight to the screen (debug)
 	uint8 format; // a ScreenBufferFormat

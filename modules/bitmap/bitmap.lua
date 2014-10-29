@@ -51,6 +51,16 @@ Draw a solid rectangle using the current foreground colour.
 --native function Bitmap:drawRect(x, y, w, h)
 
 --[[**
+Fills the entire bitmap with the background colour.
+]]
+function Bitmap:clear()
+	local col = self:getColour()
+	self:setColour(self:getBackgroundColour())
+	self:drawRect(0, 0, self:width(), self:height())
+	self:setColour(col)
+end
+
+--[[**
 Draws a hollow rectangle using the current foreground colour.
 ]]
 function Bitmap:drawBox(x, y, w, h)

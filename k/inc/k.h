@@ -8,7 +8,7 @@
 #define KPageSize 4096
 #define KPageShift 12
 
-#define LUPI_VERSION_STRING "LuPi 0.21"
+#define LUPI_VERSION_STRING "LuPi 0.22"
 
 /*
 Limiting to 256 running processes makes the maths quite nice - the ProcessList fits into a page,

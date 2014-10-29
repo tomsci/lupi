@@ -17,7 +17,7 @@
 
 #define TILDA_USE_USART0
 
-// #define HAVE_SCREEN
+#define HAVE_SCREEN
 #define HAVE_MPU
 
 #define LUPI_USE_MALLOC_FOR_KLUA
