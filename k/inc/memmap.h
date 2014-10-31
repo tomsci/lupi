@@ -130,4 +130,5 @@ calculating the svc stack address simpler.
 	padding				--------------- (4kB)
 */
 
+#define LoadSuperPageAddress(reg) asm("MOV " #reg ", %0" : : "i" (KSuperPageAddress))
 #endif

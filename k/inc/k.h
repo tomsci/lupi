@@ -235,7 +235,7 @@ typedef struct SuperPage {
 
 #ifdef LUPI_NO_SECTION0
 // Must be enough space to jam the BSS data in
-ASSERT_COMPILE(sizeof(SuperPage) <= KPageSize - KUserBssSize);
+ASSERT_COMPILE(sizeof(SuperPage) <= KPageSize - KSuperPageUsrRegionSize);
 #else
 ASSERT_COMPILE(sizeof(SuperPage) <= KPageSize);
 #endif
@@ -263,7 +263,7 @@ ASSERT_COMPILE(sizeof(SuperPage) <= KPageSize);
 
 #elif defined(ARMV7_M)
 
-#define userStackForThread(t) (KRamBase + KRamSize - (((t)->index + 1) << USER_STACK_AREA_SHIFT))
+#define userStackForThread(t) (KUserMemLimit - (((t)->index + 1) << USER_STACK_AREA_SHIFT))
 
 #endif
 

@@ -29,24 +29,25 @@ void mmu_init() {
 	// Region 0: code
 	SET_REGION(0, KKernelCodeBase, KLogKernelCodesize, KRasrCode);
 
-	// Region 1, 2 - user mem. Note region 1 uses a subregion disable to block
-	// access to the kernel mem via the 0x20070000 alias
-	SET_REGION(1, KRamBase, 16, KRasrUserData | (1 << 8)); // 1<<16 = 64KB
+	// Region 1, 2 - user mem.
+	SET_REGION(1, KRamBase, 16, KRasrUserData); // 1<<16 = 64KB
 	SET_REGION(2, KRamBase + (1 << 16), 15, KRasrUserData); // 1<<15 = 32KB
 
-	// Region 3 - kernel data
-	SET_REGION(3, KSuperPageAddress, KPageShift + 1, KRasrKernelData);
+	// Region 3 - kernel data. Note this will override region 2 which would
+	// otherwise have granted user access to the superpage
+	SET_REGION(3, KHandlerStackBase, KPageShift + 1, KRasrKernelData);
 
-	// Region 4,5 - User BSS
-	// BSS is 544 bytes (32 + 512) so map as two regions
-	SET_REGION(4, KUserBss, 5, KRasrUserData); // 1<<5 = 32 bytes
-	SET_REGION(5, KUserBss + 32, 9, KRasrUserData); // 1<<9 = 512 bytes
+	// Region 4 - User BSS
+	// BSS size is rounded up to 640 (512+128) bytes so we can map it as a
+	// single 1KB region with 3 disabled subregions of 128 bytes each
+	SET_REGION(4, KSuperPageAddress + 0xC00, 10, KRasrUserData | (0x07 << 8));
 
-	// Region 6 - peripheral
-	SET_REGION(6, KPeripheralBase, 29, KRasrPeripheral); // 0x20000000 = 1<<29
+	// Region 5, 6 - Bit-banded user mem
+	// r6 excludes 256KB (8KB real mem) for kernel, being 2 subregions
+	SET_REGION(5, 0x22E00000, 21, KRasrUserData); // 1<<21 = 2MB (64KB real mem)
+	SET_REGION(6, 0x23000000, 20, KRasrUserData | (0xC0 << 8)); // 1 << 20 = 1MB (32KB real mem)
 
-	// Region 7 - SCB
-	SET_REGION(7, KSystemControlSpace, KPageShift, KRasrScb);
+	SET_REGION(7, 0, 0, 0); // Region 7 unused
 }
 
 void mmu_enable() {

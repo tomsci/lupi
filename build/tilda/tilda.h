@@ -85,8 +85,8 @@ Kernel memory map
 <pre>
 Code (flash)	00080000-000C0000	(256k)
 
-SuperPage		20070000-20071000	(4k)
-Handler stack	20071000-20072000	(4k)
+Handler stack	20086000-20087000	(4k)
+SuperPage		20087000-20088000	(4k)
 
 </pre>
 */
@@ -101,14 +101,8 @@ Handler stack	20071000-20072000	(4k)
 #define KKernelCodesize			0x00040000
 #define KLogKernelCodesize		(18)
 
-// Note this is an alias for 20070000 - we use it because
-// 20000000 can be loaded into a register in one instruction
-#define KSuperPageAddress		0x20000000
-// And put handler stack next to it (rather than at 20071000) so that we can
-// map it as a single contiguous region in the MPU
-#define KHandlerStackBase		0x20001000
-
-#define KEndOfKernelMemory		0x20072000
+#define KSuperPageAddress		0x20087000
+#define KHandlerStackBase		0x20086000
 
 #define KPeripheralBase			0x40000000
 
@@ -117,29 +111,31 @@ User memory map
 ---------------
 
 <pre>
-Inaccessible kernel stuff		00000000-20072000
-
-User BSS						20000DE0-20001000
-Heap							20072000-heapLimit
-Thread stacks					Downwards from KUserMemLimit
-
-Inaccessible					20088000-FFFFFFFF
+------------					00000000-20070000
+Heap							20070000-heapLimit
+Thread stacks					????????-20086000
+------------					20086000-20087DE0
+User BSS						20087DE0-20088000 (640 B)
+------------					20088000-22E00000
+Bit-banded user mem				22E00000-230C0000
+------------					230C0000-FFFFFFFF
 </pre>
 */
 
 #define KUserBssSize			0x220
-#define KUserBss				(KSuperPageAddress + KPageSize - KUserBssSize)
+#define KSuperPageUsrRegionSize 0x280
+#define KUserBss				0x20087DE0
 
-#define KUserHeapBase			0x20072000
+#define KUserHeapBase			0x20070000
 #define KLuaHeapBase			(KUserHeapBase)
 
-#define KUserMemLimit			(KRamBase + KRamSize)
-
-// #define USER_STACK_SIZE			(KPageSize)
-// #define USER_STACK_AREA_SHIFT	(KPageShift)
+#define KUserMemLimit			KHandlerStackBase
 
 #define USER_STACK_SIZE			(2048)
 #define USER_STACK_AREA_SHIFT	(11)
 
+#define LoadSuperPageAddress(reg) \
+	asm("MOV " #reg ", %0" : : "i" (0x20000000)); \
+	asm("ADD " #reg ", %0" : : "i" (0x87000))
 
 #endif
