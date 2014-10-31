@@ -37,7 +37,7 @@ typedef struct Bitmap {
 	uint16 colour; // Current pen colour
 	uint16 bgcolour; // Background colour, when drawing text or XBMs
 	Rect dirtyRect;
-	bool autoBlit; // Flush every draw operation straight to the screen (debug)
+	uint8 flags;
 	uint8 format; // a ScreenBufferFormat
 	uint16 data[1]; // Extends beyond the struct
 } Bitmap;
@@ -63,7 +63,8 @@ void bitmap_getTextRect(Bitmap* b, int numChars, Rect* result);
 void bitmap_blitToScreen(Bitmap* b, const Rect* r);
 void bitmap_blitDirtyToScreen(Bitmap* b);
 
-static inline void bitmap_setAutoBlit(Bitmap* b, bool flag) { b->autoBlit = flag; }
+void bitmap_setAutoBlit(Bitmap* b, bool flag);
+void bitmap_clipToBounds(Bitmap* b, Rect* r);
 
 #define bitmap_drawXbm(b, x, y, r, xbmName) \
 	bitmap_drawXbmData(b, x, y, r, xbmName ## _bits, xbmName ## _width)
