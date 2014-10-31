@@ -228,8 +228,12 @@ int thread_new(Process* p, uintptr context, Thread** resultThread) {
 	}
 	if (!t && p->numThreads < MAX_THREADS) {
 		t = &p->threads[p->numThreads];
-		t->state = EDead; // won't be ready till it's inited
 		t->index = p->numThreads;
+		if (p->heapLimit > userStackForThread(t)) {
+			// Uh oh the heap has already encroached on where we were going to
+			// put the thread stack, so we can't allow this.
+			return KErrResourceLimit;
+		}
 		p->numThreads++;
 	}
 
