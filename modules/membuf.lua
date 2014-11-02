@@ -286,7 +286,8 @@ function MemBuf:description(printer, linePrefix)
 				return
 			end
 		else
-			printer(string.format("%s%08X %s:", linePrefix or "", self:getAddress(), bufType._type))
+			printer(string.format("%s%08X %s: (%d bytes)",
+				linePrefix or "", self:getAddress(), bufType._type, self:getLength()))
 			lvl = lvl + 1
 			for _, m in ipairs(bufType) do
 				local linePrefix = string.format("%08X:%s",

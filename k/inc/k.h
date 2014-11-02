@@ -190,12 +190,12 @@ typedef struct SuperPage {
 	int screenHeight;
 	int bootMode;
 	uint32 nextPid;
+	uint64 uptime; // in ms
 	Process* currentProcess;
 	Thread* currentThread;
 	int numValidProcessPages;
 	Thread* blockedUartReceiveIrqHandler;
 	Thread* readyList;
-	uint64 uptime; // in ms
 	bool marvin;
 	bool trapAbort;
 	bool exception; // only used in kdebugger mode
@@ -205,14 +205,15 @@ typedef struct SuperPage {
 	uint64 timerCompletionTime;
 	uint32 crashRegisters[17];
 	uint32 crashFar;
-	byte uartBuf[66];
+	byte uartBuf[68];
 	Server servers[MAX_SERVERS];
 	bool rescheduleNeededOnSvcExit;
 #ifdef ARM
 	byte svcPsrMode; // settable so we don't accidentally enable interrupts when crashed
 #endif
 	uint8 screenFormat;
-	uint32 numDfcsPending;
+	uint8 numDfcsPending;
+	bool needToSendTouchUp;
 #ifdef ARM
 	// DFCs implemented using PendSV rather than a Thread in ARMv7-M
 	Thread dfcThread;
@@ -222,7 +223,6 @@ typedef struct SuperPage {
 	KAsyncRequest inputRequest;
 	uintptr inputRequestBuffer;
 	int inputRequestBufferSize;
-	bool needToSendTouchUp;
 
 #ifdef LUPI_NO_SECTION0
 	// We compact some other data structures into the superpage when we're

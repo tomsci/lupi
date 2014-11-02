@@ -213,7 +213,7 @@ bool irq_checkDfcs() {
 		// Then DFC thread is already scheduled or running, nothing we can do
 		return false;
 	}
-	uint32 numDfcsPending = atomic_set(&TheSuperPage->numDfcsPending, 0);
+	uint8 numDfcsPending = atomic_set8(&TheSuperPage->numDfcsPending, 0);
 	if (numDfcsPending == 0) return false;
 	// If we have some DFCs, ready the DFC thread
 	thread_setState(dfcThread, EReady);
@@ -235,7 +235,7 @@ bool irq_checkDfcs() {
 }
 
 void dfc_queue(DfcFn fn, uintptr arg1, uintptr arg2, uintptr arg3) {
-	uint32 n = atomic_inc(&TheSuperPage->numDfcsPending);
+	uint32 n = atomic_inc8(&TheSuperPage->numDfcsPending);
 	ASSERT(n <= MAX_DFCS);
 	Dfc* dfc = &TheSuperPage->dfcs[n-1];
 	dfc->fn = fn;

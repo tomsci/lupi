@@ -230,12 +230,12 @@ int init_module_kluadebugger(lua_State* L) {
 	MBUF_MEMBER(SuperPage, boardRev);
 	MBUF_MEMBER(SuperPage, bootMode);
 	MBUF_MEMBER(SuperPage, nextPid);
+	MBUF_MEMBER(SuperPage, uptime);
 	MBUF_MEMBER(SuperPage, currentProcess);
 	MBUF_MEMBER(SuperPage, currentThread);
 	MBUF_MEMBER(SuperPage, numValidProcessPages);
 	MBUF_MEMBER(SuperPage, blockedUartReceiveIrqHandler);
 	MBUF_MEMBER(SuperPage, readyList);
-	MBUF_MEMBER(SuperPage, uptime);
 	MBUF_MEMBER(SuperPage, marvin);
 	MBUF_MEMBER(SuperPage, trapAbort);
 	MBUF_MEMBER(SuperPage, exception);
@@ -251,12 +251,13 @@ int init_module_kluadebugger(lua_State* L) {
 #ifdef ARM
 	MBUF_MEMBER(SuperPage, svcPsrMode);
 #endif
+	MBUF_MEMBER(SuperPage, screenFormat);
 	MBUF_MEMBER(SuperPage, numDfcsPending);
+	MBUF_MEMBER(SuperPage, needToSendTouchUp);
 	// dfcThread has to be declared after Thread
 	MBUF_MEMBER_TYPE(SuperPage, inputRequest, "KAsyncRequest");
 	MBUF_MEMBER(SuperPage, inputRequestBuffer);
 	MBUF_MEMBER(SuperPage, inputRequestBufferSize);
-	MBUF_MEMBER(SuperPage, needToSendTouchUp);
 
 	MBUF_TYPE(ThreadState);
 	MBUF_ENUM(ThreadState, EReady);

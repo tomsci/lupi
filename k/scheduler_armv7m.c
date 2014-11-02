@@ -204,7 +204,7 @@ static void USED doTick(uint32* regs, uintptr excReturn) {
 void dfc_queue(DfcFn fn, uintptr arg1, uintptr arg2, uintptr arg3) {
 	// printk("dfc_queue\n");
 	int mask = kern_disableInterrupts();
-	uint32 n = ++(TheSuperPage->numDfcsPending);
+	uint8 n = ++(TheSuperPage->numDfcsPending);
 	ASSERT(n <= MAX_DFCS);
 	Dfc* dfc = &TheSuperPage->dfcs[n-1];
 	dfc->fn = fn;
