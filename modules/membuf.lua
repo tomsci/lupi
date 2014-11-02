@@ -60,55 +60,75 @@ local lvl = 0 -- Used while printing
 --[[**
 Returns a hexdump-style string of the first `length` bytes of the MemBuf (or of
 the entire MemBuf if length is nil).
+
+If `printer` is non-nil, the output is printed line-by-line by repeatedly
+calling `printer(line)` rather than being returned as one big string.
 ]]
-function MemBuf:hex(length)
+function MemBuf:hex(length, printer)
 	if length == nil then length = self:getLength() end
 
 	local result = {}
+	local function arrayConcat(str)
+		table.insert(result, str)
+	end
+	local outputFn = printer or arrayConcat
 	for i = 0, length-1, 16 do
-		table.insert(result, string.format("%08X: ", self:getAddress() + i))
+		local line = {}
+		table.insert(line, string.format("%08X: ", self:getAddress() + i))
 		local len = min(length - i, 16)
 		for j = 0, len-1 do
-			table.insert(result, string.format("%02X ", self:getByte(i+j)))
+			table.insert(line, string.format("%02X ", self:getByte(i+j)))
 		end
-		table.insert(result, " ")
+		table.insert(line, " ")
 		for j = 0, len-1 do
-			table.insert(result, safech(self:getByte(i+j)))
+			table.insert(line, safech(self:getByte(i+j)))
 		end
-		table.insert(result, "\n");
+		outputFn(table.concat(line))
 	end
 
-	return table.concat(result)
+	if printer == nil then
+		return table.concat(result, "\n")
+	end
 end
 
 --[[**
 Like [hex()](#hex) but interprets the data as 32-bit words. This means
 little-endian integers are displayed in a more readable fashion.
+
+If `printer` is non-nil, the output is printed line-by-line by repeatedly
+calling `printer(line)` rather than being returned as one big string.
 ]]
-function MemBuf:words(length)
+function MemBuf:words(length, printer)
 	if length == nil then length = self:getLength() end
 
 	local result = {}
+	local function arrayConcat(str)
+		table.insert(result, str)
+	end
+	local outputFn = printer or arrayConcat
 	for i = 0, length-1, 16 do
-		table.insert(result, string.format("%08X: ", self:getAddress() + i))
+		local line = {}
+		table.insert(line, string.format("%08X: ", self:getAddress() + i))
 		local len = min(length - i, 16)
 		for j = 0, len-1, 4 do
 			if len-j < 4 then
 				for k = 0, len-j-1 do
-					table.insert(result, string.format("%02X ", self:getByte(i+j+k)))
+					table.insert(line, string.format("%02X ", self:getByte(i+j+k)))
 				end
 			else
-				table.insert(result, string.format("%08X ", self:getInt(i+j)))
+				table.insert(line, string.format("%08X ", self:getInt(i+j)))
 			end
 		end
-		table.insert(result, " ")
+		table.insert(line, " ")
 		for j = 0, len-1 do
-			table.insert(result, safech(self:getByte(i+j)))
+			table.insert(line, safech(self:getByte(i+j)))
 		end
-		table.insert(result, "\n");
+		outputFn(table.concat(line))
 	end
 
-	return table.concat(result)
+	if printer == nil then
+		return table.concat(result, "\n")
+	end
 end
 
 function MemBuf._declareType(type, size)
