@@ -292,10 +292,12 @@ int init_module_kluadebugger(lua_State* L) {
 
 	MBUF_TYPE(Process);
 	MBUF_MEMBER(Process, pid);
+#ifdef HAVE_MMU
 	MBUF_MEMBER(Process, pdePhysicalAddress);
-	MBUF_MEMBER(Process, heapLimit);
-	MBUF_MEMBER_TYPE(Process, name, "char[]");
+#endif
 	MBUF_MEMBER(Process, numThreads);
+	MBUF_MEMBER_TYPE(Process, name, "char[]");
+	MBUF_MEMBER(Process, heapLimit);
 	//mbuf_declare_member(L, "Process", "firstThread", offsetof(Process, threads), sizeof(Thread), "Thread");
 
 	for (int i = 0; i < TheSuperPage->numValidProcessPages; i++) {

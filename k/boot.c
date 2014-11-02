@@ -124,7 +124,9 @@ void Boot(uintptr atagsPhysAddr) {
 
 	// Start first process (so exciting!)
 	firstProcess->pid = 0;
+#ifdef HAVE_MMU
 	firstProcess->pdePhysicalAddress = 0;
+#endif
 
 #if defined(KLUA)
 	kern_disableInterrupts(); // They get in the way...

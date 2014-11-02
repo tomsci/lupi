@@ -29,7 +29,7 @@ Hmm, the "one page per process" limit turns out to be somewhat limiting...
 
 #define MAX_SERVERS 32
 
-#define MAX_PROCESS_NAME 32
+#define MAX_PROCESS_NAME 31
 
 #define THREAD_TIMESLICE 25 // milliseconds
 
@@ -130,14 +130,20 @@ static inline bool atomic_setbool(bool* ptr, bool val) {
 
 /*
 This structure is one page in size (maximum), and is always page-aligned.
+Unless LUPI_NO_SECTION0 is defined, in which case there's only one and it's
+packed into the SuperPage.
 */
 typedef struct Process {
 	uint32 pid;
+#ifdef HAVE_MMU
 	uintptr pdePhysicalAddress;
-	uintptr heapLimit;
-	char name[MAX_PROCESS_NAME];
-
+#endif
 	uint8 numThreads;
+	char name[MAX_PROCESS_NAME];
+	// The LSB of heapLimit will always be zero, meaning heapLimit can also act
+	// as the null-terminator for name.
+	uintptr heapLimit;
+
 	Thread threads[MAX_THREADS];
 } Process;
 
