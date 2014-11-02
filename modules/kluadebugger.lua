@@ -265,6 +265,12 @@ function pageStats()
 	printCount("User stack pages", count[PageType.KPageThreadSvcStack])
 end
 
+function memStats()
+	local k, b = collectgarbage("count")
+	print(string.format("Lua memory usage = %d", k*1024 + b))
+	printMallocStats()
+end
+
 function interpreter.handleCtrlX()
 	-- The interpreter will check for this fn if the user hits ctrl-X
 	print("reboot")

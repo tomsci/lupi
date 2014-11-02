@@ -11,24 +11,20 @@
 #endif
 #include <lupi/membuf.h>
 
+void malloc_stats();
+
 // #define MEM_DEBUG
 
 #ifdef MEM_DEBUG
-
-void malloc_stats();
-
 static inline int getLuaMem(lua_State* L) {
 	int mem = lua_gc(L, LUA_GCCOUNT, 0) * 1024;
 	mem += lua_gc(L, LUA_GCCOUNTB, 0);
 	return mem;
 }
 #define PRINT_MEM_STATS(args...) printk(args, getLuaMem(L)); malloc_stats()
-
 #else
-
 #define PRINT_MEM_STATS(args...)
-
-#endif // MEM_DEBUG
+#endif
 
 #ifdef HAVE_MMU
 #include <pageAllocator.h>
@@ -55,6 +51,11 @@ static int pageStats_getCounts(lua_State* L) {
 	return 1;
 }
 #endif // HAVE_MMU
+
+static int printMallocStats_lua(lua_State* L) {
+	malloc_stats();
+	return 0;
+}
 
 static int switch_process_lua(lua_State* L) {
 	Process* p;
@@ -255,6 +256,7 @@ int init_module_kluadebugger(lua_State* L) {
 	MBUF_MEMBER_TYPE(SuperPage, inputRequest, "KAsyncRequest");
 	MBUF_MEMBER(SuperPage, inputRequestBuffer);
 	MBUF_MEMBER(SuperPage, inputRequestBufferSize);
+	MBUF_MEMBER(SuperPage, needToSendTouchUp);
 
 	MBUF_TYPE(ThreadState);
 	MBUF_ENUM(ThreadState, EReady);
@@ -278,6 +280,10 @@ int init_module_kluadebugger(lua_State* L) {
 
 #ifdef ARM
 	MBUF_MEMBER_TYPE(SuperPage, dfcThread, "Thread");
+#endif
+
+#ifndef HAVE_MMU
+	MBUF_MEMBER(SuperPage, crashedHeapLimit);
 #endif
 
 	MBUF_NEW(SuperPage, TheSuperPage);
@@ -336,6 +342,7 @@ int init_module_kluadebugger(lua_State* L) {
 	DECLARE_FN(L, GetProcess_lua, "GetProcess");
 	DECLARE_FN(L, switch_process_lua, "switch_process");
 	DECLARE_FN(L, processForThread_lua, "processForThread");
+	DECLARE_FN(L, printMallocStats_lua, "printMallocStats");
 
 	// Force out of line copies of a few inline fns so that they're callable
 	// via the symbol table should we want to
@@ -408,7 +415,7 @@ int init_module_kluadebugger(lua_State* L) {
 		lua_setglobal(L, "OhGodNoRam");
 	}
 
-	PRINT_MEM_STATS("Mem usage fully setup = %d B\n");
+	PRINT_MEM_STATS("Mem usage post init_module_kluadebugger = %d B\n");
 
 	return 0;
 }

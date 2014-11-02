@@ -263,7 +263,7 @@ void NAKED assertionFail(int nextras, const char* file, int line, const char* co
 	// We want to end with sp unwound to pointing above the extra args (ie how
 	// it was before calling assertionFail)
 
-	asm("MOV r1, %0" : : "i" (KSuperPageAddress));
+	LoadSuperPageAddress(r1);
 	asm("ADD r1, r1, %0" : : "i" (offsetof(SuperPage, crashRegisters)));
 	// r1 = &crashRegisters
 	asm("RSB r2, r0, #4"); // r2 = numNotSaved, ie 4-nextras

@@ -231,6 +231,9 @@ typedef struct SuperPage {
 	Process mainProcess;
 	// User BSS follows (but is not explicitly included in the struct definition)
 #endif
+#ifndef HAVE_MMU
+	uintptr crashedHeapLimit;
+#endif
 } SuperPage;
 
 #ifdef LUPI_NO_SECTION0

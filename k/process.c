@@ -158,7 +158,7 @@ bool process_grow_heap(Process* p, int incr) {
 		// With no MMU heap grows until it hits the stacks
 		const uint32 heapLim = userStackForThread(&p->threads[p->numThreads-1]);
 		if (p->heapLimit + amount > heapLim) {
-			printk("OOM @ heapLimit = %X incr = %d!\n", (uint)p->heapLimit, incr);
+			printk("OOM @ heapLimit = %X + %d > %X!\n", (uint)p->heapLimit, incr, heapLim);
 			return false;
 		}
 #endif
@@ -251,7 +251,7 @@ int thread_new(Process* p, uintptr context, Thread** resultThread) {
 }
 
 static void freeThreadStacks(Thread* t) {
-#ifdef ARM
+#ifdef HAVE_MMU
 	uintptr stackBase = userStackForThread(t);
 	Process* p = processForThread(t);
 	mmu_unmapPagesInProcess(Al, p, stackBase, USER_STACK_SIZE >> KPageShift);
@@ -298,6 +298,15 @@ static void threadExit_dfc(uintptr arg1, uintptr arg2, uintptr arg3) {
 	freeThreadStacks(t);
 	thread_setState(t, EDead);
 	Process* p = processForThread(t);
+
+	// See if we can shrink numThreads - important for reclaiming stack memory
+	// in non-MMU mem model.
+	if (t->index == p->numThreads-1) {
+		while (p->numThreads && p->threads[p->numThreads-1].state == EDead) {
+			p->numThreads--;
+		}
+	}
+
 	// Check if the process still has any alive threads - if not call process_exit()
 	bool dead = true;
 	for (int i = 0; i < p->numThreads; i++) {

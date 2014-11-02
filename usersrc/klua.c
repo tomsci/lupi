@@ -186,14 +186,19 @@ static lua_State* initModule(uintptr heapBase, const char* module) {
 #if defined(USE_HOST_MALLOC_FOR_LUA)
 	lua_State* L = luaL_newstate();
 #elif defined(LUPI_USE_MALLOC_FOR_KLUA) && defined(ULUA_PRESENT)
+#ifndef HAVE_MMU
 	// We need to nuke the malloc state because it may be in an inconsistant
 	// state due to the fact that we've crashed
 	memset((void*)KUserBss, 0, KUserBssSize);
 
 	// Don't have enough RAM to avoid stomping over user heap
+	if (TheSuperPage->crashedHeapLimit == 0) {
+		TheSuperPage->crashedHeapLimit = TheSuperPage->currentProcess->heapLimit;
+	}
 	TheSuperPage->currentProcess->heapLimit = KUserHeapBase;
 	lua_State* L = luaL_newstate();
 	PRINT_MEM_STATS("Mem used after klua newstate = %d B\n");
+#endif // HAVE_MMU
 #else
 	klua_heapReset(heapBase);
 	lua_State* L = lua_newstate(klua_alloc_fn, (void*)heapBase);
@@ -225,7 +230,7 @@ static lua_State* initModule(uintptr heapBase, const char* module) {
 	return L;
 }
 
-// A variant of interactiveLuaPrompt that lets us write the actual intepreter loop as a lua module
+// A variant of interactiveLuaPrompt that lets us write the actual interpreter loop as a lua module
 void klua_runInterpreterModule() {
 #ifndef KLuaHeapBase
 	const uintptr heapBase = KLuaDebuggerSectionHeap;
@@ -244,9 +249,11 @@ void klua_runInterpreterModule() {
 		lua_getfield(L, -1, "require");
 		lua_pushliteral(L, "kluadebugger");
 		lua_call(L, 1, 0);
+		lua_gc(L, LUA_GCCOLLECT, 0);
 	}
 #endif
 
+	PRINT_MEM_STATS("Mem usage pre main = %d B\n");
 	lua_getfield(L, -1, "main");
 	lua_call(L, 0, 0);
 	// Shouldn't return
@@ -300,10 +307,6 @@ void NAKED switchToKluaDebuggerMode() {
 	// We can do this even if there were nested exceptions because we have set
 	// CCR_NONBASETHRDENA
 	RFE_TO_MAIN(lr);
-
-	LABEL_WORD(.shcsr, SCB_SHCSR);
-	LABEL_WORD(.shcsr_val, SHCSR_USGFAULTENA | SHCSR_BUSFAULTENA
-		| SHCSR_MEMFAULTENA | SHCSR_SVCALLACT);
 #endif
 }
 
