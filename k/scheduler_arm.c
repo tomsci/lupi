@@ -6,11 +6,27 @@ NORETURN NAKED do_process_start(uint32 sp) {
 	ModeSwitch(KPsrModeUsr|KPsrFiqDisable);
 	// We are in user mode now! So no calling printk(), or doing privileged stuff
 	asm("MOV sp, r0");
-	asm("LDR r1, =newProcessEntryPoint");
-	asm("BLX r1");
+	asm("LDR r0, =newProcessEntryPoint");
+
+	// Clear all other registers to make stack dumps clearer
+	asm("LDR r1, .clearReg");
+	asm("MOV r2, r1");
+	asm("MOV r3, r1");
+	asm("MOV r4, r1");
+	asm("MOV r5, r1");
+	asm("MOV r6, r1");
+	asm("MOV r7, r1");
+	asm("MOV r8, r1");
+	asm("MOV r9, r1");
+	asm("MOV r10, r1");
+	asm("MOV r11, r1");
+	asm("MOV r12, r1");
+
+	asm("BLX r0");
 	// And we're off. We might return here if the module's main returns (with return code in r0)
 	asm("B exec_threadExit");
 	// Definitely don't return from here
+	LABEL_WORD(.clearReg, 0xA11FADED);
 }
 
 void do_thread_new(Thread* t, uintptr context) {
