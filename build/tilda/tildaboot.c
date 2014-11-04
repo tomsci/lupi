@@ -34,10 +34,10 @@ void NAKED _start() {
 	asm(".word unhandledException"); // 24 = IRQ 8
 	asm(".word unhandledException"); // 25 = IRQ 9
 	asm(".word unhandledException"); // 26 = IRQ 10
-	asm(".word unhandledException"); // 27 = IRQ 11
+	asm(".word pioaInterrupt"); // 27 = IRQ 11 (PERIPHERAL_ID_PIOA)
 	asm(".word unhandledException"); // 28 = IRQ 12
-	asm(".word unhandledException"); // 29 = IRQ 13
-	asm(".word unhandledException"); // 30 = IRQ 14
+	asm(".word piocInterrupt"); // 29 = IRQ 13 (PERIPHERAL_ID_PIOC)
+	asm(".word piodInterrupt"); // 30 = IRQ 14 (PERIPHERAL_ID_PIOD)
 	asm(".word unhandledException"); // 31 = IRQ 15
 	asm(".word unhandledException"); // 32 = IRQ 16
 	asm(".word usart0Interrupt"); // 33 = IRQ 17 (PERIPHERAL_ID_USART0)
@@ -88,7 +88,6 @@ void NAKED _start() {
 					| (0x3F << 8) /* PLLA Count */ \
 					| (0x1) /* Divider bypassed */ )
 
-void PUT8(uint32 addr, byte val);
 void dummy();
 #define WaitForPMC(bit) do { dummy(); } while (!(GET32(PMC_SR) & (bit)))
 
@@ -157,34 +156,6 @@ void parseAtags(uint32* ptr, AtagsParams* params) {
 	// We should look up what spec ATSAM we are, probably
 	params->totalRam = KRamSize;
 	params->boardRev = 0xE; // MkE
-}
-
-static void setPeripheralInterruptPriority(int peripheralId, uint8 priority) {
-	ASSERT((priority & 0xF) == 0);
-	uint32 addr = NVIC_IPR0 + peripheralId;
-	PUT32(addr, priority);
-}
-
-void irq_init() {
-	// Enable more specific fault handlers
-	PUT32(SCB_SHCSR, SHCSR_USGFAULTENA | SHCSR_BUSFAULTENA | SHCSR_MEMFAULTENA);
-
-	// Highest priority - sys tick (0x4).
-	PUT8(SHPR_SYSTICK, KPrioritySysTick);
-
-	// Next highest, peripheral interrupts (0x8)
-	setPeripheralInterruptPriority(PERIPHERAL_ID_USART0, KPriorityPeripheral);
-
-	// Lowest, SVC and pendSV 0xA
-	PUT8(SHPR_SVCALL, KPrioritySvc);
-	PUT8(SHPR_PENDSV, KPrioritySvc);
-
-	// Spec suggests this reg contains 10ms but it's definitely only 1ms
-	uint32 oneMsInSysTicks = GET32(SYSTICK_CALIB) & 0x00FFFFFF;
-	PUT32(SYSTICK_LOAD, oneMsInSysTicks); // 1ms ticks
-	//PUT32(SYSTICK_LOAD, oneMsInSysTicks * 1000); // 1s ticks
-	// Not setting SYSTICK_CTRL_CLKSOURCE means systick is running at MCLK/8
-	PUT32(SYSTICK_CTRL, SYSTICK_CTRL_ENABLE | SYSTICK_CTRL_TICKINT);
 }
 
 NORETURN reboot() {

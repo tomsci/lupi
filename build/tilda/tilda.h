@@ -29,13 +29,23 @@
 #define PIO_PSR		0x08 // PIO status
 #define PIO_OER		0x10 // Output enable
 #define PIO_ODR		0x14 // Output disable
+#define PIO_IFER	0x20 // Input filter enable
+#define PIO_IFDR	0x24 // Input filter disable
 #define PIO_SODR	0x30 // Set output (1)
 #define PIO_CODR	0x34 // Clear output (0)
+#define PIO_PDSR	0x3C // Pin data status
+#define PIO_IER		0x40 // Interrupt enable
 #define PIO_IDR		0x44 // Interrupt disable
+#define PIO_IMR		0x48 // Interrupt mask
+#define PIO_ISR		0x4C // Interrupt status
 #define PIO_PUDR	0x60 // Pull-up disable
 #define PIO_PUER	0x64 // Pull-up enable
 #define PIO_ABSR	0x70 // Peripheral A/B select
+#define PIO_DIFSR	0x84 // Debouncing Input Filter Select
+#define PIO_SCDR	0x8C // Slow Clock Divider Debouncing Reg
 #define PIO_OWER	0xA0 // Output write enable
+#define PIO_ESR		0xC0 // Edge select register
+#define PIO_LSR		0xCC // Level select register
 
 // Aliases because I keep screwing up PER/PDR
 #define PIO_ENABLE			PIO_PER
@@ -47,14 +57,19 @@
 #define PIOC		0x400E1200
 #define PIOD		0x400E1400
 
-// p 557
+// p557
 #define PMC_PCER0	0x400E0610 // PMC Peripheral Clock Enable Register 0
 #define PMC_PCDR0	0x400E0614 // PMC Peripheral Clock Disable Register 0
 #define PMC_PCSR0	0x400E0618 // PMC Peripheral Clock Status Register 0
 #define PMC_MCKR	0x400E0630 // Master clock register
 #define PMC_SR		0x400E0668
 
+// p47
 #define PERIPHERAL_ID_UART		8
+#define PERIPHERAL_ID_PIOA		11
+#define PERIPHERAL_ID_PIOB		12
+#define PERIPHERAL_ID_PIOC		13
+#define PERIPHERAL_ID_PIOD		14
 #define PERIPHERAL_ID_USART0	17
 #define PERIPHERAL_ID_SPI0		24
 
@@ -98,13 +113,11 @@ SuperPage		20087000-20088000	(4k)
 #define KRamSize				(96 * 1024)
 
 #define KKernelCodeBase			0x00080000
-#define KKernelCodesize			0x00040000
-#define KLogKernelCodesize		(18)
+#define KKernelCodesize			0x00080000
+#define KLogKernelCodesize		(19)
 
 #define KSuperPageAddress		0x20087000
 #define KHandlerStackBase		0x20086000
-
-#define KPeripheralBase			0x40000000
 
 /**
 User memory map

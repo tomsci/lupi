@@ -26,6 +26,14 @@ the MemBuf.
 --native function MemBuf:getByte(offset)
 
 --[[**
+Returns the 16-bit value located at self:getAddress() + offset, as a number. The
+value must be 2-byte aligned.
+
+In every other way, behaves the same as [getByte()](#getByte).
+]]
+--native function MemBuf:getUint16(offset)
+
+--[[**
 Returns the 32-bit value located at self:getAddress() + offset, as a number. The
 value must be word aligned.
 

@@ -4,7 +4,6 @@
 #include <k.h>
 #include <mmu.h> // For switch_process()
 #include <exec.h>
-#include <err.h>
 #include "gpio.h"
 
 #define WIDTH 240
@@ -205,6 +204,7 @@ void screen_init() {
 	tsc_register_write(FIFO_CTRL_STA, 0);
 
 	kern_registerDriver(FOURCC("SCRN"), tft_handleSvc);
+	kern_registerDriver(FOURCC("INPT"), tft_handleSvc);
 }
 
 void tft_gpioHandleInterrupt() {
@@ -315,7 +315,7 @@ static DRIVER_FN(tft_handleSvc) {
 	switch(arg1) {
 		case KExecDriverScreenBlit:
 			return doBlit(arg2);
-		case KExecDriverTftInputRequest:
+		case KExecDriverInputRequest:
 			return doInputRequest(arg2);
 		default:
 			ASSERT(false, arg1);
@@ -359,13 +359,12 @@ static void drainFifoAndCompleteRequest() {
 
 	int n = min(numSamples, TheSuperPage->inputRequestBufferSize);
 	switch_process(processForThread(TheSuperPage->inputRequest.thread));
-	int* udataPtr = (int*)(TheSuperPage->inputRequestBuffer);
+	uint32* udataPtr = (uint32*)(TheSuperPage->inputRequestBuffer);
 	for (int i = 0; i < n; i++) {
-		int x = tsc_register_read(TSC_DATA_X, 2);
-		int y = tsc_register_read(TSC_DATA_Y, 2);
-		*udataPtr++ = 1;
-		*udataPtr++ = x;
-		*udataPtr++ = y;
+		uint16 x = tsc_register_read(TSC_DATA_X, 2);
+		uint16 y = tsc_register_read(TSC_DATA_Y, 2);
+		*udataPtr++ = InputTouchDown;
+		*udataPtr++ = ((uint32)x << 16) | (uint32)y;
 		//printk("FIFO %d = %d,%d\n", i, x, y);
 	}
 
@@ -374,9 +373,8 @@ static void drainFifoAndCompleteRequest() {
 
 	if (TheSuperPage->needToSendTouchUp && n < TheSuperPage->inputRequestBufferSize) {
 		TheSuperPage->needToSendTouchUp = false;
-		*udataPtr++ = 0;
+		*udataPtr++ = InputTouchUp;
 		// And dummy x and y
-		*udataPtr++ = 0;
 		*udataPtr++ = 0;
 		n++;
 	}
@@ -385,25 +383,8 @@ static void drainFifoAndCompleteRequest() {
 }
 
 static int doInputRequest(uintptr arg2) {
-	// Arg2 is the InputRequest* aka the AsyncRequest*
-	// User side ensures that asyncRequest->result starts off pointing to an
-	// integer being the max buf size, which is directly followed by the buf
-	// (maxBufSize is always measured in number of samples, not bytes).
-	if (TheSuperPage->inputRequest.userPtr) {
-		return KErrAlreadyExists;
-	}
-	if (TheSuperPage->inputRequest.thread == 0) {
-		TheSuperPage->inputRequest.thread = TheSuperPage->currentThread;
-	}
-	// Currently, no-one else gets to steal being the input handler
-	ASSERT(TheSuperPage->currentThread == TheSuperPage->inputRequest.thread);
-	ASSERT_USER_PTR32(arg2);
-	int* maxSamples = (int*)*(uintptr*)arg2;
-	ASSERT_USER_PTR32(maxSamples);
-	TheSuperPage->inputRequestBufferSize = *maxSamples;
-	TheSuperPage->inputRequestBuffer = (uintptr)maxSamples + sizeof(int);
-	ASSERT_USER_PTR8(TheSuperPage->inputRequestBuffer + TheSuperPage->inputRequestBufferSize * 3*sizeof(int) - 1);
-	TheSuperPage->inputRequest.userPtr = arg2;
+	int err = kern_setInputRequest(arg2);
+	if (err) return err;
 
 	drainFifoAndCompleteRequest(); // Will only complete if needed
 	return 0;

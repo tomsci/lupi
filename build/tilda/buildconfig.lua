@@ -12,6 +12,7 @@ config = {
 
 	sources = {
 		"build/tilda/uart.c",
+		"build/tilda/board.c",
 		"build/tilda/pio.c",
 		"build/tilda/lcd.c",
 	},

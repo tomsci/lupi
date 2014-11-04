@@ -118,6 +118,7 @@ kernelSources = {
 	"k/kipc.c",
 	"k/ringbuf.c",
 	"k/uart_common.c",
+	"k/driver_common.c",
 	{ path = "usersrc/memcpy_arm.S", user = true, enabled = armOnly },
 	{ path = "usersrc/memcmp_arm.S", user = true, enabled = armOnly },
 	{ path = "usersrc/memcpy_thumb2.c", user = true, enabled = armv7mOnly },

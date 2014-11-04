@@ -11,8 +11,7 @@
 #include <klua.h>
 
 void uart_init();
-void irq_init();
-void spi_init();
+void board_init();
 #ifdef HAVE_SCREEN
 void screen_init();
 void screen_drawCrashed();
@@ -114,12 +113,10 @@ void Boot(uintptr atagsPhysAddr) {
 	initSuperPage(&atags);
 #endif
 
-	irq_init();
-	kern_enableInterrupts();
+	board_init(); // Enables interrupts
 
-	spi_init();
 #ifdef HAVE_SCREEN
-	screen_init(); // Must be after irq_init and enableInterrupts because it uses kern_sleep
+	screen_init(); // Must be after board_init's enableInterrupts because it uses kern_sleep
 #endif
 
 	// Start first process (so exciting!)

@@ -102,7 +102,6 @@ void thread_writeSvcResult(Thread* t, uintptr result) {
 }
 
 Thread* findNextReadyThread();
-void PUT8(uint32 addr, byte val);
 
 NORETURN reschedule() {
 	Thread* t = findNextReadyThread();

@@ -1,5 +1,6 @@
 require "runloop"
 require "membuf"
+require "bit32"
 
 --[[**
 Module to interface with the touchscreen driver in the kernel. Currently this
@@ -46,17 +47,19 @@ end
 
 local function gotInput(inputRequest, numSamples)
 	for i = 0, numSamples-1 do
-		local offset = i*3*4
+		local offset = i*2*4
 		local flags = inputRequest.data:getInt(offset)
-		local x = inputRequest.data:getInt(offset + 4)
-		local y = inputRequest.data:getInt(offset + 8)
+		-- TODO handle keypresses
+		local xy = inputRequest.data:getInt(offset + 4)
+		local x = bit32.rshift(xy, 16)
+		local y = bit32.band(xy, 0xFFFF)
 		if observer then
 			observer(flags, calibratedCoords(x, y))
 		else
-			if flags > 0 then
+			if flags == 1 then
 				print(string.format("gotInput %d,%d = %d,%d",
 					x, y, calibratedCoords(x, y)))
-			else
+			elseif flags == 0 then
 				print("Touch up")
 			end
 		end

@@ -43,6 +43,7 @@ NORETURN hang();
 NORETURN reboot();
 uint32 GET32(uint32 addr);
 void PUT32(uint32 addr, uint32 val);
+void PUT8(uint32 addr, byte val);
 
 #define NUMVARARGS(...)  (sizeof((int[]){__VA_ARGS__})/sizeof(int))
 #define KRegisterNotSaved 0xA11FADE5
@@ -228,7 +229,9 @@ typedef struct SuperPage {
 	Driver drivers[MAX_DRIVERS];
 	KAsyncRequest inputRequest;
 	uintptr inputRequestBuffer;
-	int inputRequestBufferSize;
+	int inputRequestBufferSize; // in samples
+	uint32 inputRequestBufferPos; // in samples
+	uint32 buttonStates;
 
 #ifdef LUPI_NO_SECTION0
 	// We compact some other data structures into the superpage when we're
@@ -321,6 +324,7 @@ void saveCurrentRegistersForThread(void* savedRegisters);
 void dfc_queue(DfcFn fn, uintptr arg1, uintptr arg2, uintptr arg3);
 void dfc_requestComplete(KAsyncRequest* request, int result);
 bool irq_checkDfcs();
+int kern_setInputRequest(uintptr userInputRequestPtr);
 
 NOIGNORE uintptr ipc_mapNewSharedPageInCurrentProcess();
 NOIGNORE int ipc_connectToServer(uint32 id, uintptr sharedPage);

@@ -20,6 +20,7 @@
 bool tick();
 void uart_got_char(byte b);
 void tft_gpioHandleInterrupt();
+void spi_init();
 
 #define KTimerControlReset 0x00F90020 // Prescale = 0xF9=249, InterruptEnable=1
 #define KTimerControl23BitCounter (1<<1)
@@ -29,10 +30,10 @@ void tft_gpioHandleInterrupt();
 
 /*
 This will setup the system timer and start it running and producing interrupts
-(which won't get delivered until they are enabled in CPSR, eg by calling irq_enable())
+(which won't get delivered until they are enabled in CPSR, after the call to
+kern_enableInterrupts())
 */
-
-void irq_init() {
+void board_init() {
 	PUT32(IRQ_DISABLE_BASIC,1);
 
 	PUT32(ARM_TIMER_CTL,KTimerControlReset & ~KTimerControlInterruptEnable); // disable interrupt
@@ -56,6 +57,9 @@ void irq_init() {
 	PUT32(IRQ_ENABLE_BASIC,1);
 //	PUT32(ARM_TIMER_LOD,4000000-1);
 //	PUT32(ARM_TIMER_RLD,4000000-1);
+
+	kern_enableInterrupts();
+	spi_init();
 	}
 
 bool handleIrq(void* savedRegs) {

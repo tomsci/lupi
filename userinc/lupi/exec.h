@@ -44,6 +44,23 @@ typedef enum {
 } ScreenBufferFormat;
 
 #define KExecDriverScreenBlit		0
-#define KExecDriverTftInputRequest	1
+#define KExecDriverInputRequest	1
+
+typedef enum {
+	InputTouchUp = 0,
+	InputTouchDown = 1,
+	InputButtons = 2,
+} InputType;
+
+typedef enum {
+	InputButtonUp,
+	InputButtonDown,
+	InputButtonLeft,
+	InputButtonRight,
+	InputButtonA,
+	InputButtonB,
+	InputButtonSelect,
+	InputButtonLight,
+} InputButton;
 
 #endif

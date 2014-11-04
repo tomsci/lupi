@@ -105,8 +105,12 @@ static int memBufGetMem(lua_State* L, uintptr ptr, int size) {
 	int result;
 	if (size == 1) {
 		result = GET8(ptr);
-	} else {
+	} else if (size == 2) {
+		result = *(uint16*)ptr;
+	} else if (size == 4) {
 		result = GET32(ptr);
+	} else {
+		result = *(int64*)ptr;
 	}
 	TheSuperPage->trapAbort = false;
 	//printk("Exited trapAbort exception = %d\n", (int)TheSuperPage->exception);
@@ -258,6 +262,8 @@ int init_module_kluadebugger(lua_State* L) {
 	MBUF_MEMBER_TYPE(SuperPage, inputRequest, "KAsyncRequest");
 	MBUF_MEMBER(SuperPage, inputRequestBuffer);
 	MBUF_MEMBER(SuperPage, inputRequestBufferSize);
+	MBUF_MEMBER(SuperPage, inputRequestBufferPos);
+	MBUF_MEMBER(SuperPage, buttonStates);
 
 	MBUF_TYPE(ThreadState);
 	MBUF_ENUM(ThreadState, EReady);

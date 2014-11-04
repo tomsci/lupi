@@ -110,11 +110,31 @@ static int getInt64(lua_State* L) {
 	uintptr ptr = (uintptr)buf->ptr + offset;
 	int64 val;
 	if (accessFn) {
-		val = ((mbuf_getvalue)accessFn)(L, ptr, 8);
+		val = ((mbuf_getvalue)accessFn)(L, ptr, sizeof(int64));
 	} else {
 		val = *(int64*)ptr;
 	}
 	int64_new(L, val);
+	return 1;
+}
+
+static int getUint16(lua_State* L) {
+	MemBuf* buf = checkBuf(L);
+	int offset = luaL_checkint(L, 2);
+	boundsCheck(L, buf, offset, sizeof(uint16));
+
+	pushMemBuf(L);
+	lua_getfield(L, -1, "_accessfn");
+	void* accessFn = lua_touserdata(L, -1);
+	lua_pop(L, 2);
+	uintptr ptr = (uintptr)buf->ptr + offset;
+	uint16 val;
+	if (accessFn) {
+		val = ((mbuf_getvalue)accessFn)(L, ptr, sizeof(uint16));
+	} else {
+		val = *(uint16*)ptr;
+	}
+	lua_pushinteger(L, val);
 	return 1;
 }
 
@@ -155,6 +175,7 @@ int init_module_membuf(lua_State* L) {
 		{ "getInt", getInt },
 		{ "getInt64", getInt64 },
 		{ "getByte", getByte },
+		{ "getUint16", getUint16 },
 		{ "getLength", length },
 		{ "sub", sub },
 		{ "getType", getType },
