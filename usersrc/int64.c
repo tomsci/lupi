@@ -6,8 +6,6 @@
 
 #define Int64Metatable "LupiInt64Metatable"
 
-static char moduleLoaded;
-
 int64 int64_check(lua_State* L, int idx) {
 	return *(int64*)luaL_checkudata(L, idx, Int64Metatable);
 }
@@ -87,7 +85,6 @@ int init_module_int64(lua_State* L) {
 	};
 	luaL_setfuncs(L, fns, 0);
 	lua_setfield(L, -2, "Int64");
-	moduleLoaded = true;
 	int64_new(L, LLONG_MAX);
 	lua_setfield(L, -2, "MAX");
 	int64_new(L, LLONG_MIN);
@@ -99,11 +96,16 @@ int init_module_int64(lua_State* L) {
 void int64_new(lua_State* L, int64 n) {
 	int64* obj = (int64*)lua_newuserdata(L, sizeof(int64));
 	*obj = n;
-	// Make sure this function works even if the module hasn't been officially loaded yet
-	if (!moduleLoaded) {
+
+	luaL_getmetatable(L, Int64Metatable);
+	// Make sure module has been loaded lua-side before proceeding
+	if (lua_isnil(L, -1)) {
 		lua_getglobal(L, "require");
 		lua_pushliteral(L, "int64");
 		lua_call(L, 1, 0);
+		// Pop the nil and fetch the metatable now it's loaded
+		lua_pop(L, 1);
+		luaL_getmetatable(L, Int64Metatable);
 	}
-	luaL_setmetatable(L, Int64Metatable);
+	lua_setmetatable(L, -2);
 }
