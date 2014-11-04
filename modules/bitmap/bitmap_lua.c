@@ -2,6 +2,7 @@
 #include <lualib.h>
 #include <lauxlib.h>
 
+#include <lupi/membuf.h>
 #include "bitmap.h"
 
 #define BitmapMetatable "LupiBitmapMt"
@@ -149,6 +150,33 @@ static int setAutoBlit(lua_State* L) {
 	return 0;
 }
 
+static int drawXbm(lua_State* L) {
+	// bmp, xbmMemBuf, x, y, [, xbmx, xbmy, w, h]
+	Bitmap* b = bitmap_check(L, 1);
+	MemBuf* xbm = mbuf_checkbuf_type(L, 2, NULL);
+	int x = luaL_checkint(L, 3);
+	int y = luaL_checkint(L, 4);
+	lua_getuservalue(L, 2);
+	int xbmWidth = 0;
+	if (!lua_isnil(L, -1)) {
+		lua_getfield(L, -1, "xbmwidth");
+		xbmWidth = lua_tointeger(L, -1);
+	}
+	ASSERTL(xbmWidth != 0, "XBM MemBufs must have a uservalue with an xbmwidth member");
+	lua_pop(L, 2); // uservalue
+	int xbmHeight = xbm->len / ((xbmWidth + 7) >> 3);
+
+	Rect r = rect_make(0, 0, xbmWidth, xbmHeight);
+	if (!lua_isnoneornil(L, 5)) {
+		r.x = luaL_checkint(L, 5);
+		r.y = luaL_checkint(L, 6);
+		r.w = luaL_checkint(L, 7);
+		r.h = luaL_checkint(L, 8);
+	}
+	bitmap_drawXbmData(b, x, y, &r, xbm->ptr, xbmWidth);
+	return 0;
+}
+
 int init_module_bitmap_bitmap(lua_State* L) {
 	luaL_newmetatable(L, BitmapMetatable);
 	luaL_Reg fns[] = {
@@ -156,6 +184,7 @@ int init_module_bitmap_bitmap(lua_State* L) {
 		{ "drawText", drawText },
 		{ "getTextSize", getTextSize },
 		{ "drawLine", drawLine },
+		{ "drawXbm", drawXbm },
 		{ "height", getHeight },
 		{ "width", getWidth },
 		{ "setColour", setColour },

@@ -65,4 +65,12 @@ Otherwise errors.
 MemBuf* mbuf_checkbuf(lua_State* L, int idx);
 MemBuf* mbuf_checkbuf_type(lua_State* L, int idx, const char* type);
 
+/**
+Creates a new MemBuf pointing to the XBM data in the variable `<xbmName>_bits`.
+*/
+#define mbuf_newXbm(L, xbmName) \
+	mbuf_doNewXbm(L, (void*)xbmName ## _bits, sizeof(xbmName ## _bits), xbmName ## _width)
+
+MemBuf* mbuf_doNewXbm(lua_State* L, void* ptr, int len, int xbmWidth);
+
 #endif

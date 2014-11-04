@@ -196,7 +196,19 @@ int init_module_membuf(lua_State* L) {
 
 MemBuf* mbuf_new(lua_State* L, void* ptr, int len, const char* type) {
 	MemBuf* buf = (MemBuf*)lua_newuserdata(L, sizeof(MemBuf));
-	luaL_setmetatable(L, MemBufMetatable);
+
+	luaL_getmetatable(L, MemBufMetatable);
+	// Make sure module has been loaded lua-side before proceeding
+	if (lua_isnil(L, -1)) {
+		lua_getglobal(L, "require");
+		lua_pushliteral(L, "membuf");
+		lua_call(L, 1, 0);
+		// Pop the nil and fetch the metatable now it's loaded
+		lua_pop(L, 1);
+		luaL_getmetatable(L, MemBufMetatable);
+	}
+
+	lua_setmetatable(L, -2);
 	buf->ptr = ptr;
 	buf->len = len;
 	if (type) {
@@ -260,4 +272,14 @@ void mbuf_push_object(lua_State* L, uintptr ptr, int size) {
 	lua_gettable(L, -2);
 	lua_insert(L, -3);
 	lua_pop(L, 2);
+}
+
+MemBuf* mbuf_doNewXbm(lua_State* L, void* ptr, int len, int xbmWidth) {
+	MemBuf* xbm = mbuf_new(L, ptr, len, NULL);
+	lua_createtable(L, 0, 1);
+	lua_pushinteger(L, xbmWidth);
+	lua_setfield(L, -2, "xbmwidth");
+	lua_setuservalue(L, -2);
+	// Leave xbm on the stack as well as returning it
+	return xbm;
 }
