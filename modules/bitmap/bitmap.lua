@@ -7,18 +7,22 @@ function Bitmap:__tostring()
 end
 
 --[[**
-Create a new bitmap. Width and height may be ommitted, in which case the screen
+Create a new bitmap. Width and height may be omitted, in which case the screen
 dimensions are used.
 ]]
 --native function Bitmap.create(width, height)
 
 --[[**
-Get height of the bitmap.
+Get height of the bitmap. Note that this takes into account any transform that
+is currently applied, so for example if `setRotation(90)` has been called then
+the values returned by `width()` and `height()` will be swapped.
 ]]
 --native function Bitmap:height()
 
 --[[**
-Get width of the bitmap.
+Get width of the bitmap. Note that this takes into account any transform that
+is currently applied, so for example if `setRotation(90)` has been called then
+the values returned by `width()` and `height()` will be swapped.
 ]]
 --native function Bitmap:width()
 
@@ -147,3 +151,42 @@ Colour = {
 	Blue = rgbColour(0, 0, 0xFF),
 	Purple = 0xE01F,
 }
+
+--[[**
+Sets the transform for subsequent draw commands. If for example `degrees`
+is set to 90, drawing to (0, 0) will draw to the top-right pixel.
+]]
+function Bitmap:setRotation(degrees)
+	-- For a rotation, a == d and b == -c
+	assert(degrees % 90 == 0, "degrees must be a multiple of 90")
+	if degrees == 0 then
+		self:setTransform(nil)
+	elseif degrees == 90 then
+		self:setTransform(0, -1, 1, 0, self:width(), 0)
+	elseif degrees == 180 then
+		self:setTransform(-1, 0, 0, -1, self:width(), self:height())
+	elseif degress == 270 then
+		self:setTransform(0, -1, 1, 0, 0, self:height())
+	end
+end
+
+--[[**
+Sets the bitmap's current transform to:
+
+	x' = a * x + b * y + tx
+	y' = c * x + d * y + ty
+
+The current transform is used for all subsequent drawing operations. It does
+not modify existing pixels already drawn to the bitmap.
+
+`setTransform(nil)` is shorthand for the identity transform, that is
+`setTransform(1, 0, 0, 1, 0, 0)`.
+]]
+--native function Bitmap:setTransform(a, b, c, d, tx, ty)
+
+--[[**
+Retrieve the current transform as a 6-value return:
+
+	local a, b, c, d, tx, ty = bmp:getTransform()
+]]
+--native function Bitmap:getTransform()

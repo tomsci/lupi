@@ -102,13 +102,17 @@ static int getBackgroundColour(lua_State* L) {
 
 static int getHeight(lua_State* L) {
 	Bitmap* b = bitmap_check(L, 1);
-	lua_pushinteger(L, bitmap_getHeight(b));
+	Rect r = rect_make(0, 0, bitmap_getWidth(b), bitmap_getHeight(b));
+	rect_invert(&r, &b->transform);
+	lua_pushinteger(L, r.h);
 	return 1;
 }
 
 static int getWidth(lua_State* L) {
 	Bitmap* b = bitmap_check(L, 1);
-	lua_pushinteger(L, bitmap_getWidth(b));
+	Rect r = rect_make(0, 0, bitmap_getWidth(b), bitmap_getHeight(b));
+	rect_invert(&r, &b->transform);
+	lua_pushinteger(L, r.w);
 	return 1;
 }
 
@@ -177,6 +181,35 @@ static int drawXbm(lua_State* L) {
 	return 0;
 }
 
+static int setTransform(lua_State* L) {
+	Bitmap* bmp = bitmap_check(L, 1);
+	if (lua_isnoneornil(L, 2)) {
+		bitmap_setTransform(bmp, NULL);
+		return 0;
+	}
+	int a = luaL_checkint(L, 2);
+	int b = luaL_checkint(L, 3);
+	int c = luaL_checkint(L, 4);
+	int d = luaL_checkint(L, 5);
+	int tx = luaL_checkint(L, 6);
+	int ty = luaL_checkint(L, 7);
+
+	AffineTransform t = { .a = a, .b = b, .c = c, .d = d, .tx = tx, .ty = ty };
+	bitmap_setTransform(bmp, &t);
+	return 0;
+}
+
+static int getTransform(lua_State* L) {
+	Bitmap* bmp = bitmap_check(L, 1);
+	lua_pushinteger(L, bmp->transform.a);
+	lua_pushinteger(L, bmp->transform.b);
+	lua_pushinteger(L, bmp->transform.c);
+	lua_pushinteger(L, bmp->transform.d);
+	lua_pushinteger(L, bmp->transform.tx);
+	lua_pushinteger(L, bmp->transform.ty);
+	return 6;
+}
+
 int init_module_bitmap_bitmap(lua_State* L) {
 	luaL_newmetatable(L, BitmapMetatable);
 	luaL_Reg fns[] = {
@@ -194,6 +227,8 @@ int init_module_bitmap_bitmap(lua_State* L) {
 		{ "create", create },
 		{ "blit", blit },
 		{ "setAutoBlit", setAutoBlit },
+		{ "setTransform", setTransform },
+		{ "getTransform", getTransform },
 		{ "__gc", gc },
 		{ NULL, NULL },
 	};

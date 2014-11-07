@@ -3,6 +3,8 @@
 
 #include <stddef.h>
 
+struct AffineTransform;
+
 // Everything is 16-bit 5-6-5 for the moment
 
 typedef struct Rect {
@@ -30,6 +32,13 @@ static inline uint16 rect_getHeight(const Rect* r) { return r->h; }
 
 void rect_union(Rect* r, const Rect* r2);
 void rect_clip(Rect* r, const Rect* clipRect);
+void rect_transform(Rect* r, const struct AffineTransform* t);
+void rect_invert(Rect* r, const struct AffineTransform* t);
+
+typedef struct AffineTransform {
+	int8 a, b, c, d;
+	int16 tx, ty;
+} AffineTransform;
 
 typedef struct Bitmap {
 	Rect bounds;
@@ -37,6 +46,7 @@ typedef struct Bitmap {
 	uint16 colour; // Current pen colour
 	uint16 bgcolour; // Background colour, when drawing text or XBMs
 	Rect dirtyRect;
+	AffineTransform transform;
 	uint8 flags;
 	uint8 format; // a ScreenBufferFormat
 	uint16 data[1]; // Extends beyond the struct
@@ -45,15 +55,15 @@ typedef struct Bitmap {
 Bitmap* bitmap_create(uint16 width, uint16 height);
 void bitmap_destroy(Bitmap* b);
 
-uint16 bitmap_getColour(Bitmap* b);
+uint16 bitmap_getColour(const Bitmap* b);
 void bitmap_setColour(Bitmap* b, uint16 colour);
 
-uint16 bitmap_getBackgroundColour(Bitmap* b);
+uint16 bitmap_getBackgroundColour(const Bitmap* b);
 void bitmap_setBackgroundColour(Bitmap* b, uint16 colour);
 
 void bitmap_setPosition(Bitmap* b, uint16 x, uint16 y);
-static inline uint16 bitmap_getWidth(Bitmap* b) { return rect_getWidth(&b->bounds); }
-static inline uint16 bitmap_getHeight(Bitmap* b) { return rect_getHeight(&b->bounds); }
+static inline uint16 bitmap_getWidth(const Bitmap* b) { return rect_getWidth(&b->bounds); }
+static inline uint16 bitmap_getHeight(const Bitmap* b) { return rect_getHeight(&b->bounds); }
 
 void bitmap_drawLine(Bitmap* b, uint16 x0, uint16 y0, uint16 x1, uint16 y1);
 void bitmap_drawRect(Bitmap* b, const Rect* r);
@@ -64,10 +74,12 @@ void bitmap_blitToScreen(Bitmap* b, const Rect* r);
 void bitmap_blitDirtyToScreen(Bitmap* b);
 
 void bitmap_setAutoBlit(Bitmap* b, bool flag);
-void bitmap_clipToBounds(Bitmap* b, Rect* r);
+void bitmap_clipToBounds(const Bitmap* b, Rect* r);
 
 #define bitmap_drawXbm(b, x, y, r, xbmName) \
 	bitmap_drawXbmData(b, x, y, r, xbmName ## _bits, xbmName ## _width)
+
+void bitmap_setTransform(Bitmap* b, const AffineTransform* transform);
 
 #ifdef lua_h
 

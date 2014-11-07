@@ -19,13 +19,6 @@ int exec_getInt(ExecGettableValue val);
 #define PixelType uint32
 #define bitmap_getPixels(b) BITBAND(b->data)
 #define datasize(w, h) (((w) * (h) + 7) / 8)
-static inline void set_pixel(uint32* data, int bwidth, int x, int y, uint16 colour) {
-	int page = y / 8;
-	int byteidx = page * bwidth + x;
-	int bit = y - (page * 8);
-	int bitidx = byteidx * 8 + bit;
-	data[bitidx] = (colour == BLACK);
-}
 #else
 #error "Can't use ONE_BPP_BITMAPS without also supporting BITBAND"
 #endif // BITBAND
@@ -35,15 +28,80 @@ static inline void set_pixel(uint32* data, int bwidth, int x, int y, uint16 colo
 #define PixelType uint16
 #define bitmap_getPixels(b) ((uint16*)(b->data))
 #define datasize(w, h) ((w) * (h) * 2)
-#define set_pixel(ptr, bwidth, x, y, col) (ptr)[(y)*(bwidth) + (x)] = (col)
 
 #endif // ONE_BPP_BITMAPS
 
 typedef enum Flags {
 	AutoBlit = 1,
 	SmallFont = 2,
+	TransformSet = 4,
 } Flags;
 
+struct DrawContext;
+typedef void (*PixelFn)(const struct DrawContext*, int, int, uint16);
+
+// Contains precalculated values that are needed when drawing
+typedef struct DrawContext {
+	PixelType* data;
+	int bwidth;
+	int bheight;
+	int drawWidth;
+	int drawHeight;
+	const AffineTransform pixelTransform;
+	PixelFn setPixelFn;
+} DrawContext;
+
+static const AffineTransform IdentityTransform = { .a = 1, .b = 0, .c = 0, .d = 1, .tx = 0, .ty = 0 };
+#define transform_x(t, x, y) ((int)(x) * (t).a + (int)(y) * (t).b + (t).tx)
+#define transform_y(t, x, y) ((int)(x) * (t).c + (int)(y) * (t).d + (t).ty)
+
+#define DECLARE_CONTEXT(b) \
+	const DrawContext context = { \
+		.data = bitmap_getPixels(b), \
+		.bwidth = bitmap_getWidth(b), \
+		.bheight = bitmap_getHeight(b), /* Only needed for debugging? */ \
+		.drawWidth = transform_x(b->transform, b->bounds.w, b->bounds.h), \
+		.drawHeight = transform_y(b->transform, b->bounds.w, b->bounds.h), \
+		.pixelTransform = { \
+			.a = b->transform.a, .b = b->transform.b, \
+			.c = b->transform.c, .d = b->transform.d, \
+			/* The -1 here is because the pixel "rects" in the case of when */ \
+			/* we use a non-zero translate have a width/height of -1 not 1  */ \
+			/* which we otherwise fail to account for, and this is the      */ \
+			/* simplest way to fix it. Will have to revisit this if we ever */ \
+			/* use the transform for anything other that 90-degree rotations*/ \
+			.tx = b->transform.tx ? b->transform.tx - 1 : 0, \
+			.ty = b->transform.ty ? b->transform.ty - 1 : 0 \
+		}, \
+		.setPixelFn = (b->flags & TransformSet) ? setPixelTransformed : setPixelRaw \
+	}
+
+#define set_pixel(x, y, col) context.setPixelFn(&context, x, y, col)
+
+#if defined(ONE_BPP_BITMAPS)
+
+static inline void setPixelRaw(const DrawContext* context, int x, int y, uint16 colour) {
+	int page = y / 8;
+	int byteidx = page * context->bwidth + x;
+	int bit = y - (page * 8);
+	int bitidx = byteidx * 8 + bit;
+	context->data[bitidx] = (colour == BLACK);
+}
+
+#else
+
+static inline void setPixelRaw(const DrawContext* context, int x, int y, uint16 col) {
+	context->data[y * context->bwidth + x] = col;
+}
+
+#endif // ONE_BPP_BITMAPS
+
+static void setPixelTransformed(const DrawContext* context, int x, int y, uint16 col) {
+	AffineTransform const*const t = &context->pixelTransform;
+	int xx = transform_x(*t, x, y);
+	int yy = transform_y(*t, x, y);
+	setPixelRaw(context, xx, yy, col);
+}
 
 Bitmap* bitmap_create(uint16 width, uint16 height) {
 	if (!width) width = exec_getInt(EValScreenWidth);
@@ -70,6 +128,7 @@ Bitmap* bitmap_create(uint16 width, uint16 height) {
 	}
 	b->format = (uint8)format;
 	rect_zero(&b->dirtyRect);
+	b->transform = IdentityTransform;
 	return b;
 }
 
@@ -95,7 +154,7 @@ void bitmap_setColour(Bitmap* b, uint16 colour) {
 	b->colour = tobe(colour);
 }
 
-uint16 bitmap_getColour(Bitmap* b) {
+uint16 bitmap_getColour(const Bitmap* b) {
 	return frombe(b->colour);
 }
 
@@ -103,7 +162,7 @@ void bitmap_setBackgroundColour(Bitmap* b, uint16 colour) {
 	b->bgcolour = tobe(colour);
 }
 
-uint16 bitmap_getBackgroundColour(Bitmap* b) {
+uint16 bitmap_getBackgroundColour(const Bitmap* b) {
 	return frombe(b->bgcolour);
 }
 
@@ -117,7 +176,43 @@ void rect_union(Rect* r, const Rect* r2) {
 	}
 }
 
-void bitmap_clipToBounds(Bitmap* b, Rect* r) {
+void rect_transform(Rect* r, const AffineTransform* t) {
+	int newx = transform_x(*t, r->x, r->y);
+	int newy = transform_y(*t, r->x, r->y);
+	int w = transform_x(*t, r->x + r->w, r->y + r->h) - newx;
+	int h = transform_y(*t, r->x + r->w, r->y + r->h) - newy;
+	BMP_DEBUG("Raw rect_transform %d,%d,%dx%d -> %d,%d,%dx%d\n", r->x, r->y, r->w, r->h, newx, newy, w, h);
+	// And make sure to normalise
+	if (w < 0) {
+		r->x = newx + w;
+		r->w = -w;
+	} else {
+		r->x = newx;
+		r->w = w;
+	}
+	if (h < 0) {
+		r->y = newy + h;
+		r->h = -h;
+	} else {
+		r->y = newy;
+		r->h = h;
+	}
+}
+
+void rect_invert(Rect* r, const AffineTransform* t) {
+	// Apply the inverse of t to r
+	AffineTransform inv = {
+		.a = t->a,
+		.b = -t->b,
+		.c = -t->c,
+		.d = t->d,
+		.tx = -t->tx * t->a + t->ty * t->b,
+		.ty = -t->ty * t->d + t->tx * t->c
+	};
+	rect_transform(r, &inv);
+}
+
+void bitmap_clipToBounds(const Bitmap* b, Rect* r) {
 	// For the purposes of drawing inside the bitmap, the bitmap's bounds should
 	// always be considered to be (0,0). The fact that we use the x and y to
 	// indicate position of the bitmap relative to the screen is not relevant
@@ -141,28 +236,34 @@ void rect_clip(Rect* r, const Rect* clipr) {
 }
 
 static void updateDirtyRect(Bitmap* b, Rect* r) {
-	BMP_DEBUG("drawnRect = %d,%d,%dx%d\n", r.x, r.y, r.w, r.h);
+	BMP_DEBUG("drawnRect = %d,%d,%dx%d\n", r->x, r->y, r->w, r->h);
+	if (b->flags & TransformSet) {
+		rect_transform(r, &b->transform);
+		BMP_DEBUG("transformedRect = %d,%d,%dx%d\n", r->x, r->y, r->w, r->h);
+	}
 	bitmap_clipToBounds(b, r);
-	BMP_DEBUG("clipped drawnRect = %d,%d,%dx%d\n", r.x, r.y, r.w, r.h);
+	BMP_DEBUG("clipped drawnRect = %d,%d,%dx%d\n", r->x, r->y, r->w, r->h);
 	rect_union(&b->dirtyRect, r);
+	BMP_DEBUG("dirtyRect = %d,%d,%dx%d\n", b->dirtyRect.x, b->dirtyRect.y, b->dirtyRect.w, b->dirtyRect.h);
 	if (b->flags & AutoBlit) bitmap_blitDirtyToScreen(b);
 }
 
-void bitmap_drawRect(Bitmap* b, const Rect* r) {
+void bitmap_drawRect(Bitmap* b, const Rect* rect) {
 	// Line by line, by the numbers
-	Rect bounds = *r;
-	bitmap_clipToBounds(b, &bounds);
-	const uint16 xend = bounds.x + bounds.w;
-	const uint16 yend = bounds.y + bounds.h;
+	DECLARE_CONTEXT(b);
+	Rect r = *rect;
+	const Rect bounds = rect_make(0, 0, context.drawWidth, context.drawHeight);
+	rect_clip(&r, &bounds);
+	const uint16 xend = r.x + r.w;
+	const uint16 yend = r.y + r.h;
+
 	const uint16 col = b->colour;
-	const uint16 bwidth = bitmap_getWidth(b);
-	PixelType* data = bitmap_getPixels(b);
-	for (int yidx = bounds.y; yidx < yend; yidx++) {
-		for (int xidx = bounds.x; xidx < xend; xidx++) {
-			set_pixel(data, bwidth, xidx, yidx, col);
+	for (int yidx = r.y; yidx < yend; yidx++) {
+		for (int xidx = r.x; xidx < xend; xidx++) {
+			set_pixel(xidx, yidx, col);
 		}
 	}
-	updateDirtyRect(b, &bounds);
+	updateDirtyRect(b, &r);
 }
 
 // All font bitmaps must have 8 chars per line, and 12 rows
@@ -208,30 +309,33 @@ void bitmap_drawText(Bitmap* b, uint16 x, uint16 y, const char* text) {
 }
 
 void bitmap_getTextRect(Bitmap* b, int numChars, Rect* result) {
+	Rect r = rect_make(0, 0, 0, 0);
 	if (b->flags & SmallFont) {
-		result->h = CHAR_HEIGHT(font_small);
-		result->w = numChars * CHAR_WIDTH(font_small);
+		r.h = CHAR_HEIGHT(font_small);
+		r.w = numChars * CHAR_WIDTH(font_small);
 	} else {
-		result->h = CHAR_HEIGHT(font);
-		result->w = numChars * CHAR_WIDTH(font);
+		r.h = CHAR_HEIGHT(font);
+		r.w = numChars * CHAR_WIDTH(font);
 	}
+	rect_transform(&r, &b->transform);
+	result->w = r.w;
+	result->h = r.h;
 }
 
 void bitmap_drawXbmData(Bitmap* b, uint16 x, uint16 y, const Rect* r, const uint8* xbm, uint16 xbm_width) {
+	DECLARE_CONTEXT(b);
+
 	 // xbm drawing is allowed to continue outside the bitmap, but must start inside
-	const uint16 bwidth = bitmap_getWidth(b);
-	const uint16 bheight = bitmap_getHeight(b);
-	if (x >= bwidth || y >= bheight) return;
+	if (x >= context.drawWidth || y >= context.drawHeight) return;
 	const int xbm_stride = (xbm_width + 7) & ~7;
 
-	PixelType* data = bitmap_getPixels(b);
 	for (int yidx = 0; yidx < r->h; yidx++) {
-		if (y+yidx >= bheight) break; // rest of xbm will be outside bitmap
+		if (y+yidx >= context.drawHeight) break; // rest of xbm will be outside bitmap
 		for (int xidx = 0; xidx < r->w; xidx++) {
-			if (x+xidx >= bwidth) break; // rest of xbm is outside bitmap
+			if (x+xidx >= context.drawWidth) break; // rest of xbm is outside bitmap
 			int bitIdx = (r->y + yidx) * xbm_stride + r->x + xidx;
 			uint16 colour = getBit(xbm, bitIdx) ? b->colour : b->bgcolour;
-			set_pixel(data, bwidth, x + xidx, y + yidx, colour);
+			set_pixel(x + xidx, y + yidx, colour);
 		}
 	}
 
@@ -284,21 +388,20 @@ void bitmap_drawLine(Bitmap* b, uint16 x0, uint16 y0, uint16 x1, uint16 y1) {
 	const int TwoDinc = 2 * dinc;
 	const int TwoDincMinusTwoDscan = 2 * dinc - 2 * dscan;
 	const uint16 colour = b->colour;
-	const int bwidth = bitmap_getWidth(b);
-	PixelType* data = bitmap_getPixels(b);
+	DECLARE_CONTEXT(b);
 
 	int D = TwoDinc - dscan;
-	set_pixel(data, bwidth, x0, y0, colour);
-	set_pixel(data, bwidth, x1, y1, colour);
+	set_pixel(x0, y0, colour);
+	set_pixel(x1, y1, colour);
 
 	for (scan = scanStart; scan != scanEnd; scan += scanIncr) {
 		BMP_DEBUG("scan=%d inc=%d D=%d", (int)scan, (int)inc, D);
 		if (D > 0) {
 			inc = inc + incr;
-			set_pixel(data, bwidth, *x, *y, colour);
+			set_pixel(*x, *y, colour);
 			D = D + TwoDincMinusTwoDscan;
 		} else {
-			set_pixel(data, bwidth, *x, *y, colour);
+			set_pixel(*x, *y, colour);
 			D = D + TwoDinc;
 		}
 	}
@@ -367,4 +470,16 @@ void bitmap_blitDirtyToScreen(Bitmap* b) {
 void bitmap_setAutoBlit(Bitmap* b, bool flag) {
 	if (flag) b->flags |= AutoBlit;
 	else b->flags &= ~AutoBlit;
+}
+
+void bitmap_setTransform(Bitmap* b, const AffineTransform* t) {
+	if (!t) t = &IdentityTransform;
+	b->transform = *t;
+
+	if (t->a == 1 && t->b == 0 && t->c == 0 && t->d == 1 && t->tx == 0 && t->ty == 0) {
+		// Identity transform, clear TransformSet for performance reasons
+		b->flags &= ~TransformSet;
+	} else {
+		b->flags |= TransformSet;
+	}
 }
