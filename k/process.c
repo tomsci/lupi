@@ -133,8 +133,17 @@ bool process_grow_heap(Process* p, int incr) {
 	//printk("+process_grow_heap %d heapLimit=%p\n", incr, (void*)p->heapLimit);
 	bool dec = (incr < 0);
 	int amount;
-	if (dec) amount = (-incr) & ~(KPageSize - 1); // Be sure not to free more than was asked to
-	else amount = PAGE_ROUND(incr);
+	if (dec) {
+		amount = (-incr) & ~(KPageSize - 1); // Be sure not to free more than was asked to
+	} else {
+#ifndef HAVE_MMU
+		// There isn't any real restriction we need apply, and uluaHeap benefits
+		// from being able to ask for less than a page
+		amount = incr;
+#else
+		amount = PAGE_ROUND(incr);
+#endif
+	}
 
 	if (dec) {
 		if (p->heapLimit - amount < KUserHeapBase) {
