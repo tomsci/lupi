@@ -23,6 +23,7 @@ config = {
 
 	klua = true,
 	ulua = true,
+	malloc = true,
 
 	textSectionStart = 0xF8008000,
 	bssSectionStart = 0x00007000,

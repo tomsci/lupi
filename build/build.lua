@@ -73,6 +73,8 @@ local function notFullyHosted() return not config.fullyHosted end
 local function bootMenuOnly() return bootMode > 1 end
 local function modulesPresent() return config.ulua or (config.klua and config.kluaIncludesModules) end
 local function ukluaPresent() return modulesPresent() and (config.klua or config.ulua) end
+local function useMalloc() return uluaPresent() and config.malloc end
+local function useUluaHeap() return not useMalloc() end
 
 mallocSource = {
 	path = "usersrc/malloc.c",
@@ -86,10 +88,11 @@ mallocSource = {
 		"-DLACKS_UNISTD_H",
 		"-DLACKS_SYS_PARAM_H",
 		-- "-DNO_MALLOC_STATS=1", -- Avoids fprintf dep
+		"-DMALLOC_INSPECT_ALL=1",
 		"-DMALLOC_FAILURE_ACTION=", -- no errno
 		"-DUSE_LOCKS=1",
 	},
-	enabled = uluaPresent,
+	enabled = useMalloc,
 }
 
 memCmpThumb2 = {
@@ -130,6 +133,7 @@ kernelSources = {
 	{ path = "usersrc/ulua.c", user = true, enabled = uluaPresent },
 	{ path = "usersrc/uexec.c", user = true },
 	mallocSource,
+	{ path = "usersrc/uluaHeap.c", user = true, enabled = useUluaHeap },
 	{ path = "usersrc/kluaHeap.c", user = true, kluaPresent },
 	{ path = "k/bootMenu.c", enabled = bootMenuOnly },
 	{ path = "testing/atomic.c", enabled = bootMenuOnly },
@@ -629,6 +633,9 @@ function build_kernel()
 	end
 	if config.userInclude then
 		table.insert(userIncludes, 1, "-include "..qrp("build/"..config.name.."/"..config.userInclude))
+	end
+	if useMalloc() then
+		table.insert(userIncludes, "-DMALLOC_AVAILABLE");
 	end
 
 	local includes = {}

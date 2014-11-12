@@ -103,37 +103,33 @@ static void setPixelTransformed(const DrawContext* context, int x, int y, uint16
 	setPixelRaw(context, xx, yy, col);
 }
 
-Bitmap* bitmap_create(uint16 width, uint16 height) {
-	if (!width) width = exec_getInt(EValScreenWidth);
-	const int screenHeight = exec_getInt(EValScreenHeight);
-	if (!height) height = screenHeight;
-	ScreenBufferFormat format = (ScreenBufferFormat)exec_getInt(EValScreenFormat);
+// Width and height must not be zero
+int bitmap_getAllocSize(uint16 width, uint16 height) {
 	int bufSize = datasize(width, height);
 #ifndef ONE_BPP_BITMAPS
-	if (format == EOneBitColumnPacked) {
+	if (exec_getInt(EValScreenFormat) == EOneBitColumnPacked) {
 		// We need an extra buf to transform to the packed format before blitting
 		bufSize += width * ((height + 7) >> 3);
 	}
 #endif
-	void* mem = malloc(offsetof(Bitmap, data) + bufSize);
-	if (!mem) return NULL;
+	return offsetof(Bitmap, data) + bufSize;
+}
+
+Bitmap* bitmap_construct(void* mem, uint16 width, uint16 height) {
 	Bitmap* b = (Bitmap*)mem;
 	rect_set(&b->bounds, 0, 0, width, height);
 	b->screenDriverHandle = 0;
 	b->colour = BLACK;
 	b->bgcolour = WHITE;
 	b->flags = 0;
+	const int screenHeight = exec_getInt(EValScreenHeight);
 	if (screenHeight < 200) {
 		b->flags |= SmallFont;
 	}
-	b->format = (uint8)format;
+	b->format = (uint8)exec_getInt(EValScreenFormat);
 	rect_zero(&b->dirtyRect);
 	b->transform = IdentityTransform;
 	return b;
-}
-
-void bitmap_destroy(Bitmap* b) {
-	free(b);
 }
 
 static inline uint16 tobe(uint16 val) {

@@ -11,7 +11,7 @@
 #endif
 #include <lupi/membuf.h>
 
-void malloc_stats();
+int memStats_lua(lua_State* L);
 
 // #define MEM_DEBUG
 
@@ -21,7 +21,7 @@ static inline int getLuaMem(lua_State* L) {
 	mem += lua_gc(L, LUA_GCCOUNTB, 0);
 	return mem;
 }
-#define PRINT_MEM_STATS(args...) printk(args, getLuaMem(L)); malloc_stats()
+#define PRINT_MEM_STATS(args...) printk(args, getLuaMem(L)); memStats_lua(L)
 #else
 #define PRINT_MEM_STATS(args...)
 #endif
@@ -51,11 +51,6 @@ static int pageStats_getCounts(lua_State* L) {
 	return 1;
 }
 #endif // HAVE_MMU
-
-static int printMallocStats_lua(lua_State* L) {
-	malloc_stats();
-	return 0;
-}
 
 static int switch_process_lua(lua_State* L) {
 	Process* p;
@@ -351,7 +346,7 @@ int init_module_kluadebugger(lua_State* L) {
 	DECLARE_FN(L, GetProcess_lua, "GetProcess");
 	DECLARE_FN(L, switch_process_lua, "switch_process");
 	DECLARE_FN(L, processForThread_lua, "processForThread");
-	DECLARE_FN(L, printMallocStats_lua, "printMallocStats");
+	DECLARE_FN(L, memStats_lua, "memStats");
 
 	// Force out of line copies of a few inline fns so that they're callable
 	// via the symbol table should we want to

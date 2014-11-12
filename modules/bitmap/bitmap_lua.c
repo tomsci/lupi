@@ -3,13 +3,16 @@
 #include <lauxlib.h>
 
 #include <lupi/membuf.h>
+#include <lupi/exec.h>
 #include "bitmap.h"
 
 #define BitmapMetatable "LupiBitmapMt"
 
+int exec_getInt(ExecGettableValue val);
+
 Bitmap* bitmap_check(lua_State* L, int idx) {
 	void* ptr = luaL_checkudata(L, idx, BitmapMetatable);
-	return *(Bitmap**)ptr;
+	return (Bitmap*)ptr;
 }
 
 static int getxy(lua_State* L, int idx, int* x, int* y) {
@@ -119,10 +122,11 @@ static int getWidth(lua_State* L) {
 static int create(lua_State* L) {
 	int w = luaL_optint(L, 1, 0);
 	int h = luaL_optint(L, 2, 0);
-	Bitmap* b = bitmap_create(w, h);
-	ASSERTL(b, "Couldn't create bitmap");
-	Bitmap** bud = (Bitmap**)lua_newuserdata(L, sizeof(Bitmap*));
-	*bud = b;
+	if (!w) w = exec_getInt(EValScreenWidth);
+	if (!h) h = exec_getInt(EValScreenHeight);
+	int sz = bitmap_getAllocSize(w, h);
+	void* mem = lua_newuserdata(L, sz);
+	/*Bitmap* b =*/ bitmap_construct(mem, w, h);
 	luaL_setmetatable(L, BitmapMetatable);
 	return 1;
 }
@@ -140,12 +144,6 @@ static int blit(lua_State* L) {
 		bitmap_blitToScreen(b, &r);
 	}
 	return 0;	
-}
-
-static int gc(lua_State* L) {
-	Bitmap* b = bitmap_check(L, 1);
-	bitmap_destroy(b);
-	return 0;
 }
 
 static int setAutoBlit(lua_State* L) {
@@ -229,7 +227,6 @@ int init_module_bitmap_bitmap(lua_State* L) {
 		{ "setAutoBlit", setAutoBlit },
 		{ "setTransform", setTransform },
 		{ "getTransform", getTransform },
-		{ "__gc", gc },
 		{ NULL, NULL },
 	};
 	luaL_setfuncs(L, fns, 0);

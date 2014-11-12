@@ -12,7 +12,6 @@
 
 #ifdef MEM_DEBUG
 
-void malloc_stats();
 #include <stdlib.h>
 
 inline int getLuaMem(lua_State* L) {
@@ -20,7 +19,7 @@ inline int getLuaMem(lua_State* L) {
 	mem += lua_gc(L, LUA_GCCOUNTB, 0);
 	return mem;
 }
-#define PRINT_MEM_STATS(fmt) PRINTL(fmt, getLuaMem(L)); malloc_stats()
+#define PRINT_MEM_STATS(fmt) PRINTL(fmt, getLuaMem(L)); memStats_lua(L)
 
 #else
 
@@ -131,6 +130,12 @@ static void setupGlobals(lua_State* L);
 
 lua_State* newLuaStateForModule(const char* moduleName, lua_State* L);
 int traceback_lua(lua_State* L);
+int memStats_lua(lua_State* L);
+
+#ifndef MALLOC_AVAILABLE
+void* uluaHeap_allocFn(void *ud, void *ptr, size_t osize, size_t nsize);
+void* uluaHeap_init();
+#endif
 
 #define SET_INT(L, name, val) lua_pushinteger(L, val); lua_setfield(L, -2, name);
 
@@ -140,7 +145,13 @@ int newProcessEntryPoint() {
 	//*(int*)(0xBAD) = superPage; // This definitely does
 
 	const char* moduleName = user_ProcessName;
+#ifdef MALLOC_AVAILABLE
 	lua_State* L = newLuaStateForModule(moduleName, NULL);
+#else
+	lua_State* L = lua_newstate(uluaHeap_allocFn, uluaHeap_init());
+	luaL_openlibs(L);
+	newLuaStateForModule(moduleName, L);
+#endif
 
 	PRINT_MEM_STATS("Lua mem usage after module init %d B");
 	setupGlobals(L);
@@ -174,6 +185,7 @@ static void setupGlobals(lua_State* L) {
 		{ "getInt", getInt },
 		{ "yield", yield_lua },
 		{ "getch_async", getch_async },
+		{ "memStats", memStats_lua },
 		{ NULL, NULL }
 	};
 	lua_rawgeti(L, LUA_REGISTRYINDEX, LUA_RIDX_GLOBALS);
@@ -310,4 +322,4 @@ void newThreadEntryPoint(lua_State* L) {
 	exec_threadExit(0);
 }
 
-#endif
+#endif // DEBUG_CUSTOM_ENTRY_POINT

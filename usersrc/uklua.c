@@ -198,3 +198,67 @@ lua_State* newLuaStateForModule(const char* moduleName, lua_State* L) {
 	}
 	return L;
 }
+
+// No better place for these
+#ifdef MALLOC_AVAILABLE
+
+struct stats {
+	lua_State* L;
+	int allocCount;
+	int freeCellCount;
+	int used;
+	int slabs[8];
+	int wasted;
+};
+
+void malloc_stats();
+void printk(const char* fmt, ...) ATTRIBUTE_PRINTF(1, 2);
+
+void mallocInfoCallback(void* start, void* end, size_t used, void* ctxt) {
+	if (used < 0 || (end - start) + 4 < used) {
+		printk("WTF used %d start=%p end=%p\n", (int)used, start, end);
+		return;
+	}
+	struct stats* s = (struct stats*)ctxt;
+	if (used) s->allocCount++;
+	else s->freeCellCount++;
+	s->used += used;
+
+	if (used && used <= 8) s->slabs[0]++;
+	else if (used <= 12) s->slabs[1]++;
+	else if (used <= 16) s->slabs[2]++;
+	else if (used <= 20) s->slabs[3]++;
+	else if (used <= 24) s->slabs[4]++;
+	else if (used <= 28) s->slabs[5]++;
+	else if (used <= 32) s->slabs[6]++;
+	else if (used <= 36) s->slabs[7]++;
+	else {
+		printk("alloc %d\n", (int)used);
+	}
+	// The +4 is because end-start is always smaller than used, I don't really
+	// know why. I assume the start ptr is being incorrectly adjusted
+	int wasted = end - start + 4 - used;
+	if (used && wasted) {
+		s->wasted += wasted;
+	}
+}
+
+void malloc_inspect_all(void(*handler)(void*, void *, size_t, void*), void* arg);
+void malloc_stats();
+
+int memStats_lua(lua_State* L) {
+	lua_gc(L, LUA_GCCOLLECT, 0);
+	struct stats s = {0};
+	s.L = L;
+	malloc_inspect_all(mallocInfoCallback, &s);
+	PRINTL("alloc count = %d", s.allocCount);
+	PRINTL("free count = %d", s.freeCellCount);
+	PRINTL("wasted bytes = %d", s.wasted);
+	PRINTL("used bytes = %d", s.used);
+	for (int i = 0; i < 8; i++) {
+		PRINTL("Num <=%d bytes: %d", 8+4*i, s.slabs[i]);
+	}
+	malloc_stats();
+	return 0;
+}
+#endif // MALLOC_AVAILABLE

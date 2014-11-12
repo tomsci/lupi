@@ -3,9 +3,11 @@
 
 #include <stddef.h>
 
+#ifdef MALLOC_AVAILABLE
 void* malloc(size_t);
 void free(void*);
 void* realloc(void*, size_t);
+#endif
 
 static inline int abs(int i) {
 	return i < 0 ? -i : i;

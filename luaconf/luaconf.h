@@ -594,6 +594,12 @@ void lupi_printstring(const char* str);
 // Hashing a Number to an int is pretty simple when Numbers are integers
 #define luai_hashnum(i, n) i = n
 
+#if defined(lauxlib_c) && !defined(MALLOC_AVAILABLE)
+void* malloc(size_t sz) { abort(); }
+void free(void* ptr) { abort(); }
+void* realloc(void* ptr, size_t sz) { abort(); }
+#endif
+
 //#undef LUA_NUMBER_DOUBLE
 //#undef LUA_NUMBER
 //#define LUA_NUMBER long

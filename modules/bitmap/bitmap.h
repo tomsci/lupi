@@ -52,8 +52,8 @@ typedef struct Bitmap {
 	uint16 data[1]; // Extends beyond the struct
 } Bitmap;
 
-Bitmap* bitmap_create(uint16 width, uint16 height);
-void bitmap_destroy(Bitmap* b);
+int bitmap_getAllocSize(uint16 width, uint16 height);
+Bitmap* bitmap_construct(void* mem, uint16 width, uint16 height);
 
 uint16 bitmap_getColour(const Bitmap* b);
 void bitmap_setColour(Bitmap* b, uint16 colour);
