@@ -365,6 +365,7 @@ static void drainFifoAndCompleteRequest() {
 		uint16 y = tsc_register_read(TSC_DATA_Y, 2);
 		*udataPtr++ = InputTouchDown;
 		*udataPtr++ = ((uint32)x << 16) | (uint32)y;
+		*udataPtr++ = GET32((uintptr)&TheSuperPage->uptime);
 		//printk("FIFO %d = %d,%d\n", i, x, y);
 	}
 

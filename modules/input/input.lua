@@ -19,6 +19,15 @@ tscWidth = nil
 tscHeight = nil
 rotated = false
 
+buttonStates = {}
+
+-- Constants
+TouchUp = 0
+TouchDown = 1
+ButtonDown = 3
+ButtonPressed = 4
+ButtonUp = 5
+
 --[[**
 Function to take the 12-bit raw sample data from the TSC's ADC and convert to
 screen coordinates. Calibration data is currently hard-coded in the
@@ -45,29 +54,65 @@ function calibratedCoords(x, y)
 	end
 end
 
-local function gotInput(inputRequest, numSamples)
-	for i = 0, numSamples-1 do
-		local offset = i*2*4
-		local flags = inputRequest.data:getInt(offset)
-		-- TODO handle keypresses
-		local xy = inputRequest.data:getInt(offset + 4)
-		local x = bit32.rshift(xy, 16)
-		local y = bit32.band(xy, 0xFFFF)
-		if observer then
-			observer(flags, calibratedCoords(x, y))
+local function dummyObserver(op, x, y)
+	if op == TouchDown then
+		print(string.format("gotInput %d,%d", x, y))
+	elseif op == TouchUp then
+		print("Touch up")
+	elseif op == ButtonDown then
+		print(string.format("Button %d down", x))
+	elseif op == ButtonPressed then
+		print(string.format("Button %d pressed", x))
+	elseif op == ButtonUp then
+		print(string.format("Button %d up", x))
+	end
+end
+
+local function handleKeypress(buttonMask, timestamp)
+	-- print(string.format("handleKeypress %x", buttonMask))
+	for i = 0, 31 do
+		local b = buttonStates[i]
+		if not b then
+			b = {}
+			buttonStates[i] = b
+		end
+		local bset = bit32.band(buttonMask, bit32.lshift(1, i)) ~= 0
+		if b.pressed then
+			-- TODO autorepeat
+			if not bset then
+				b.pressed = false
+				observer(ButtonUp, i)
+			end
 		else
-			if flags == 1 then
-				print(string.format("gotInput %d,%d = %d,%d",
-					x, y, calibratedCoords(x, y)))
-			elseif flags == 0 then
-				print("Touch up")
+			if bset then
+				b.pressed = true
+				b.t = timestamp
+				observer(ButtonDown, i)
+				observer(ButtonPressed, i)
 			end
 		end
 	end
 end
 
-local function createInputRequest()
-	inputRequest = newInputRequest(runloop.current)
+local function gotInput(inputRequest, numSamples)
+	for i = 0, numSamples-1 do
+		local offset = i*3*4
+		local flags = inputRequest.data:getInt(offset)
+		if flags == 2 then
+			local buttonMask = inputRequest.data:getInt(offset + 4)
+			local timestamp = inputRequest.data:getInt(offset + 8)
+			return handleKeypress(buttonMask, timestamp)
+		end
+		local xy = inputRequest.data:getInt(offset + 4)
+		local x = bit32.rshift(xy, 16)
+		local y = bit32.band(xy, 0xFFFF)
+		observer(flags, calibratedCoords(x, y))
+	end
+end
+
+local function createInputRequest(bufSize)
+	observer = dummyObserver
+	inputRequest = newInputRequest(runloop.current, bufSize)
 	-- inputRequest.requestFn is filled in by newInputRequest
 	inputRequest.completionFn = gotInput
 	runloop.current:queue(inputRequest)
@@ -95,13 +140,14 @@ adds it to the current run loop, and sets its observer to `fn`. Example usage:
 	input.registerInputObserver(handleInput)
 
 There must be a run loop created before calling this function. Do not call more
-than once.
+than once. `bufSize` is an optional parameter used to override the default
+buffer size of 128 samples.
 ]]
-function registerInputObserver(fn)
+function registerInputObserver(fn, bufSize)
 	assert(inputRequest == nil)
 	assert(runloop.current, "Run loop must be set up before calling registerInputObserver")
-	createInputRequest(rl)
-	observer = fn
+	createInputRequest(bufSize)
+	observer = fn or dummyObserver
 end
 
 --[[**

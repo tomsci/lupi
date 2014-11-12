@@ -12,14 +12,15 @@ typedef struct InputRequest {
 	AsyncRequest asyncRequest; // must be first
 	uint32 driverHandle;
 	int maxSamples; // data must come immediately after
-	int data[1]; // Extends beyond struct, size maxSamples*2.
+	int data[1]; // Extends beyond struct, size maxSamples*3.
 } InputRequest;
 
 static int inputRequestFn(lua_State* L) {
 	InputRequest* req = (InputRequest*)runloop_checkRequestPending(L, 1);
 	req->asyncRequest.flags |= KAsyncFlagAccepted;
 	req->asyncRequest.result = (uintptr)&req->maxSamples;
-	exec_driverCmd(req->driverHandle, KExecDriverInputRequest, (uint32)req);
+	int ret = exec_driverCmd(req->driverHandle, KExecDriverInputRequest, (uint32)req);
+	ASSERTL(ret >= 0, "KExecDriverInputRequest failed with %d", ret);
 	return 0;
 }
 
@@ -30,14 +31,14 @@ static int newInputRequest(lua_State* L) {
 	lua_createtable(L, 0, 1); // members
 	lua_pushcfunction(L, inputRequestFn);
 	lua_setfield(L, -2, "requestFn");
-	int dataSize = maxSamples * 2 * sizeof(int);
+	int dataSize = maxSamples * 3 * sizeof(uint32);
 	int extraSize = dataSize + offsetof(InputRequest, data) - sizeof(AsyncRequest);
 	lua_pushinteger(L, extraSize);
 	// 1 = runloop, 2 = members, 3 = extraSize
 	runloop_newAsyncRequest(L);
 	InputRequest* req = (InputRequest*)runloop_checkRequest(L, -1);
 	req->maxSamples = maxSamples;
-	req->driverHandle = exec_driverConnect(FOURCC("SCRN"));
+	req->driverHandle = exec_driverConnect(FOURCC("INPT"));
 
 	mbuf_new(L, req->data, dataSize, NULL);
 	lua_setfield(L, -2, "data");

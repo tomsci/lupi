@@ -109,27 +109,31 @@ static void completeInputRequest_dfc(uintptr arg1, uintptr arg2, uintptr arg3) {
 	if (numSamples > TheSuperPage->inputRequestBufferSize) {
 		numSamples = TheSuperPage->inputRequestBufferSize;
 	}
+	// printk("completeInputRequest_dfc completing %d samples\n", numSamples);
 	thread_requestComplete(&TheSuperPage->inputRequest, numSamples);
 }
 
 static void buttonEvent(InputButton but, uint32 high) {
 	const uint32 pressed = !high;
-	printk("Button %d %s\n", but, pressed ? "down" : "up");
+	// printk("Button %d %s\n", but, pressed ? "down" : "up");
 	SuperPage* sp = TheSuperPage;
 	if (pressed) sp->buttonStates |= (1 << but);
 	else sp->buttonStates &= ~(1 << but);
 
 	if (sp->inputRequest.userPtr == 0) return; // Nothing else we can do
 	int pos = atomic_inc(&sp->inputRequestBufferPos) - 1;
+	// printk("pos = %d inputRequestBufferSize = %d\n", pos, sp->inputRequestBufferSize);
 	if (pos >= sp->inputRequestBufferSize) return; // TMI
 	// We wouldn't attempt to do this inside a Handler if not for the fact that
 	// there is no penalty writing to user mem on a platform with no MMU
 	uint32* buf = (uint32*)sp->inputRequestBuffer;
-	buf[pos*2] = InputButtons;
-	buf[pos*2 + 1] = sp->buttonStates;
+	buf[pos*3] = InputButtons;
+	buf[pos*3 + 1] = sp->buttonStates;
+	buf[pos*3 + 2] = GET32((uintptr)&sp->uptime); // Yay for LSB-only coding
 
 	if (pos == 0) {
 		// We need to queue a completion
+		// printk("Queuing completeInputRequest_dfc\n");
 		dfc_queue(completeInputRequest_dfc, 0, 0, 0);
 	}
 }

@@ -203,8 +203,6 @@ static DRIVER_FN(screen_handleSvc) {
 		case KExecDriverScreenBlit:
 			doBlit(arg2);
 			return 0;
-		case KExecDriverInputRequest:
-			return KErrNotSupported; // doInputRequest(arg2);
 		default:
 			ASSERT(false, arg1);
 	}
