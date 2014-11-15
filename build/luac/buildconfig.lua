@@ -12,6 +12,7 @@ config = {
 		{ path = "usersrc/strtol.c", user = true },
 	},
 
+	malloc = true,
 	lua = true,
 }
 

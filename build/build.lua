@@ -73,7 +73,7 @@ local function notFullyHosted() return not config.fullyHosted end
 local function bootMenuOnly() return bootMode > 1 end
 local function modulesPresent() return config.ulua or (config.klua and config.kluaIncludesModules) end
 local function ukluaPresent() return modulesPresent() and (config.klua or config.ulua) end
-local function useMalloc() return uluaPresent() and config.malloc end
+local function useMalloc() return config.malloc end
 local function useUluaHeap() return not useMalloc() end
 
 mallocSource = {
