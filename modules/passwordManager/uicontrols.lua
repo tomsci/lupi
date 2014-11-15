@@ -1,13 +1,13 @@
 require "input"
 require "bitmap"
-require "misc"
+require "oo"
 
 --[[**
 Some basic UI controls.
 ]]
 
 local Colour = bitmap.Colour
-local class = misc.class
+local class = oo.class
 
 --[[**
 A basic momentary-push button.

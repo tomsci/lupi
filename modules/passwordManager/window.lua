@@ -1,4 +1,5 @@
 require "misc"
+require "oo"
 require "bitmap"
 
 --[[**
@@ -24,8 +25,9 @@ call to `draw()`.
 In addition, the following optional functions may be implemented by controls
 that can receive input:
 
-* `control:handleActivated()`: Called when a touch even occurs within the
-  control.
+* `control:handleActivated()`: Called when a touch press event (a touch down
+  followed by a touch up) occurs within the control, or if the control is
+  highlighted then activated via keypresses.
 * `control:setPressed(bool)`: Called with argument `true` when a touch down
   event occurs within the control's bounds. May be called repeatedly if the
   touch drags in and out of the control. Only called if control also implements
@@ -36,7 +38,7 @@ that can receive input:
 ]]
 
 local Colour = bitmap.Colour
-local class = misc.class
+local class = oo.class
 local array = misc.array
 
 Window = class {
@@ -51,7 +53,7 @@ Window = class {
 
 function Window:init()
 	local _ENV = self + _ENV
-	if not controls then
+	if not self.controls then
 		controls = array()
 	end
 	if not self.bitmap then
