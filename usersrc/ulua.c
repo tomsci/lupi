@@ -7,6 +7,9 @@
 #include <lupi/runloop.h>
 #include <lupi/int64.h>
 #include <lupi/exec.h>
+#ifndef MALLOC_AVAILABLE
+#include <lupi/uluaHeap.h>
+#endif
 
 // #define MEM_DEBUG
 
@@ -38,6 +41,7 @@ int exec_getInt(ExecGettableValue val);
 void exec_threadYield();
 int exec_threadCreate(void* newThreadState);
 void exec_threadExit(int reason);
+void hang();
 
 uint32 user_ProcessPid;
 char user_ProcessName[32];
@@ -125,17 +129,22 @@ static int yield_lua(lua_State* L) {
 	return 0;
 }
 
+static int panicFn(lua_State* L) {
+	const char* str = lua_tostring(L, lua_gettop(L));
+	lupi_printstring("\nLua panic:\n");
+	lupi_printstring(str);
+	// If we've got here, there's nothing we can really do which won't go
+	// recursive except hang.
+	hang();
+	return 0;
+}
+
 static int threadCreate_lua(lua_State* L);
-static void setupGlobals(lua_State* L);
+void ulua_setupGlobals(lua_State* L);
 
 lua_State* newLuaStateForModule(const char* moduleName, lua_State* L);
 int traceback_lua(lua_State* L);
 int memStats_lua(lua_State* L);
-
-#ifndef MALLOC_AVAILABLE
-void* uluaHeap_allocFn(void *ud, void *ptr, size_t osize, size_t nsize);
-void* uluaHeap_init();
-#endif
 
 #define SET_INT(L, name, val) lua_pushinteger(L, val); lua_setfield(L, -2, name);
 
@@ -150,11 +159,12 @@ int newProcessEntryPoint() {
 #else
 	lua_State* L = lua_newstate(uluaHeap_allocFn, uluaHeap_init());
 	luaL_openlibs(L);
+	lua_atpanic(L, panicFn);
 	newLuaStateForModule(moduleName, L);
 #endif
 
 	PRINT_MEM_STATS("Lua mem usage after module init %d B");
-	setupGlobals(L);
+	ulua_setupGlobals(L);
 
 	lua_call(L, 1, 1); // Loads module, _ENV is now on top
 	lua_getfield(L, -1, "main");
@@ -167,7 +177,7 @@ int newProcessEntryPoint() {
 	return lua_tointeger(L, -1);
 }
 
-static void setupGlobals(lua_State* L) {
+void ulua_setupGlobals(lua_State* L) {
 	// I'm sure a whole bunch of stuff will need setting up here...
 	// TODO need a better way of managing the serial port...
 	static const luaL_Reg globals[] = {
@@ -308,7 +318,7 @@ static void copyArg(lua_State* oldL, int arg, lua_State* newL) {
 }
 
 void newThreadEntryPoint(lua_State* L) {
-	setupGlobals(L);
+	ulua_setupGlobals(L);
 	// First 2 items on stack are _ENV and the fn
 	int nargs = lua_gettop(L) - 2;
 	lua_pushcfunction(L, traceback_lua);

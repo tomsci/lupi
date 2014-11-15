@@ -28,6 +28,8 @@ function main()
 		return lupi.createProcess("passwordManager.textui")
 	elseif bootMode == 4 then
 		lupi.createProcess("passwordManager.gui")
+	elseif bootMode == string.byte('m') then
+		require("test.memTests").test_mem()
 	end
 	local interpreter = require("interpreter")
 	local hadPreCmd = false

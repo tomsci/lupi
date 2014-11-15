@@ -5,12 +5,14 @@
 
 byte getch();
 void test_atomics();
+void test_mem();
 
 enum BootMode {
 	BootModeUluaInterpreter = 0,
 	BootModeKlua = 1,
 	BootModeMenu = 2,
 	BootModeAtomicTests = 'a',
+	BootModeMemTests = 'm',
 	BootModeTestInitLua = 't',
 };
 
@@ -24,6 +26,7 @@ Boot menu:\n\
 Test func:\n\
         a: Run atomics unit tests\n\
         b: Run bitmap tests\n\
+        m: Run memory usage tests\n\
     ^X, r: Reboot\n\
         t: Run test/init.lua tests\n\
         y: Run yield scheduling tests\n\
@@ -40,9 +43,12 @@ Test func:\n\
 
 			case 'a':
 			case 'b':
+			case 'm':
 			case 't':
 			case 'y':
 				return ch;
+			default:
+				break;
 		}
 	}
 }

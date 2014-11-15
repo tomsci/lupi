@@ -4,6 +4,7 @@
 
 #include <lua.h>
 
+#include <lupi/uluaHeap.h>
 
 /**
 A simple allocator that is heavily biased towards minimal memory footprint. It
@@ -54,19 +55,10 @@ int memStats_lua(lua_State* L);
 
 // Free cells are always aligned to an 8-byte boundary and are always a min of
 // 8 bytes long
-
-typedef struct FreeCell FreeCell;
 struct FreeCell {
 	FreeCell* next;
 	int len;
 };
-
-typedef struct Heap {
-	FreeCell* topCell; // Always last in freeList. May be null if we've filled the heap
-	FreeCell* freeList;
-	int totalAllocs;
-	int totalFrees;
-} Heap;
 
 
 #define align(ptr) ((((uintptr)(ptr)) + 0x7) & ~0x7)
@@ -80,7 +72,7 @@ void* uluaHeap_init() {
 	h->topCell->len = (uintptr)h + 4096 - (uintptr)h->topCell;
 	h->freeList = h->topCell;
 
-	DBG("Heap reset %p\n", h);
+	DBG("Heap init %p\n", h);
 	return h;
 }
 
@@ -224,6 +216,32 @@ void* uluaHeap_allocFn(void *ud, void *ptr, size_t osize, size_t nsize) {
 	return result;
 }
 
+void uluaHeap_stats(Heap* h, HeapStats* stats) {
+	memset(stats, 0, sizeof(HeapStats));
+	stats->totalAllocs = h->totalAllocs;
+	stats->totalFrees = h->totalFrees;
+	for (FreeCell* fc = h->freeList; fc != NULL; fc = fc->next) {
+		stats->freeSpace += fc->len;
+		stats->numFreeCells++;
+		if (fc->len > stats->largestFreeCell) stats->largestFreeCell = fc->len;
+	}
+	uintptr top = (uintptr)sbrk(0);
+	stats->used = top - (uintptr)h;
+	stats->alloced = stats->used - stats->freeSpace - sizeof(Heap);
+}
+
+void uluaHeap_reset(Heap* h) {
+	uintptr top = (uintptr)sbrk(0);
+	h->totalAllocs = 0;
+	h->totalFrees = 0;
+	h->topCell = (FreeCell*)align(h+1);
+	h->topCell->next = 0;
+	h->topCell->len = top - (uintptr)h->topCell;
+	h->freeList = h->topCell;
+
+	DBG("Heap reset %p\n", h);
+}
+
 #ifdef DEBUG_LOGGING
 // Then use more direct mechanism that doesn't need to allocate
 #define MEMSTAT_PRINT(fmt, args...) printk(fmt "\n", args)
@@ -235,21 +253,12 @@ int memStats_lua(lua_State* L) {
 	// lua_gc(L, LUA_GCCOLLECT, 0);
 	Heap* h = (Heap*)0x20070000;
 
-	int freeSpace = 0;
-	int nfreeCells = 0;
-	int largestFreeCell = 0;
-	for (FreeCell* fc = h->freeList; fc != NULL; fc = fc->next) {
-		freeSpace += fc->len;
-		nfreeCells++;
-		if (fc->len > largestFreeCell) largestFreeCell = fc->len;
-	}
-	uintptr top = (uintptr)sbrk(0);
-	int used = top - (uintptr)h;
-	int alloced = used - freeSpace - sizeof(Heap);
+	HeapStats stats;
+	uluaHeap_stats(h, &stats);
 
-	MEMSTAT_PRINT("total counts: allocs = %d frees = %d", h->totalAllocs, h->totalFrees);
-	MEMSTAT_PRINT("free: cells = %d space = %d largestCell = %d", nfreeCells, freeSpace, largestFreeCell);
-	MEMSTAT_PRINT("used: alloced = %d total = %d", alloced, used);
+	MEMSTAT_PRINT("total counts: allocs = %d frees = %d", stats.totalAllocs, stats.totalFrees);
+	MEMSTAT_PRINT("free: cells = %d space = %d largestCell = %d", stats.numFreeCells, stats.freeSpace, stats.largestFreeCell);
+	MEMSTAT_PRINT("used: alloced = %d total = %d", stats.alloced, stats.used);
 	if (L) {
 		int luaAlloced = lua_gc(L, LUA_GCCOUNT, 0) * 1024 + lua_gc(L, LUA_GCCOUNTB, 0);
 		MEMSTAT_PRINT("Lua: alloced = %d", luaAlloced);
