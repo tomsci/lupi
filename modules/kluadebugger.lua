@@ -94,6 +94,8 @@ if OhGodNoRam then helpText = nil end -- Should free up a bit of space
 
 local require = require -- Make sure we keep this even after we've changed _ENV
 local membuf = require("membuf")
+require("membuf.types")
+require("membuf.print")
 
 -- We're not a module, just a collection of helper fns that should be global
 _ENV = _G

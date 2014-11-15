@@ -159,7 +159,7 @@ int init_module_kluadebugger(lua_State* L) {
 
 	// Interpreter module at top of stack
 	lua_getfield(L, -1, "require");
-	lua_pushliteral(L, "membuf");
+	lua_pushliteral(L, "membuf.types");
 	lua_call(L, 1, 0);
 
 	DECLARE_FN(L, lua_newMemBuf, "newmem");

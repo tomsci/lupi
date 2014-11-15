@@ -41,7 +41,9 @@ luaModules = {
 	"modules/oo.lua",
 	"modules/interpreter.lua",
 	"modules/spin.lua",
-	{ path = "modules/membuf.lua", native = "usersrc/membuf.c" },
+	{ path = "modules/membuf/membuf.lua", native = "modules/membuf/membuf.c" },
+	{ path = "modules/membuf/types.lua" },
+	{ path = "modules/membuf/print.lua" },
 	{ path = "modules/int64.lua", native = "usersrc/int64.c" },
 	{ path = "modules/runloop.lua", native = "usersrc/runloop.c" },
 	{ path = "modules/ipc.lua", native = "usersrc/ipc.c" },
@@ -145,6 +147,7 @@ bootMenuModules = {
 	"modules/test/yielda.lua",
 	"modules/test/yieldb.lua",
 	"modules/bitmap/tests.lua",
+	{ path = "modules/test/memTests.lua", native = "testing/memTests.c" },
 }
 
 if _VERSION ~= "Lua 5.2" then
@@ -696,7 +699,7 @@ function build_kernel()
 	if includeModules then
 		-- Add any modules with native code
 		for _, module in ipairs(luaModules) do
-			if type(module) == "table" and module.native then
+			if type(module) == "table" and type(module.native) == "string" then
 				table.insert(sources, { path = module.native, user = true, copts = module.copts })
 			end
 		end

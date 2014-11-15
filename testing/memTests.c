@@ -10,6 +10,8 @@ void ulua_setupGlobals(lua_State* L);
 
 static const char* modules[] = {
 	"membuf",
+	"membuf.types",
+	"membuf.print",
 	"int64",
 	"oo",
 	"misc",
