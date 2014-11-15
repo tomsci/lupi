@@ -202,9 +202,14 @@ void* uluaHeap_allocFn(void *ud, void *ptr, size_t osize, size_t nsize) {
 		h->topCell = (FreeCell*)topPtr;
 		h->topCell->next = 0;
 		h->topCell->len = 0;
-		ASSERT_DBG(prev->next && !prev->next->next, "prev->next %p not last free cell\n", prev->next);
-		prev->next->next = h->topCell;
-		prev = prev->next;
+		if (h->freeList == NULL) {
+			ASSERT_DBG(prev == (void*)&h->freeList, "prev %p != h->freeList!", prev);
+			h->freeList = h->topCell;
+		} else {
+			ASSERT_DBG(prev->next && !prev->next->next, "prev->next %p not last free cell (prev=%p)\n", prev->next, prev);
+			prev->next->next = h->topCell;
+			prev = prev->next;
+		}
 	} else {
 		ASSERT_DBG(prev->next == h->topCell, "ERROR: prev->next %p != h->topCell %p\n", prev->next, h->topCell);
 	}
