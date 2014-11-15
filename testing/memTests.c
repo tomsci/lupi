@@ -4,7 +4,6 @@
 
 #include <lupi/uluaHeap.h>
 
-void printk(const char* fmt, ...) ATTRIBUTE_PRINTF(1, 2);
 lua_State* newLuaStateForModule(const char* moduleName, lua_State* L);
 void ulua_setupGlobals(lua_State* L);
 
@@ -23,7 +22,7 @@ static const char* modules[] = {
 };
 
 static int test_mem(lua_State* L) {
-	printk("test_mem\n");
+	printf("test_mem\n");
 
 	// We tear down the existing heap and lua env entirely
 	Heap* h = (Heap*)0x20070000;
@@ -33,7 +32,7 @@ static int test_mem(lua_State* L) {
 
 	HeapStats stats;
 	uluaHeap_stats(h, &stats);
-	printk("Overheads of runtime: %d\n", stats.alloced);
+	printf("Overheads of runtime: %d\n", stats.alloced);
 
 	// This module itself is fairly minimal
 	newLuaStateForModule("test.memTests", L);
@@ -42,7 +41,7 @@ static int test_mem(lua_State* L) {
 	lua_gc(L, LUA_GCCOLLECT, 0);
 	uluaHeap_stats(h, &stats);
 	const int fixedOverhead = stats.alloced;
-	printk("Fixed overheads: %d\n", fixedOverhead);
+	printf("Fixed overheads: %d\n", fixedOverhead);
 
 	for (int i = 0; i < sizeof(modules) / sizeof(char*); i++) {
 		uluaHeap_reset(h);
@@ -52,7 +51,7 @@ static int test_mem(lua_State* L) {
 		lua_call(L, 1, 1);
 		lua_gc(L, LUA_GCCOLLECT, 0);
 		uluaHeap_stats(h, &stats);
-		printk("Cost of module %s: %d\n", modules[i], stats.alloced - fixedOverhead);
+		printf("Cost of module %s: %d\n", modules[i], stats.alloced - fixedOverhead);
 	}
 
 	// No way to safely return from this

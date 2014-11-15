@@ -48,7 +48,7 @@ void NAKED lupi_printstring(const char* str) {
 	SLOW_EXEC1(KExecPrintString);
 }
 
-void NAKED exec_putch(uint ch) {
+void NAKED exec_putch(char ch) {
 	SLOW_EXEC1(KExecPutch);
 }
 

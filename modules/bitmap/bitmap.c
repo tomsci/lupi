@@ -11,8 +11,7 @@
 int exec_getInt(ExecGettableValue val);
 
 #define BMP_DEBUG(...)
-// #define BMP_DEBUG printk
-// void printk(const char* fmt, ...) ATTRIBUTE_PRINTF(1, 2);
+// #define BMP_DEBUG printf
 
 #ifdef ONE_BPP_BITMAPS
 

@@ -30,7 +30,7 @@ inline int getLuaMem(lua_State* L) {
 
 #endif // MEM_DEBUG
 
-void exec_putch(uint ch);
+void exec_putch(char ch);
 int exec_getch();
 int exec_createProcess(const char* name);
 int exec_getUptime();

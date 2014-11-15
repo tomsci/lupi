@@ -1,5 +1,6 @@
 #include <stddef.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 
 #include <lua.h>
@@ -34,9 +35,8 @@ O(N^2) to coelesce the whole free list.
 // #define VERBOSE_LOGGING
 
 #ifdef DEBUG_LOGGING
-void printk(const char* fmt, ...) ATTRIBUTE_PRINTF(1, 2);
-#define DBG(args...) printk(args)
-#define ASSERT_DBG(cond, args...) do { if (!(cond)) { printk(args); abort(); } } while(0)
+#define DBG(args...) printf(args)
+#define ASSERT_DBG(cond, args...) do { if (!(cond)) { printf(args); abort(); } } while(0)
 #else
 #define DBG(args...)
 #define DBGV(args...)
@@ -44,7 +44,7 @@ void printk(const char* fmt, ...) ATTRIBUTE_PRINTF(1, 2);
 #endif // DEBUG_LOGGING
 
 #ifdef VERBOSE_LOGGING
-#define DBGV(args...) printk(args)
+#define DBGV(args...) printf(args)
 #else
 #define DBGV(args...)
 #endif
@@ -242,12 +242,7 @@ void uluaHeap_reset(Heap* h) {
 	DBG("Heap reset %p\n", h);
 }
 
-#ifdef DEBUG_LOGGING
-// Then use more direct mechanism that doesn't need to allocate
-#define MEMSTAT_PRINT(fmt, args...) printk(fmt "\n", args)
-#else
-#define MEMSTAT_PRINT(fmt, args...) PRINTL(fmt, args)
-#endif
+#define MEMSTAT_PRINT(fmt, args...) printf(fmt "\n", args)
 
 int memStats_lua(lua_State* L) {
 	// lua_gc(L, LUA_GCCOLLECT, 0);
