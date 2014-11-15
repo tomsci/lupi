@@ -167,7 +167,7 @@ static int getType(lua_State* L) {
 	return 1;
 }
 
-int init_module_membuf(lua_State* L) {
+int init_module_membuf_membuf(lua_State* L) {
 	// module env at top of L stack
 	luaL_newmetatable(L, MemBufMetatable);
 	luaL_Reg fns[] = {
