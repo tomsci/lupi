@@ -119,6 +119,20 @@ static int getWidth(lua_State* L) {
 	return 1;
 }
 
+static int getRawHeight(lua_State* L) {
+	Bitmap* b = bitmap_check(L, 1);
+	Rect r = rect_make(0, 0, bitmap_getWidth(b), bitmap_getHeight(b));
+	lua_pushinteger(L, r.h);
+	return 1;
+}
+
+static int getRawWidth(lua_State* L) {
+	Bitmap* b = bitmap_check(L, 1);
+	Rect r = rect_make(0, 0, bitmap_getWidth(b), bitmap_getHeight(b));
+	lua_pushinteger(L, r.w);
+	return 1;
+}
+
 static int create(lua_State* L) {
 	int w = luaL_optint(L, 1, 0);
 	int h = luaL_optint(L, 2, 0);
@@ -218,6 +232,8 @@ int init_module_bitmap_bitmap(lua_State* L) {
 		{ "drawXbm", drawXbm },
 		{ "height", getHeight },
 		{ "width", getWidth },
+		{ "rawHeight", getRawHeight },
+		{ "rawWidth", getRawWidth },
 		{ "setColour", setColour },
 		{ "setBackgroundColour", setBackgroundColour},
 		{ "getColour", getColour },

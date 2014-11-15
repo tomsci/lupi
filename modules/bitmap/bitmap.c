@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <string.h>
 #include <lupi/exec.h>
 #include "bitmap.h"
 #include "font.xbm" // Rockin' the retro!
@@ -60,8 +61,8 @@ static const AffineTransform IdentityTransform = { .a = 1, .b = 0, .c = 0, .d = 
 		.data = bitmap_getPixels(b), \
 		.bwidth = bitmap_getWidth(b), \
 		.bheight = bitmap_getHeight(b), /* Only needed for debugging? */ \
-		.drawWidth = transform_x(b->transform, b->bounds.w, b->bounds.h), \
-		.drawHeight = transform_y(b->transform, b->bounds.w, b->bounds.h), \
+		.drawWidth = b->transform.b == 0 ? b->bounds.w : b->bounds.h, \
+		.drawHeight = b->transform.b == 0 ? b->bounds.h : b->bounds.w, \
 		.pixelTransform = { \
 			.a = b->transform.a, .b = b->transform.b, \
 			.c = b->transform.c, .d = b->transform.d, \
@@ -100,6 +101,10 @@ static void setPixelTransformed(const DrawContext* context, int x, int y, uint16
 	AffineTransform const*const t = &context->pixelTransform;
 	int xx = transform_x(*t, x, y);
 	int yy = transform_y(*t, x, y);
+	if (xx < 0 || xx >= context->bwidth || yy < 0 || yy >= context->bheight) {
+		BMP_DEBUG("Transform fail (%d, %d) -> (%d, %d) in %dx%d bmp!\n", x, y, xx, yy, context->bwidth, context->bheight);
+		return;
+	}
 	setPixelRaw(context, xx, yy, col);
 }
 
@@ -129,6 +134,7 @@ Bitmap* bitmap_construct(void* mem, uint16 width, uint16 height) {
 	b->format = (uint8)exec_getInt(EValScreenFormat);
 	rect_zero(&b->dirtyRect);
 	b->transform = IdentityTransform;
+	memset(b->data, 0, datasize(width, height));
 	return b;
 }
 
@@ -165,10 +171,14 @@ uint16 bitmap_getBackgroundColour(const Bitmap* b) {
 void rect_union(Rect* r, const Rect* r2) {
 	if (rect_isEmpty(r)) *r = *r2;
 	else {
-		if (r2->x < r->x) r->x = r2->x;
-		if (r2->y < r->y) r->y = r2->y;
-		if (r2->x + r2->w > r->x + r->w) r->w = r2->x + r2->w - r->x;
-		if (r2->y + r2->h > r->y + r->h) r->h = r2->y + r2->h - r->y;
+		int xmin = min(r->x, r2->x);
+		int xmax = max(r->x + r->w, r2->x + r2->w);
+		int ymin = min(r->y, r2->y);
+		int ymax = max(r->y + r->h, r2->y + r2->h);
+		r->x = xmin;
+		r->y = ymin;
+		r->w = xmax - xmin;
+		r->h = ymax - ymin;
 	}
 }
 
@@ -322,7 +332,10 @@ void bitmap_drawXbmData(Bitmap* b, uint16 x, uint16 y, const Rect* r, const uint
 	DECLARE_CONTEXT(b);
 
 	 // xbm drawing is allowed to continue outside the bitmap, but must start inside
-	if (x >= context.drawWidth || y >= context.drawHeight) return;
+	if (x >= context.drawWidth || y >= context.drawHeight) {
+		BMP_DEBUG("(%d,%d) outside of %dx%d!\n", x, y, context.drawWidth, context.drawHeight);
+		return;
+	}
 	const int xbm_stride = (xbm_width + 7) & ~7;
 
 	for (int yidx = 0; yidx < r->h; yidx++) {

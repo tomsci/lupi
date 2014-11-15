@@ -27,6 +27,16 @@ the values returned by `width()` and `height()` will be swapped.
 --native function Bitmap:width()
 
 --[[**
+Get raw height of the bitmap, without accounting for any current transformation.
+]]
+--native function Bitmap:rawHeight()
+
+--[[**
+Get raw width of the bitmap, without accounting for any current transformation.
+]]
+--native function Bitmap:getWidth()
+
+--[[**
 Gets the current foreground (pen) colour.
 ]]
 --native function Bitmap:getColour()
@@ -119,6 +129,8 @@ You may also pass arrays for the two points, for example:
 Blit the bitmap to the screen device. If no parameters are supplied, only blits
 the invalidated region. The invalidated region is the union of all rects that
 have been drawn to since the last call to `blit()`.
+
+If parameters are specified, they should be in unrotated coordinates.
 ]]
 --native function Bitmap:blit([x [,y [,w [,h]]]])
 
@@ -162,11 +174,11 @@ function Bitmap:setRotation(degrees)
 	if degrees == 0 then
 		self:setTransform(nil)
 	elseif degrees == 90 then
-		self:setTransform(0, -1, 1, 0, self:width(), 0)
+		self:setTransform(0, -1, 1, 0, self:rawWidth(), 0)
 	elseif degrees == 180 then
-		self:setTransform(-1, 0, 0, -1, self:width(), self:height())
-	elseif degress == 270 then
-		self:setTransform(0, -1, 1, 0, 0, self:height())
+		self:setTransform(-1, 0, 0, -1, self:rawWidth(), self:rawHeight())
+	elseif degrees == 270 then
+		self:setTransform(0, 1, -1, 0, 0, self:rawHeight())
 	end
 end
 
