@@ -20,7 +20,9 @@
 #define HAVE_SCREEN
 #define HAVE_MPU
 
+#ifdef MALLOC_AVAILABLE
 #define LUPI_USE_MALLOC_FOR_KLUA
+#endif
 
 //#define MCLK		84000000
 

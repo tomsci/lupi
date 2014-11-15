@@ -38,6 +38,11 @@ byte getch();
 //#define USE_HOST_MALLOC_FOR_LUA
 #endif
 
+#ifndef MALLOC_AVAILABLE
+void* uluaHeap_allocFn(void *ud, void *ptr, size_t osize, size_t nsize);
+void* uluaHeap_init();
+#endif
+
 #if !defined(HOSTED) && !defined(ULUA_PRESENT)
 
 NORETURN hang();
@@ -185,8 +190,7 @@ lua_State* newLuaStateForModule(const char* moduleName, lua_State* L);
 static lua_State* initModule(uintptr heapBase, const char* module) {
 #if defined(USE_HOST_MALLOC_FOR_LUA)
 	lua_State* L = luaL_newstate();
-#elif defined(LUPI_USE_MALLOC_FOR_KLUA) && defined(ULUA_PRESENT)
-#ifndef HAVE_MMU
+#elif !defined(HAVE_MMU)
 	// We need to nuke the malloc state because it may be in an inconsistant
 	// state due to the fact that we've crashed
 	memset((void*)KUserBss, 0, KUserBssSize);
@@ -196,13 +200,21 @@ static lua_State* initModule(uintptr heapBase, const char* module) {
 		TheSuperPage->crashedHeapLimit = TheSuperPage->currentProcess->heapLimit;
 	}
 	TheSuperPage->currentProcess->heapLimit = KUserHeapBase;
+
+	// Now we can either to malloc or uluaHeap
+#ifdef LUPI_USE_MALLOC_FOR_KLUA
 	lua_State* L = luaL_newstate();
-	PRINT_MEM_STATS("Mem used after klua newstate = %d B\n");
-#endif // HAVE_MMU
 #else
+	lua_State* L = lua_newstate(uluaHeap_allocFn, uluaHeap_init());
+#endif
+
+#else
+	// We have an MMU, just use klua heap
 	klua_heapReset(heapBase);
 	lua_State* L = lua_newstate(klua_alloc_fn, (void*)heapBase);
 #endif
+
+	PRINT_MEM_STATS("Mem used after klua newstate = %d B\n");
 	lua_atpanic(L, panicFn);
 	// Don't use luaL_openlibs, that opens extra modules we don't need and it
 	// saves a smidgeon of RAM to pick and choose
