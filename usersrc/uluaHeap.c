@@ -57,9 +57,15 @@ int memStats_lua(lua_State* L);
 // 8 bytes long
 struct FreeCell {
 	FreeCell* next;
-	int len;
+	uint16 prev; // Not used yet
+	uint16 __len; // is actual len >> 3
 };
+ASSERT_COMPILE(sizeof(FreeCell) == 8);
 
+#define setLen(fc, len) (fc)->__len = ((len) >> 3)
+#define getLen(fc) (((int)(fc)->__len) << 3)
+#define setPrev(h, fc, prev) (fc)->prev = (((uintptr)prev - (uintptr)h) >> 3)
+#define getPrev(h, fc) ((FreeCell*)((uintptr)(h) + ((fc)->prev << 3)))
 
 #define align(ptr) ((((uintptr)(ptr)) + 0x7) & ~0x7)
 
@@ -69,7 +75,7 @@ void* uluaHeap_init() {
 	h->totalFrees = 0;
 	h->topCell = (FreeCell*)align(h+1);
 	h->topCell->next = 0;
-	h->topCell->len = (uintptr)h + 4096 - (uintptr)h->topCell;
+	setLen(h->topCell, (uintptr)h + 4096 - (uintptr)h->topCell);
 	h->freeList = h->topCell;
 
 	DBG("Heap init %p\n", h);
@@ -79,13 +85,13 @@ void* uluaHeap_init() {
 // Returns the new cell for the region no longer covered by cell
 // cellNewSize must be 8-byte aligned
 static FreeCell* shrinkCell(FreeCell* cell, int cellNewSize) {
-	int remainder = cell->len - cellNewSize;
+	int remainder = getLen(cell) - cellNewSize;
 	FreeCell* cellNext = cell->next;
 	FreeCell* new = (FreeCell*)((uintptr)cell + cellNewSize);
 	cell->next = new;
 	new->next = cellNext;
-	cell->len = cellNewSize;
-	new->len = remainder;
+	setLen(cell, cellNewSize);
+	setLen(new, remainder);
 	return new;
 }
 
@@ -99,7 +105,7 @@ void* uluaHeap_allocFn(void *ud, void *ptr, size_t osize, size_t nsize) {
 		if (ptr) {
 			DBGV("Freeing %p len %ld\n", ptr, osize);
 			FreeCell* cell = (FreeCell*)ptr;
-			cell->len = osize;
+			setLen(cell, osize);
 			cell->next = h->freeList;
 			h->freeList = cell;
 			h->totalFrees++;
@@ -116,7 +122,7 @@ void* uluaHeap_allocFn(void *ud, void *ptr, size_t osize, size_t nsize) {
 			FreeCell* newCell = (FreeCell*)((uintptr)ptr + nsize);
 			newCell->next = h->freeList;
 			int newLen = osize - nsize;
-			newCell->len = newLen;
+			setLen(newCell, newLen);
 			h->freeList = newCell;
 			return ptr;
 		} else {
@@ -138,11 +144,11 @@ void* uluaHeap_allocFn(void *ud, void *ptr, size_t osize, size_t nsize) {
 	FreeCell* foundPrev = (FreeCell*)&h->freeList;
 	FreeCell* prev = foundPrev;
 	for (FreeCell* fc = h->freeList; fc != NULL; fc = fc->next) {
-		if (fc->len == nsize) {
+		if (getLen(fc) == nsize) {
 			found = fc;
 			foundPrev = prev;
 			break;
-		} else if (fc->len >= nsize && (!found || fc->len > found->len)) {
+		} else if (getLen(fc) >= nsize && (!found || getLen(fc) > getLen(found))) {
 			found = fc;
 			foundPrev = prev;
 		}
@@ -154,7 +160,7 @@ void* uluaHeap_allocFn(void *ud, void *ptr, size_t osize, size_t nsize) {
 	}
 
 	if (found) {
-		int remainder = found->len - nsize;
+		int remainder = getLen(found) - nsize;
 		FreeCell* newCell = NULL;
 		if (remainder) {
 			// Split the cell
@@ -168,12 +174,12 @@ void* uluaHeap_allocFn(void *ud, void *ptr, size_t osize, size_t nsize) {
 			DBG("topCell now %p, last freeCell prior %p\n", h->topCell, foundPrev);
 		}
 		h->totalAllocs++;
-		DBGV("Alloc found cell %p len=%d remainder=%d\n", found, found->len, remainder);
+		DBGV("Alloc found cell %p len=%d remainder=%d\n", found, getLen(found), remainder);
 		return found;
 	}
 
 	// Need to expand
-	int growBy = max(4096, nsize - (h->topCell ? h->topCell->len : 0));
+	int growBy = max(4096, nsize - (h->topCell ? getLen(h->topCell) : 0));
 	void* topPtr = sbrk(growBy);
 	// Kernel may be able to give us 2KB due to how the mem map is laid out,
 	// if there are an odd number of threads (thread stacks are only 2KB)
@@ -194,7 +200,7 @@ void* uluaHeap_allocFn(void *ud, void *ptr, size_t osize, size_t nsize) {
 		DBG("Reinstating topCell %p\n", topPtr);
 		h->topCell = (FreeCell*)topPtr;
 		h->topCell->next = 0;
-		h->topCell->len = 0;
+		setLen(h->topCell, 0);
 		if (h->freeList == NULL) {
 			ASSERT_DBG(prev == (void*)&h->freeList, "prev %p != h->freeList!", prev);
 			h->freeList = h->topCell;
@@ -206,13 +212,13 @@ void* uluaHeap_allocFn(void *ud, void *ptr, size_t osize, size_t nsize) {
 	} else {
 		ASSERT_DBG(prev->next == h->topCell, "ERROR: prev->next %p != h->topCell %p\n", prev->next, h->topCell);
 	}
-	h->topCell->len += growBy;
+	setLen(h->topCell, getLen(h->topCell) + growBy);
 	void* result = h->topCell;
 	FreeCell* newTop = shrinkCell(h->topCell, nsize);
 	// If we reach here, prev->next should be pointing to the topCell, unless the topCell was null
 	h->topCell = newTop;
 	prev->next = newTop;
-	DBG("Alloc grew heap by %d and returned %p newTop=%p len=%d\n", growBy, result, newTop, newTop->len);
+	DBG("Alloc grew heap by %d and returned %p newTop=%p len=%d\n", growBy, result, newTop, getLen(newTop));
 	return result;
 }
 
@@ -221,9 +227,9 @@ void uluaHeap_stats(Heap* h, HeapStats* stats) {
 	stats->totalAllocs = h->totalAllocs;
 	stats->totalFrees = h->totalFrees;
 	for (FreeCell* fc = h->freeList; fc != NULL; fc = fc->next) {
-		stats->freeSpace += fc->len;
+		stats->freeSpace += getLen(fc);
 		stats->numFreeCells++;
-		if (fc->len > stats->largestFreeCell) stats->largestFreeCell = fc->len;
+		if (getLen(fc) > stats->largestFreeCell) stats->largestFreeCell = getLen(fc);
 	}
 	uintptr top = (uintptr)sbrk(0);
 	stats->used = top - (uintptr)h;
@@ -236,7 +242,7 @@ void uluaHeap_reset(Heap* h) {
 	h->totalFrees = 0;
 	h->topCell = (FreeCell*)align(h+1);
 	h->topCell->next = 0;
-	h->topCell->len = top - (uintptr)h->topCell;
+	setLen(h->topCell, top - (uintptr)h->topCell);
 	h->freeList = h->topCell;
 
 	DBG("Heap reset %p\n", h);
