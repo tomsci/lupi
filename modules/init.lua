@@ -13,7 +13,7 @@ local commandsToRunInInterpreter = [[
 ]]
 
 function main()
-	lupi.createProcess("timerserver.server")
+	-- lupi.createProcess("timerserver.server")
 	local bootMode = lupi.getInt(EValBootMode)
 	if bootMode == string.byte('y') then
 		-- Yield tests - if it's working right, the yields should make the
@@ -28,6 +28,8 @@ function main()
 		return lupi.createProcess("passwordManager.textui")
 	elseif bootMode == 4 then
 		lupi.createProcess("passwordManager.gui")
+	elseif bootMode == 5 then
+		tryStartTetris()
 	elseif bootMode == string.byte('m') then
 		require("test.memTests").test_mem()
 	end
@@ -45,4 +47,10 @@ function main()
 		print("") -- Otherwise we'll get two lua prompts on one line
 	end
 	return interpreter.main()
+end
+
+function tryStartTetris()
+	local function go() return require("tetris").main() end
+	local ok, ret = pcall(go)
+	if not ok then print("Cannot start tetris\n", ret) end
 end

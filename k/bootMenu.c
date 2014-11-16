@@ -23,6 +23,7 @@ Boot menu:\n\
         1: Start klua debugger\n\
         3: Password manager (console UI)\n\
         4: Password manager (GUI)\n\
+        5: Tetris\n\
 Test func:\n\
         a: Run atomics unit tests\n\
         b: Run bitmap tests\n\
