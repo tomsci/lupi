@@ -23,6 +23,7 @@ config = {
 	-- Not enough ram for our wasteful klua allocator to load modules
 	-- kluaIncludesModules = true,
 	ulua = true,
+	malloc = true,
 
 	textSectionStart = 0x00080000, -- Must match KKernelCodeBase
 	bssSectionStart = 0x20087DE0, -- Must match KUserBss

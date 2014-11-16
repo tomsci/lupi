@@ -1,4 +1,5 @@
 #include <stddef.h>
+#include <stdio.h>
 #include <lua.h>
 #include <lualib.h>
 #include <lauxlib.h>
@@ -212,11 +213,10 @@ struct stats {
 };
 
 void malloc_stats();
-void printk(const char* fmt, ...) ATTRIBUTE_PRINTF(1, 2);
 
 void mallocInfoCallback(void* start, void* end, size_t used, void* ctxt) {
 	if (used < 0 || (end - start) + 4 < used) {
-		printk("WTF used %d start=%p end=%p\n", (int)used, start, end);
+		printf("WTF used %d start=%p end=%p\n", (int)used, start, end);
 		return;
 	}
 	struct stats* s = (struct stats*)ctxt;
@@ -233,7 +233,7 @@ void mallocInfoCallback(void* start, void* end, size_t used, void* ctxt) {
 	else if (used <= 32) s->slabs[6]++;
 	else if (used <= 36) s->slabs[7]++;
 	else {
-		printk("alloc %d\n", (int)used);
+		printf("alloc %d\n", (int)used);
 	}
 	// The +4 is because end-start is always smaller than used, I don't really
 	// know why. I assume the start ptr is being incorrectly adjusted
@@ -251,12 +251,12 @@ int memStats_lua(lua_State* L) {
 	struct stats s = {0};
 	s.L = L;
 	malloc_inspect_all(mallocInfoCallback, &s);
-	PRINTL("alloc count = %d", s.allocCount);
-	PRINTL("free count = %d", s.freeCellCount);
-	PRINTL("wasted bytes = %d", s.wasted);
-	PRINTL("used bytes = %d", s.used);
+	printf("alloc count = %d\n", s.allocCount);
+	printf("free count = %d\n", s.freeCellCount);
+	printf("wasted bytes = %d\n", s.wasted);
+	printf("used bytes = %d\n", s.used);
 	for (int i = 0; i < 8; i++) {
-		PRINTL("Num <=%d bytes: %d", 8+4*i, s.slabs[i]);
+		printf("Num <=%d bytes: %d\n", 8+4*i, s.slabs[i]);
 	}
 	malloc_stats();
 	return 0;

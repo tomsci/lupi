@@ -2,6 +2,8 @@
 #include <lualib.h>
 #include <lauxlib.h>
 
+#ifndef MALLOC_AVAILABLE
+
 #include <lupi/uluaHeap.h>
 
 lua_State* newLuaStateForModule(const char* moduleName, lua_State* L);
@@ -53,14 +55,16 @@ static int test_mem(lua_State* L) {
 		uluaHeap_stats(h, &stats);
 		printf("Cost of module %s: %d\n", modules[i], stats.alloced - fixedOverhead);
 	}
-
 	// No way to safely return from this
 	for(;;) {}
 	return 0;
 }
+#endif
 
 int init_module_test_memTests(lua_State* L) {
+#ifndef MALLOC_AVAILABLE
 	lua_pushcfunction(L, test_mem);
 	lua_setfield(L, -2, "test_mem");
+#endif
 	return 0;
 }

@@ -156,6 +156,7 @@ int newProcessEntryPoint() {
 	const char* moduleName = user_ProcessName;
 #ifdef MALLOC_AVAILABLE
 	lua_State* L = newLuaStateForModule(moduleName, NULL);
+	lua_atpanic(L, panicFn);
 #else
 	lua_State* L = lua_newstate(uluaHeap_allocFn, uluaHeap_init());
 	luaL_openlibs(L);
