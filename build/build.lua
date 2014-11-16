@@ -49,6 +49,7 @@ luaModules = {
 	{ path = "modules/ipc.lua", native = "usersrc/ipc.c" },
 	{ path = "modules/timerserver/init.lua" },
 	{ path = "modules/timerserver/server.lua", native = "modules/timerserver/timers.c" },
+	{ path = "modules/timerserver/local.lua", native = true },
 	"modules/symbolParser.lua",
 	{ path = "modules/bitmap/bitmap.lua", native = "modules/bitmap/bitmap_lua.c" },
 	{ path = "modules/input/input.lua", native = "modules/input/input.c" },
