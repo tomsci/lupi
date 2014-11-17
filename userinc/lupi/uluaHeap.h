@@ -6,8 +6,8 @@
 typedef struct FreeCell FreeCell;
 
 typedef struct Heap {
-	FreeCell* topCell; // Always last in freeList. May be null if we've filled the heap
 	FreeCell* freeList;
+	FreeCell* topCell; // Always last in freeList. May be null if we've filled the heap
 	int totalAllocs;
 	int totalFrees;
 } Heap;
