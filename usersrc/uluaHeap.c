@@ -24,10 +24,8 @@ the remainder retained on the free list. If no suitable free cell can be found,
 a call to `sbrk()` is made to allocate an additional page of memory from the
 kernel.
 
-Currently no effort is made to coelesce adjacent free cells. This would be
-difficult in the current implementation because the free list is not ordered by
-address but by the order in which the memory was freed, meaning it would be
-O(N^2) to coelesce the whole free list.
+The free list is kept in address order, so that free cells can be coelesced
+whenever a cell is freed.
 */
 
 
@@ -57,15 +55,31 @@ int memStats_lua(lua_State* L);
 // 8 bytes long
 struct FreeCell {
 	FreeCell* next;
-	uint16 prev; // Not used yet
-	uint16 __len; // is actual len >> 3
+	int __len; // is actual len >> 3
 };
 ASSERT_COMPILE(sizeof(FreeCell) == 8);
 
-#define setLen(fc, len) (fc)->__len = ((len) >> 3)
-#define getLen(fc) (((int)(fc)->__len) << 3)
-#define setPrev(h, fc, prev) (fc)->prev = (((uintptr)prev - (uintptr)h) >> 3)
-#define getPrev(h, fc) ((FreeCell*)((uintptr)(h) + ((fc)->prev << 3)))
+#define setLen(fc, len) (fc)->__len = (len)
+#define getLen(fc) ((fc)->__len)
+
+/**
+* If `a` is `NULL`, puts `b` at the head of the freeList, otherwise sets
+  `a->next` to `b`.
+* If `b` is `NULL`, sets `h->topCell` to `a`.
+*/
+static inline void link(Heap* h, FreeCell* a, FreeCell* b) {
+	if (!a) {
+		b->next = h->freeList;
+		h->freeList = b;
+	} else {
+		a->next = b;
+	}
+
+	if (!b) {
+		DBGV("topCell was %p now %p\n", h->topCell, a);
+		h->topCell = a;
+	}
+}
 
 #define align(ptr) ((((uintptr)(ptr)) + 0x7) & ~0x7)
 
@@ -95,6 +109,34 @@ static FreeCell* shrinkCell(FreeCell* cell, int cellNewSize) {
 	return new;
 }
 
+static void addToFreeList(Heap* h, FreeCell* cell) {
+	// Find the freeCell immediately before where this should go
+	FreeCell* prev = NULL;
+	for (FreeCell* fc = h->freeList; fc != NULL; fc = fc->next) {
+		if (cell > fc) {
+			prev = fc;
+			break;
+		}
+	}
+
+	FreeCell* next = prev ? prev->next : h->freeList;
+	link(h, prev, cell);
+	link(h, cell, next);
+
+	// Now check if we can coelsce cell with either its prev or its next
+	if (prev && ((uintptr)prev + getLen(prev) == (uintptr)cell)) {
+		DBG("Merging cell %p with prev %p len %d\n", cell, prev, getLen(prev));
+		setLen(prev, getLen(prev) + getLen(cell));
+		link(h, prev, next);
+		cell = prev;
+	}
+	if (next && ((uintptr)cell + getLen(cell) == (uintptr)next)) {
+		DBG("Merging cell %p len %d with next %p\n", cell, getLen(cell), next);
+		setLen(cell, getLen(cell) + getLen(next));
+		link(h, cell, next->next);
+	}
+}
+
 void* uluaHeap_allocFn(void *ud, void *ptr, size_t osize, size_t nsize) {
 	// We always return 8-byte aligned pointers and sizes whatever Lua thinks internally
 	nsize = (nsize + 7) & ~7;
@@ -106,8 +148,7 @@ void* uluaHeap_allocFn(void *ud, void *ptr, size_t osize, size_t nsize) {
 			DBGV("Freeing %p len %ld\n", ptr, osize);
 			FreeCell* cell = (FreeCell*)ptr;
 			setLen(cell, osize);
-			cell->next = h->freeList;
-			h->freeList = cell;
+			addToFreeList(h, cell);
 			h->totalFrees++;
 		}
 		return NULL;
@@ -120,10 +161,9 @@ void* uluaHeap_allocFn(void *ud, void *ptr, size_t osize, size_t nsize) {
 		} else if (nsize <= osize) {
 			// Shrink
 			FreeCell* newCell = (FreeCell*)((uintptr)ptr + nsize);
-			newCell->next = h->freeList;
 			int newLen = osize - nsize;
 			setLen(newCell, newLen);
-			h->freeList = newCell;
+			addToFreeList(h, newCell);
 			return ptr;
 		} else {
 			// Grow - for now assume we can never do in place
@@ -171,7 +211,7 @@ void* uluaHeap_allocFn(void *ud, void *ptr, size_t osize, size_t nsize) {
 		}
 		if (found == h->topCell) {
 			h->topCell = newCell;
-			DBG("topCell now %p, last freeCell prior %p\n", h->topCell, foundPrev);
+			DBGV("topCell now %p, last freeCell prior %p\n", h->topCell, foundPrev);
 		}
 		h->totalAllocs++;
 		DBGV("Alloc found cell %p len=%d remainder=%d\n", found, getLen(found), remainder);

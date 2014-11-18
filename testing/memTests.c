@@ -45,6 +45,18 @@ static int test_mem(lua_State* L) {
 	const int fixedOverhead = stats.alloced;
 	printf("Fixed overheads: %d\n", fixedOverhead);
 
+	// Check multiple require doesn't cost extra mem
+	int requireMem[3];
+	for (int i = 0; i < 3; i++) {
+		lua_getglobal(L, "require");
+		lua_pushstring(L, "test.memTests");
+		lua_call(L, 1, 0);
+		lua_gc(L, LUA_GCCOLLECT, 0);
+		uluaHeap_stats(h, &stats);
+		requireMem[i] = stats.alloced;
+	}
+	printf("Multiple requires: %d, %d, %d\n", requireMem[0], requireMem[1], requireMem[2]);
+
 	for (int i = 0; i < sizeof(modules) / sizeof(char*); i++) {
 		uluaHeap_reset(h);
 		L = lua_newstate(uluaHeap_allocFn, h);
