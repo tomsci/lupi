@@ -6,11 +6,6 @@
 #define ARMV7_M
 #define CORTEX_M3
 
-// According to doc11057 SAM3x.pdf p199
-#define NUM_MPU_REGIONS		8
-
-#define NUM_EXCEPTIONS		45 // p83
-
 #define LUPI_NO_SECTION0 // Implies packed superpage and no MMU translation
 
 #define LUPI_NO_IPC // This is a temporary macro
