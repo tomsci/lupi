@@ -322,7 +322,6 @@ void bitmap_getTextRect(Bitmap* b, int numChars, Rect* result) {
 		r.h = CHAR_HEIGHT(font);
 		r.w = numChars * CHAR_WIDTH(font);
 	}
-	rect_transform(&r, &b->transform);
 	result->w = r.w;
 	result->h = r.h;
 }
