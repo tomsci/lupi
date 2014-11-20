@@ -3,22 +3,11 @@
 
 typedef struct AsyncRequest AsyncRequest;
 
-#ifdef ARMV7_M
-
-#define DO_EXEC() \
-	asm("PUSH {r4-r12, r14}"); \
-	asm("SVC 0"); \
-	asm("POP {r4-r12, pc}")
-
-#else
-
 #define DO_EXEC() \
 	asm("PUSH {r4-r12}"); \
 	asm("SVC 0"); \
 	asm("POP {r4-r12}"); \
 	asm("BX lr")
-
-#endif // ARMV7_M
 
 #define SLOW_EXEC(code) \
 	asm("MOV r0, %0" : : "i" (code)); \
