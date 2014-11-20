@@ -105,6 +105,10 @@ local interpreter = require("interpreter")
 sp = TheSuperPage
 p = print
 
+function printf(...)
+	print(string.format(...))
+end
+
 function help()
 	print("The klua debugger.")
 	if helpText then
