@@ -62,6 +62,14 @@ ASSERT_COMPILE(sizeof(FreeCell) == 8);
 #define setLen(fc, len) (fc)->__len = (len)
 #define getLen(fc) ((fc)->__len)
 
+#ifdef DEBUG_LOGGING
+static void dumpFreeList(Heap* h) {
+	for (FreeCell* fc = h->freeList; fc != NULL; fc = fc->next) {
+		DBG("%08lX-%08lX len %d\n", (uintptr)fc, (uintptr)fc + getLen(fc), getLen(fc));
+	}
+}
+#endif
+
 /**
 * If `a` is `NULL`, puts `b` at the head of the freeList, otherwise sets
   `a->next` to `b`.
@@ -72,6 +80,7 @@ static inline void link(Heap* h, FreeCell* a, FreeCell* b) {
 		b->next = h->freeList;
 		h->freeList = b;
 	} else {
+		if (b) ASSERT_DBG(a < b, "Freecell %p not < %p!", a, b);
 		a->next = b;
 	}
 
@@ -113,10 +122,10 @@ static void addToFreeList(Heap* h, FreeCell* cell) {
 	// Find the freeCell immediately before where this should go
 	FreeCell* prev = NULL;
 	for (FreeCell* fc = h->freeList; fc != NULL; fc = fc->next) {
-		if (cell > fc) {
-			prev = fc;
+		if (fc > cell) {
 			break;
 		}
+		prev = fc;
 	}
 
 	FreeCell* next = prev ? prev->next : h->freeList;
@@ -125,13 +134,13 @@ static void addToFreeList(Heap* h, FreeCell* cell) {
 
 	// Now check if we can coelsce cell with either its prev or its next
 	if (prev && ((uintptr)prev + getLen(prev) == (uintptr)cell)) {
-		DBG("Merging cell %p with prev %p len %d\n", cell, prev, getLen(prev));
+		DBGV("Merging cell %p with prev %p len %d\n", cell, prev, getLen(prev));
 		setLen(prev, getLen(prev) + getLen(cell));
 		link(h, prev, next);
 		cell = prev;
 	}
 	if (next && ((uintptr)cell + getLen(cell) == (uintptr)next)) {
-		DBG("Merging cell %p len %d with next %p\n", cell, getLen(cell), next);
+		DBGV("Merging cell %p len %d with next %p\n", cell, getLen(cell), next);
 		setLen(cell, getLen(cell) + getLen(next));
 		link(h, cell, next->next);
 	}
@@ -233,6 +242,7 @@ void* uluaHeap_allocFn(void *ud, void *ptr, size_t osize, size_t nsize) {
 		DBG("Failed alloc for %ld\n", nsize);
 		// The lua_State arg is not used if DEBUG_LOGGING, so can be NULL
 		memStats_lua(NULL);
+		dumpFreeList(h); // Full dump of freelist
 #endif
 		return NULL;
 	}
