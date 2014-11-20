@@ -53,7 +53,7 @@ end
 
 --[[**
 In order to seamlessly support printing large MemBuf objects using their
-[description()](membuf.lua#MemBuf_description) API rather than `tostring`, we
+[description()](membuf/membuf.lua#MemBuf_description) API rather than `tostring`, we
 have to override the default print function with a `description`-aware version.
 ]]
 function print(...)
