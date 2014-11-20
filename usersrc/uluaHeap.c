@@ -55,7 +55,7 @@ int memStats_lua(lua_State* L);
 // 8 bytes long
 struct FreeCell {
 	FreeCell* next;
-	int __len; // is actual len >> 3
+	int __len;
 };
 ASSERT_COMPILE(sizeof(FreeCell) == 8);
 
@@ -71,18 +71,11 @@ static void dumpFreeList(Heap* h) {
 #endif
 
 /**
-* If `a` is `NULL`, puts `b` at the head of the freeList, otherwise sets
-  `a->next` to `b`.
 * If `b` is `NULL`, sets `h->topCell` to `a`.
 */
 static inline void link(Heap* h, FreeCell* a, FreeCell* b) {
-	if (!a) {
-		b->next = h->freeList;
-		h->freeList = b;
-	} else {
-		if (b) ASSERT_DBG(a < b, "Freecell %p not < %p!", a, b);
-		a->next = b;
-	}
+	if (b) ASSERT_DBG(a < b, "Freecell %p not < %p!", a, b);
+	a->next = b;
 
 	if (!b) {
 		DBGV("topCell was %p now %p\n", h->topCell, a);
@@ -120,7 +113,7 @@ static FreeCell* shrinkCell(FreeCell* cell, int cellNewSize) {
 
 static void addToFreeList(Heap* h, FreeCell* cell) {
 	// Find the freeCell immediately before where this should go
-	FreeCell* prev = NULL;
+	FreeCell* prev = (FreeCell*)&h->freeList;
 	for (FreeCell* fc = h->freeList; fc != NULL; fc = fc->next) {
 		if (fc > cell) {
 			break;
@@ -128,7 +121,7 @@ static void addToFreeList(Heap* h, FreeCell* cell) {
 		prev = fc;
 	}
 
-	FreeCell* next = prev ? prev->next : h->freeList;
+	FreeCell* next = prev->next;
 	link(h, prev, cell);
 	link(h, cell, next);
 
@@ -188,24 +181,34 @@ void* uluaHeap_allocFn(void *ud, void *ptr, size_t osize, size_t nsize) {
 	}
 
 	// alloc: find a free cell. If a traversal doesn't find an exact match,
-	// go with worst-fit.
+	// go with worst-fit - although don't eat into the topCell unless absolutely necessary
 	FreeCell* found = NULL;
 	FreeCell* foundPrev = (FreeCell*)&h->freeList;
 	FreeCell* prev = foundPrev;
 	for (FreeCell* fc = h->freeList; fc != NULL; fc = fc->next) {
 		if (getLen(fc) == nsize) {
+			// Exact match, use it
 			found = fc;
 			foundPrev = prev;
 			break;
-		} else if (getLen(fc) >= nsize && (!found || getLen(fc) > getLen(found))) {
+		} else if (fc != h->topCell && getLen(fc) >= nsize && (!found || getLen(fc) > getLen(found))) {
+			// Candidate, use it unless we find a bigger cell
 			found = fc;
 			foundPrev = prev;
 		}
 		if (!found && !fc->next) {
 			ASSERT_DBG(h->topCell == NULL || fc == h->topCell, "Last cell %p not topCell %p\n", fc, h->topCell);
+			// Break before we set prev, so that on exit from the loop, prev
+			// will point to the cell prior to the topcell
 			break;
 		}
 		prev = fc;
+	}
+
+	if (!found && h->topCell && getLen(h->topCell) >= nsize) {
+		// Use the topCell if there wasn't anything suitable in the freeList
+		found = h->topCell;
+		foundPrev = prev;
 	}
 
 	if (found) {
