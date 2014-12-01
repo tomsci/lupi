@@ -471,7 +471,13 @@ void lupi_printstring(const char* str);
 //BEGIN TOMSCI
 //#define luai_nummod(L,a,b)	((a) - l_mathop(floor)((a)/(b))*(b))
 //#define luai_numpow(L,a,b)	(l_mathop(pow)(a,b))
-#define luai_nummod(L,a,b)	((a) - ((a)/(b))*(b))
+
+static inline long luai_nummod(void* L, long a, long b) {
+	int numerator;
+	if (a < 0) numerator = a - (b - 1); // Hack for integer division rounding towards zero not -inf
+	else numerator = a;
+	return a - (numerator/b)*b;
+}
 #define luai_numpow(L,a,b)	__builtin_pow(a,b) //((void)(a), (void)(b), 0) // No power!
 //END TOMSCI
 #endif
