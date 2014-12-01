@@ -110,8 +110,7 @@ function lessThanUnsigned(a, b)
 	local abig, bbig = a < 0 and 1 or 0, b < 0 and 1 or 0
 	local aa, bb = bit32.band(a, 0x7FFFFFF), bit32.band(b, 0x7FFFFFF)
 	-- if debug then
-	-- 	print(string.format(
-	-- 		"a=%x b=%x abig=%d bbig=%d aa=%x bb=%x", a, b, abig, bbig, aa, bb))
+	-- 	printf("a=%x b=%x abig=%d bbig=%d aa=%x bb=%x", a, b, abig, bbig, aa, bb)
 	-- end
 	return abig < bbig or aa < bb
 end

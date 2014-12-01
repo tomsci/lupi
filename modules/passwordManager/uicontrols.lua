@@ -82,7 +82,7 @@ function Button:setEnabled(flag)
 end
 
 function Button:handleActivated()
-	print(string.format("Button %q activated", self.text))
+	printf("Button %q activated", self.text)
 end
 
 function Button:contentSize()

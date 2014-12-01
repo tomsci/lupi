@@ -56,20 +56,20 @@ end
 
 local function dummyObserver(op, x, y)
 	if op == TouchDown then
-		print(string.format("gotInput %d,%d", x, y))
+		printf("gotInput %d,%d", x, y)
 	elseif op == TouchUp then
 		print("Touch up")
 	elseif op == ButtonDown then
-		print(string.format("Button %d down", x))
+		printf("Button %d down", x)
 	elseif op == ButtonPressed then
-		print(string.format("Button %d pressed", x))
+		printf("Button %d pressed", x)
 	elseif op == ButtonUp then
-		print(string.format("Button %d up", x))
+		printf("Button %d up", x)
 	end
 end
 
 local function handleKeypress(buttonMask, timestamp)
-	-- print(string.format("handleKeypress %x", buttonMask))
+	-- printf("handleKeypress %x", buttonMask)
 	for i = 0, 31 do
 		local b = buttonStates[i]
 		if not b then

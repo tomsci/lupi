@@ -50,7 +50,7 @@ Lookup an item
 
 	-- TODO proper impl
 	for i, item in ipairs(keychainItems) do
-		print(string.format("% 4d. %s", i, item))
+		printf("% 4d. %s", i, item)
 	end
 	gotChar = function(ch)
 		local idx = ch - string.byte('0')
@@ -63,14 +63,14 @@ Lookup an item
 end
 
 function displayItemMenu(item)
-	print(string.format([[
+	printf([[
 
 Keychain item: %s
 
 p, ENTER - print password
        d - delete item
   0, ESC - back
-]], item))
+]], item)
 	gotChar = function(ch)
 		if ch == 27 or ch == string.byte('0') then
 			displayLookupMenu()

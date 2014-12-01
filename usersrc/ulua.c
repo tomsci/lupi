@@ -101,6 +101,18 @@ static int reboot_lua(lua_State* L) {
 	return 0;
 }
 
+static int printf_lua(lua_State* L) {
+	lua_getglobal(L, "string");
+	lua_getfield(L, -1, "format");
+	lua_insert(L, 1);
+	lua_pop(L, 1); // string
+	lua_call(L, lua_gettop(L) - 1, 1); // call string.format(...)
+	lua_getglobal(L, "print");
+	lua_insert(L, 1);
+	lua_call(L, lua_gettop(L) - 1, 1); // call print(formattedString)
+	return 0;
+}
+
 // Must match enum ExecGettableValue
 static const char* KGetIntEnums[] = {
 	"TotalRam",
@@ -186,6 +198,7 @@ void ulua_setupGlobals(lua_State* L) {
 		{ "getch", getch_lua },
 		{ "crash", crash },
 		{ "reboot", reboot_lua },
+		{ "printf", printf_lua },
 		{ NULL, NULL }
 	};
 	static const luaL_Reg lupi_funcs[] = {

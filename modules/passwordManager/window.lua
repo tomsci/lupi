@@ -124,7 +124,7 @@ function Window:gotInput(flags, x, y)
 	else
 		c = focusedPressedControl
 	end
-	-- print(string.format("Input %d,%d,%d c=%s fcc=%s fpc=%s dragging=%s", x, y, flags, tostring(c), tostring(focusCapturedControl), tostring(focusedPressedControl), tostring(dragging)))
+	-- printf("Input %d,%d,%d c=%s fcc=%s fpc=%s dragging=%s", x, y, op, tostring(c), tostring(focusCapturedControl), tostring(focusedPressedControl), tostring(dragging)))
 
 	if flags == 0 then
 		-- Pen up

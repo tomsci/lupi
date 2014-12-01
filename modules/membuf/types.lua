@@ -201,7 +201,7 @@ function MemBuf._newObject(obj)
 	--# Check for embedded objects and declare them too
 	for i, member in ipairs(t) do
 		if member.type then
-			--print(string.format("subobject of %s at %d+%d %s %s", t._type, member.offset, member.size, member.type, member.name))
+			--printf("subobject of %s at %d+%d %s %s", t._type, member.offset, member.size, member.type, member.name)
 			obj:sub(member.offset, member.size, member.type)
 		end
 	end

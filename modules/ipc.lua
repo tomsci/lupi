@@ -34,7 +34,7 @@ local function handleServerMsg(server, ptr)
 	The result of a server message is either a shared page address (in which case it's a
 	connection message, OR .... something else! (dum dum DUUUUM)
 	]]
-	--print(string.format("Got server message %x", ptr))
+	--printf("Got server message %x", ptr)
 	if bit32.band(ptr, 0xFFF) == 0 then
 		-- Shared page address, connection message from new client
 		local p = getSharedPage(ptr)
