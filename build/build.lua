@@ -174,6 +174,7 @@ jobs = { n = 0 }
 maxJobs = 1
 debugSchedulingEntryPoint = false
 bootMode = 0
+shouldStripLuaModules = false
 
 local function loadConfig(c)
 	local env = {
@@ -449,8 +450,31 @@ local function loadDependencyCache(cacheFile)
 	end
 end
 
-local function isClean(objFile)
-	return dependencyInfo[objFile] and dependencyInfo[objFile].clean
+local function isClean(objFile, cmdLine)
+	local clean = dependencyInfo[objFile] and dependencyInfo[objFile].clean
+	if clean and cmdLine then
+		clean = cmdLine == dependencyInfo[objFile].commandLine
+	end
+	-- if verbose then
+	-- 	print(string.format("isClean %s .clean=%s clean=%s", objFile, dependencyInfo[objFile].clean, clean))
+	-- end
+	return clean
+end
+
+function setDependency(obj, cmdLine)
+	local dep = dependencyInfo[obj]
+	if not dep then
+		dep = {}
+		dependencyInfo[obj] = dep
+	end
+	dep.commandLine = cmdLine
+	dep.built = true -- As opposed to merely having been loaded from the cache
+end
+
+function makeDirty(obj)
+	if dependencyInfo[obj] then
+		dependencyInfo[obj].clean = false
+	end
 end
 
 local function sortedKeys(tbl, sortFn)
@@ -534,7 +558,7 @@ function compilec(source, extraArgs)
 	local cmd = string.format("%s %s %s ", config.cc, opts, qrp(source.path))
 	if incremental then
 		-- Check if we need to build
-		local objClean = isClean(obj) and cmd == dependencyInfo[obj].commandLine
+		local objClean = isClean(obj, cmd)
 		if objClean then
 			if verbose then
 				print("Not compiling "..source.path..", dependency cache reports no changes")
@@ -548,12 +572,7 @@ function compilec(source, extraArgs)
 	end
 	if not preprocess and incremental then
 		-- Remember the invocation for later
-		local dep = dependencyInfo[obj]
-		if not dep then
-			dep = {}
-			dependencyInfo[obj] = dep
-		end
-		dep.commandLine = cmd
+		setDependency(obj, cmd)
 	end
 	return obj
 end
@@ -807,7 +826,7 @@ function build_kernel()
 			local data
 			if compileModules then
 				local obj = objForSrc(luaFile, ".luac")
-				local compileCmd = "bin/luac -o "..qrp(obj).." "..qrp(luaFile)
+				local compileCmd = "bin/luac -s -o "..qrp(obj).." "..qrp(luaFile)
 				local ok = exec(compileCmd)
 				if not ok then error("Failed to compile symbols module") end
 				f = assert(io.open(obj, "rb"))
@@ -851,6 +870,15 @@ function build_kernel()
 			local newDeps = {}
 			for _, obj in ipairs(objs) do
 				newDeps[obj] = updateDepsForObj(obj, dependencyInfo[obj].commandLine)
+				dependencyInfo[obj] = nil
+			end
+			-- Go through anything left in dependencyInfo
+			for obj, dep in pairs(dependencyInfo) do
+				if dep.built then
+					-- Only interested in the stuff we built just now, not
+					-- things left over in the cache from a previous build
+					newDeps[obj] = dep
+				end
 			end
 			saveDependencyCache(cacheFile, newDeps)
 		end
@@ -881,9 +909,15 @@ function generateLuaModulesSource()
 		table.insert(modulesList, moduleEntry)
 		if compileModules then
 			local obj = objForSrc(module, ".luac")
-			local compileCmd = "bin/luac -o "..qrp(obj).." "..module
+			local shouldStrip = shouldStripLuaModules
+			if luaModule.strip ~= nil then
+				-- Overriden on per-module basis
+				shouldStrip = luaModule.strip
+			end
+			local stripArg = shouldStrip and "-s " or ""
+			local compileCmd = "bin/luac "..stripArg.."-o "..qrp(obj).." "..module
 			local finalObj = objForSrc(module, ".luac.o")
-			if incremental and isClean(finalObj) then
+			if incremental and isClean(obj, compileCmd) and isClean(finalObj) then
 				-- We can get away with skipping the compilation
 				if verbose then print("Skipping compilation of "..module) end
 				moduleEntry.obj = obj
@@ -892,7 +926,9 @@ function generateLuaModulesSource()
 				local ok = parallelExec(compileCmd)
 				if not ok then error("Failed to precompile module "..module) end
 				moduleEntry.obj = obj
+				makeDirty(finalObj) -- Important to invalidate this
 			end
+			setDependency(obj, compileCmd)
 		else
 			-- Include modules as plain text - note, dependency info is not
 			-- checked on this code path
@@ -1022,6 +1058,7 @@ local opts = {
 	{ s = 'i', l = "incremental", bool = "incremental" },
 	{ s = 'j', l = "jobs", int = "maxJobs" },
 	{ s = 'b', l = "bootmode", int = "bootMode" },
+	{ s = 't', l = "strip", bool = "shouldStripLuaModules" },
 }
 
 function run()

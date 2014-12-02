@@ -190,6 +190,10 @@ Syntax:
 		-j | --jobs <n>     Run <n> of compiles in parallel.
 		-b | --bootmode <n> Set the boot mode.
 		-i | --incremental  Enable incremental build.
+		-t | --strip        Strip Lua modules of debugging symbols when
+		                    precompiling. Makes for a smaller ROM but Lua
+		                    stacktraces will be much less informative.
+		-s | --symbols      Include C symbols in the ROM.
 
 	Supported targets:
 		clean	Removes all built products.
