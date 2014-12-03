@@ -187,7 +187,7 @@ Syntax:
 		-l | --listing      Create assembly listings.
 		-p | --preprocess   Preprocess sources only.
 		-v | --verbose      Verbose mode.
-		-j | --jobs <n>     Run <n> of compiles in parallel.
+		-j | --jobs <n>     Run <n> compiles in parallel.
 		-b | --bootmode <n> Set the boot mode.
 		-i | --incremental  Enable incremental build.
 		-t | --strip        Strip Lua modules of debugging symbols when
@@ -208,7 +208,7 @@ Syntax:
 Targets are built in the order specified on the command line, so if you specify
 `clean`, it should be first. Eg:
 
-	./build/build.lua -m clean pi
+	./build/build.lua -m clean luac pi
 
 The command-line parsing also supports combining short options together, so the
 following are all equivalent:
@@ -578,6 +578,21 @@ There is a new global table with the functions described below:
 	Returns the number of milliseconds since boot as an
 	[Int64](modules/int64.lua).
 
+### Additional global functions
+
+There are a few global functions added for things that couldn't find a better
+home:
+
+* `printf(...)`: Convenience function equivalent to `print(string.format(...))`.
+* `putch(char)`: Low-level function to output a single character to the debug
+  port.
+* `getch()`: Low-level function to synchronously read a single character from
+  the debug port. Normally code should use the non-blocking `lupi.getch_async()`
+  function instead.
+* `reboot()`: Reboots the device.
+* `crash()`: Simulates an illegal operation which cases the kernel debugger to
+  be launched.
+
 ### Modules with native C code
 
 All Lua modules have to be specified at ROM build time, by an entry in
@@ -589,13 +604,18 @@ Modules that require native code should set `native = "path/to/nativecode.c"` in
 their entry in `luaModules`.
 
 A C function with signature `int init_module_MODULENAME(lua_State* L)` must
-exist in the file that `native` refers to. This function will be called the
-first time a module is `require`d in a given process. It is called as a
-`lua_CFunction`, with one argument which is the `_ENV` for the module. It is
-called after the `_ENV` table has been constructed, but before any of the code
-in MODULENAME.lua has run. It should not return anything. The normal use of such
-an init function is to populate the module's `_ENV` with some native functions,
-usually via a call to `luaL_setfuncs(lua_State* L, const luaL_Reg* l, int nup)`.
+exist in the file that `native` refers to. If the module resides in a
+subdirectory of modules then the path separators will be replaced with
+underscores, so for example a module located at `modules/timerserver/server.lua`
+the C function would be named `init_module_timerserver_server`. This function
+will be called the first time a module is `require`d in a given process. It is
+called as a `lua_CFunction`, with one argument on the Lua stack which is the
+`_ENV` for the module. It is called after the `_ENV` table has been constructed,
+but before any of the code in MODULENAME.lua has run. It should not return
+anything on the Lua stack, ie it should return with `return 0`. The normal use
+of such an init function is to populate the module's `_ENV` with some native
+functions, usually via a call to
+`luaL_setfuncs(lua_State* L, const luaL_Reg* l, int nup)`.
 
 The `modules` directory may contain subdirectories, for example to group a
 module with its native C code or associated resources:
