@@ -811,13 +811,17 @@ function build_kernel()
 		ok = exec(cmd)
 		if not ok then error("Readelf failed!") end
 
+		-- Check the entry point ended up in the right place (this can cause evil bugs otherwise)
+		local symParser = require("modules/symbolParser")
+		local syms = symParser.getSymbolsFromReadElf(readElfOutput)
+		local entryPoint = symParser.findSymbolByName("_start")
+		assert(entryPoint and bit32.band(entryPoint.addr, -2) == config.textSectionStart, "Linker failed to locate the entry point at the start of the text section")
+
 		local imgFileSize
 		if includeSymbols then
 			assert(includeModules, "Cannot include the symbols module unless modules are being built")
 			-- Symbols get appended on the end of the kernel image, and the
 			-- symbols module KLuaModulesTable entry is fixed up to point to it
-			local symParser = require("modules/symbolParser")
-			local syms = symParser.getSymbolsFromReadElf(readElfOutput)
 			local luaFile = objForSrc("modules/symbols.lua", ".lua")
 			local moduleText = symParser.dumpSymbolsTable()
 			local f = assert(io.open(luaFile, "w+"))
