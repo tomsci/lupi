@@ -20,7 +20,8 @@ static const char* modules[] = {
 	"interpreter", // Requires runloop
 	"input.input", // Requires runloop, membuf
 	"bitmap.bitmap",
-	"tetris.tetris", // Requires bitmap, runloop, input
+	"bitmap.transform",
+	"tetris.tetris", // Requires bitmap, bitmap.transform, runloop, input
 };
 
 static int test_mem(lua_State* L) {

@@ -5,8 +5,6 @@
 
 struct AffineTransform;
 
-// Everything is 16-bit 5-6-5 for the moment
-
 typedef struct Rect {
 	uint16 x, y, w, h;
 } Rect;

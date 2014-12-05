@@ -217,6 +217,26 @@ void rect_invert(Rect* r, const AffineTransform* t) {
 	rect_transform(r, &inv);
 }
 
+#if 0 // No-one actually needs this yet
+void transform_combine(AffineTransform* result, const AffineTransform* other) {
+	const AffineTransform* l = result;
+	const AffineTransform* r = other;
+	int8 a = l->a * r->a + l->b * r->c;
+	int8 b = l->a * r->b + l->b * r->d;
+	int8 c = l->c * r->a + l->d * r->c;
+	int8 d = l->c * r->b + l->d * r->d;
+	int tx = (int)l->a * r->tx + l->b * r->ty + l->tx;
+	int ty = (int)l->c * r->tx + l->d * r->ty + l->ty;
+
+	result->a = a;
+	result->b = b;
+	result->c = c;
+	result->d = d;
+	result->tx = tx;
+	result->ty = ty;
+}
+#endif
+
 void bitmap_clipToBounds(const Bitmap* b, Rect* r) {
 	// For the purposes of drawing inside the bitmap, the bitmap's bounds should
 	// always be considered to be (0,0). The fact that we use the x and y to

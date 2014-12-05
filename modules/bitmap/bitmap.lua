@@ -72,12 +72,16 @@ and following parameters are not specified, draws the entire XBM.
 --native function Bitmap:drawXbm(xbm, x, y, [, xbmx, xbmy, w, h])
 
 --[[**
-Fills the entire bitmap with the background colour.
+Fills the given region (or the entire bitmap if not specified) with the
+background colour.
 ]]
-function Bitmap:clear()
+function Bitmap:clear(x, y, w, h)
+	if not x then
+		x, y, w, h = 0, 0, self:width(), self:height()
+	end
 	local col = self:getColour()
 	self:setColour(self:getBackgroundColour())
-	self:drawRect(0, 0, self:width(), self:height())
+	self:drawRect(x, y, w, h)
 	self:setColour(col)
 end
 
@@ -170,7 +174,7 @@ is set to 90, drawing to (0, 0) will draw to the top-right pixel.
 ]]
 function Bitmap:setRotation(degrees)
 	-- For a rotation, a == d and b == -c
-	assert(degrees % 90 == 0, "degrees must be a multiple of 90")
+	degrees = degrees % 360
 	if degrees == 0 then
 		self:setTransform(nil)
 	elseif degrees == 90 then
@@ -179,6 +183,8 @@ function Bitmap:setRotation(degrees)
 		self:setTransform(-1, 0, 0, -1, self:rawWidth(), self:rawHeight())
 	elseif degrees == 270 then
 		self:setTransform(0, 1, -1, 0, 0, self:rawHeight())
+	else
+		error("degrees must be a multiple of 90")
 	end
 end
 

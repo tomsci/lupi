@@ -52,6 +52,7 @@ luaModules = {
 	{ path = "modules/timerserver/local.lua", native = true },
 	"modules/symbolParser.lua",
 	{ path = "modules/bitmap/bitmap.lua", native = "modules/bitmap/bitmap_lua.c" },
+	{ path = "modules/bitmap/transform.lua" },
 	{ path = "modules/input/input.lua", native = "modules/input/input.c" },
 	"modules/passwordManager/textui.lua",
 	"modules/passwordManager/uicontrols.lua",

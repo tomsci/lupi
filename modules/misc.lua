@@ -10,7 +10,7 @@ end
 
 _ENV = fixupEnv(_ENV)
 
--- Now we've done that, we can actually declare stuff
+-- Now we've done that, we can actually declare stuff in _ENV
 fixupEnvIfRunByHostLua = fixupEnv
 
 --[[**
