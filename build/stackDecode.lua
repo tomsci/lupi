@@ -13,7 +13,7 @@ symParser.getSymbolsFromReadElf(elf)
 
 local f = assert(io.open(dumpFile, "r"))
 for line in f:lines() do
-	local addr, rest = line:match("0x(%x%x%x%x%x%x%x%x): (.*)  .*")
+	local addr, rest = line:match("(%x%x%x%x%x%x%x%x): (.*)  .*")
 	if addr then
 		addr = tonumber(addr, 16)
 		for word in rest:gmatch("%x+") do

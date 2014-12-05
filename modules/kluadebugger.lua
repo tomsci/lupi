@@ -214,7 +214,7 @@ function stack(obj)
 				stackData, symbols.addressDescription(stackData)))
 		end
 	else
-		print(stackMem:words())
+		stackMem:words(nil, print)
 	end
 end
 
