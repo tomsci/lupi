@@ -69,7 +69,7 @@ Blit part of an XBM to the bitmap using the current foreground and background
 colours. The `xbm` parameter must be a MemBuf created in native code. If `xbmx`
 and following parameters are not specified, draws the entire XBM.
 ]]
---native function Bitmap:drawXbm(xbm, x, y, [, xbmx, xbmy, w, h])
+--native function Bitmap:drawXbm(xbm, x, y [, xbmx, xbmy, w, h])
 
 --[[**
 Fills the given region (or the entire bitmap if not specified) with the

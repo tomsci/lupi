@@ -1,13 +1,18 @@
 require "bitmap"
 require "runloop"
 require "input"
+require "misc"
 local timers = require "timerserver.local"
+local trans = require "bitmap.transform"
+
+local Transform, RotateTransform = trans.Transform, trans.RotateTransform
+local iter = misc.iter
 
 local blockw, blockh = 6, 6
 local inset = 2
 
 -- These coordinates correspond to where the bricks are located in tetris.xbm
--- They consist of 2 pairs of numbers: this first describing the x position and
+-- They consist of 2 pairs of numbers: the first describing the x position and
 -- width of the top 2 blocks of the brick; and the second describing the bottom
 -- 2 blocks. For the line (which is solely on the top row), the second pair has
 -- a width of zero.
@@ -21,28 +26,42 @@ bricks = {
 	backs = { { 12, 2 }, { 13, 2 } },
 }
 
-function drawBrick(p, x, y)
-	local firstRect = p[1]
-	local secondRect = p[2]
+-- Returns the top left index of brick in the xbm
+function xOriginForBrick(brick)
+	local firstRect = brick[1]
+	local secondRect = brick[2]
+	local baseX = firstRect[1]
 	local xdelta = secondRect[1] - firstRect[1]
 	if xdelta < 0 then
-		-- First rect isn't leftmost part of the brick, so increment x so that
-		-- the leftmost part is drawn at the original x
-		x = x - xdelta
+		-- First rect isn't leftmost part of the brick
+		baseX = baseX + xdelta
 	end
-
-	bmp:drawXbm(xbm, inset + x * blockw, y * blockh, firstRect[1] * blockw, 0, firstRect[2] * blockw, blockh)
-	if secondRect[2] > 0 then
-		bmp:drawXbm(xbm, inset + (x + xdelta) * blockw, (y + 1) * blockh,
-			secondRect[1] * blockw, blockh, secondRect[2] * blockw, blockh)
-	end
+	return baseX
 end
 
-function clearBrick(p, x, y)
-	local col = bmp:getColour()
-	bmp:setColour(bmp:getBackgroundColour())
-	drawBrick(p, x, y)
-	bmp:setColour(col)
+-- blockX and blockY are baseRotated block coords
+function drawBrick(brick, blockX, blockY, rotation)
+	local baseX = blockX * blockw
+	local baseY = blockY * blockh
+
+	local firstRect = brick[1]
+	local secondRect = brick[2]
+	local xdelta = secondRect[1] - firstRect[1]
+	local firstOffset, secondOffset = 0, xdelta * blockw
+	if xdelta < 0 then
+		-- First rect isn't leftmost part of the brick, so fix offsets
+		firstOffset = -secondOffset
+		secondOffset = 0
+	end
+
+	local x1, y1 = rotation:transform(baseX, baseY, 0, 0)
+	-- printf("Block coords %d,%d -> base coords (%d,%d) -> bmp coords (%d,%d)", blockX, blockY, baseX, baseY, x1, y1)
+
+	bmp:drawXbm(xbm, x1 + firstOffset, y1, firstRect[1] * blockw, 0, firstRect[2] * blockw, blockh)
+	if secondRect[2] > 0 then
+		bmp:drawXbm(xbm, x1 + secondOffset, y1 + blockh,
+			secondRect[1] * blockw, blockh, secondRect[2] * blockw, blockh)
+	end
 end
 
 local function min(a, b) return b < a and b or a end
@@ -61,7 +80,16 @@ function brickHeight(brick)
 	return brick[2][2] > 0 and 2 or 1
 end
 
+function brickSizeInPixels(brick)
+	return brickWidth(brick) * blockw, brickHeight(brick) * blockh
+end
+
+function brickSize(brick)
+	return brickWidth(brick), brickHeight(brick)
+end
+
 function brickSolidAt(brick, x, y)
+	assert(y == 0 or y == 1, "y ("..tostring(y)..") must be 0 or 1")
 	-- y must be either 0 or 1 so can be used to index into brick (which is one-based hence the +1)
 	local minx = min(brick[1][1], brick[2][1])
 	local rect = brick[y + 1]
@@ -70,35 +98,66 @@ end
 
 -- Here endeth the static-ish functions
 
--- 1st line is at bottom, ie y block coord (height-1)
 -- Each line is an array of integers representing the type of block in that column
+-- Empty columns represented by nil
+-- Is in block idx order, ie lines[0] is the topmost line and lines[height-1] the bottom
+-- A completely empty line may be represented by nil or {}
 lines = {}
 
 function currentBrickWidth()
-	return brickWidth(current)
+	if current.angle % 180 == 0 then
+		return brickWidth(current.brick)
+	else
+		return brickHeight(current.brick)
+	end
 end
 
 function currentBrickHeight()
-	return brickHeight(current)
+	if current.angle % 180 == 0 then
+		return brickHeight(current.brick)
+	else
+		return brickWidth(current.brick)
+	end
 end
 
 function currentBlockSolidAt(x, y)
-	return brickSolidAt(current, x, y)
+	return brickSolidAt(current.brick, current.rotation:transform(x, y))
+end
+
+function clearCurrentBrick()
+	local col = bmp:getColour()
+	bmp:setColour(bmp:getBackgroundColour())
+	drawCurrentBrick()
+	bmp:setColour(col)
+end
+
+function drawCurrentBrick()
+	drawBrick(current.brick, current.x, current.y, current.drawTransform)
 end
 
 function init()
 	local rl = runloop.current or runloop.new()
 
 	bmp = bitmap.create()
-	bmp:setRotation(90)
+	baseRotation = RotateTransform(270, bmp:rawWidth(), bmp:rawHeight())
+	bmp:setTransform(baseRotation:get())
 	width = bmp:width() / blockw
 	height = bmp:height() / blockh
 	curIdx = "block"
-	current = bricks[curIdx]
-	curX = width / 2
-	curY = 0
+	local brick = bricks[curIdx]
+	current = {
+		brick = brick,
+		x = width / 2,
+		y = 0,
+		angle = 0,
+		rotation = RotateTransform(0, brickSize(brick)),
+		drawTransform = Transform()
+	}
+	current.drawTransform.tx = current.drawTransform.tx + inset
+	playing = true
 	dropping = false
 	paused = false
+	tickPeriod = 1000
 
 	local w, h = bmp:width()-1, bmp:height()-1
 	bmp:drawLine(0, 0, 0, h)
@@ -122,8 +181,14 @@ function init()
 end
 
 function start()
-	timers.after(tick, 1000)
-	drawBrick(current, curX, curY)
+	-- weightless = true; curIdx = "line"; current.brick = bricks[curIdx] -- DEBUG
+	-- weightless = true; curIdx = "ell"; current.brick = bricks[curIdx] -- DEBUG
+
+	if not weightless then
+		timers.after(tick, tickPeriod)
+		ticking = true
+	end
+	drawCurrentBrick()
 	bmp:blit()
 end
 
@@ -134,8 +199,11 @@ function main()
 	runloop.current:run()
 end
 
--- Returns true if moving current brick to position (x,y) would overlap another block
-local function hitTest(x, y)
+--[[**
+Returns true if moving current brick to position (x,y) would overlap another
+block or cause the brick to go out of bounds.
+]]
+function hitTest(x, y)
 	for dy = 0, currentBrickHeight() - 1 do
 		for dx = 0, currentBrickWidth() - 1 do
 			if currentBlockSolidAt(dx, dy) then
@@ -143,7 +211,7 @@ local function hitTest(x, y)
 				if xx < 0 or xx >= width or yy >= height then
 					return true -- out of bounds
 				end
-				local line = lines[height - 1 - yy]
+				local line = lines[yy]
 				local blk = line and line[xx]
 				if blk and blk ~= 0 then return true end
 			end
@@ -152,49 +220,144 @@ local function hitTest(x, y)
 	return false
 end
 
+-- Get an opaque identifier which encasulates which block of the XBM is drawn
+-- for (x,y) and in what orientation
+local function idForCurrentBrickOffset(x, y)
+	local basex, basey = current.rotation:transform(x, y)
+	assert(basey == 0 or basey == 1)
+	assert(basex <= 3)
+	local blockx = xOriginForBrick(current.brick) + basex
+	local blocky = basey
+	return current.angle * 32 + blockx + basey * 16
+end
+
+local function removeFullLines()
+	for i = 0, height-1 do
+		local full = true
+		local line = lines[i]
+		if line then
+			for j = 0, width-1 do
+				if line[j] == nil then
+					full = false
+					break
+				end
+			end
+			if full then
+				lines[i] = nil
+			end
+		end
+	end
+
+	-- TODO animate fullLines
+
+	-- Shuffle em up, ugh this is why I had lines counting the opposite way so I could use table.remove...
+	local i = height-1
+	local numSkipped = 0
+	while i >= 0 do
+		if lines[i] == nil then
+			-- printf("Skipping line %i", i)
+			numSkipped = numSkipped+1
+		elseif numSkipped > 0 then
+			-- printf("Moving line %d to %d", i, i + numSkipped)
+			lines[i+numSkipped] = lines[i]
+			lines[i] = nil
+		end
+		i = i - 1
+	end
+
+	bmp:clear(inset, 0, bmp:width() - inset*2, bmp:height() - inset)
+	for y = 0, height-1 do
+		if lines[y] then
+			for x = 0, width-1 do
+				local id = lines[y][x]
+				if id then
+					-- printf("Line %d col %d drawing 0x%x", y, x, id)
+					local angle = bit32.band(id, bit32.bnot(31)) / 32
+					id = bit32.band(id, 31)
+					local blockx, blocky = bit32.band(id, 15), bit32.band(id, 16) / 16
+
+					-- Starting to lose the plot here... condensed code from setBrickRotation
+					bmp:setTransform(RotateTransform(angle):applyToRotation(baseRotation):get())
+					local drawTransform = RotateTransform(-angle, bmp:width(), bmp:height())
+					if angle == 0 then
+						drawTransform.tx = drawTransform.tx + inset
+					elseif angle == 90 then
+						drawTransform.ty = drawTransform.ty - blockw - inset
+					elseif angle == 180 then
+						drawTransform.tx = drawTransform.tx - blockw - inset
+						drawTransform.ty = drawTransform.ty - blockh
+					elseif angle == 270 then
+						drawTransform.tx = drawTransform.tx - blockh
+						drawTransform.ty = drawTransform.ty + inset
+					end
+					local x1, y1 = drawTransform:transform(x*blockw, y*blockh, 0, 0)
+					bmp:drawXbm(xbm, x1, y1, blockx * blockw, blocky * blockh, blockw, blockh)
+				end
+			end
+		end
+	end
+	-- Restore bmp rotation
+	bmp:setTransform(baseRotation:get())
+end
+
 local function landed()
 	print("Landed!")
 	for dy = 0, currentBrickHeight() - 1 do
 		for dx = 0, currentBrickWidth() - 1 do
 			if currentBlockSolidAt(dx, dy) then
-				block = 1 --TODO
-				local x, lineIdx = curX + dx, height - 1 - (curY + dy)
+				local blockId = idForCurrentBrickOffset(dx, dy)
+				-- printf("BlockId for %s (%d,%d) = %x", curIdx, dx, dy, blockId)
+				local x, lineIdx = current.x + dx, current.y + dy
 				local line = lines[lineIdx]
 				if line == nil then
-					lines[lineIdx] = { [x] = block }
-				else
-					line[x] = block
+					line = {}
+					lines[lineIdx] = line
 				end
+				-- printf("Line %d col %d = 0x%x", lineIdx, x, blockId)
+				line[x] = blockId
 			end
 		end
 	end
 
-	-- Now check for full lines
-	-- for i, line in ipairs(lines
+	-- TODO for next brick need better algorithm than simply cycling through
+	curIdx, current.brick = next(bricks, curIdx)
+	if not curIdx then curIdx, current.brick = next(bricks) end
 
-	curIdx, current = next(bricks, curIdx)
-	if not curIdx then curIdx, current = next(bricks) end
-	curY = 0
-	curX = width / 2
+	-- And reset brick orientation and location
+	setBrickRotation(0, false)
+	current.y = 0
+	current.x = width / 2
 
+	-- Call this only after setting rotation to 0
+	removeFullLines()
+
+	if hitTest(current.x, current.y) then
+		-- We are full
+		playing = false
+		bmp:setTransform(current.baseRotation:get())
+		bmp:drawTextCentred("Game over!", 0, 20, bmp:width(), 0)
+	end
 end
 
 function moveCurrent(dx, dy)
-	clearBrick(current, curX, curY)
-	curX = curX + dx
-	curY = curY + dy
-	drawBrick(current, curX, curY)
+	clearCurrentBrick()
+	current.x = current.x + dx
+	current.y = current.y + dy
+	drawCurrentBrick()
 end
 
 function tick()
-	if paused then return end
-	timers.after(tick, 1000)
+	ticking = false
+	if paused or not playing then return end
+	timers.after(tick, tickPeriod)
+	ticking = true
 	moveBrickDown()
+	-- lupi.memStats()
 end
 
 function moveBrickDown()
 	-- Check if brick can drop
-	local wouldHit = hitTest(curX, curY + 1)
+	local wouldHit = hitTest(current.x, current.y + 1)
 
 	if wouldHit then
 		landed()
@@ -203,18 +366,58 @@ function moveBrickDown()
 	end
 	bmp:blit()
 	collectgarbage()
-	--lupi.memStats()
+	-- lupi.memStats()
 end
 
 function drop()
-	if paused or not dropping then return end
+	if paused or not dropping or not playing then return end
 	timers.after(drop, 100)
 	moveBrickDown()
+end
+
+function setBrickRotation(angle, performHitTest)
+	if performHitTest == nil then
+		-- Defaults to true if not specified
+		performHitTest = true
+	end
+	local oldAngle = current.angle
+	current.angle = angle % 360
+	current.rotation = RotateTransform(-current.angle, brickSize(current.brick))
+
+	if performHitTest and hitTest(current.x, current.y) then
+		-- No room to rotate
+		current.angle = oldAngle
+		current.rotation = RotateTransform(-current.angle, brickSize(current.brick))
+		return false
+	end
+
+	bmp:setTransform(RotateTransform(current.angle):applyToRotation(baseRotation):get())
+	current.drawTransform = RotateTransform(-current.angle, bmp:width(), bmp:height())
+
+	-- Correct for the centre of rotation not putting it the brick top left in quite the right place
+	-- I'm sure there should be a better way of doing this
+	-- At same time, add the inset to the appropriate axis
+	local r = current.drawTransform
+	if current.angle == 0 then
+		r.tx = r.tx + inset
+	elseif current.angle == 90 then
+		r.ty = r.ty - currentBrickWidth() * blockw - inset
+	elseif current.angle == 180 then
+		r.tx = r.tx - currentBrickWidth() * blockw - inset
+		r.ty = r.ty - currentBrickHeight() * blockh
+	elseif current.angle == 270 then
+		r.tx = r.tx - currentBrickHeight() * blockh
+		r.ty = r.ty + inset
+	end
+	-- printf("setBrickRotation %d -> a=%d b=%d c=%d d=%d tx=%d ty=%d", angle, r.a, r.b, r.c, r.d, r.tx, r.ty)
+	return true
 end
 
 Up, Down, Left, Right, A, B, Select, Light = 0, 1, 2, 3, 4, 5, 6, 7
 
 function buttonPressed(op, btn)
+	if not playing then return end
+
 	if btn == Down then
 		if op == input.ButtonDown then
 			if not dropping then
@@ -228,27 +431,43 @@ function buttonPressed(op, btn)
 	end
 	if op ~= input.ButtonPressed then return end -- Not bovvered
 	if btn == Left then
-		if hitTest(curX - 1, curY) == false then
+		if hitTest(current.x - 1, current.y) == false then
 			moveCurrent(-1, 0)
 		end
 	elseif btn == Right then
-		if hitTest(curX + 1, curY) == false then
+		if hitTest(current.x + 1, current.y) == false then
 			moveCurrent(1, 0)
 		end
 	elseif btn == Light then
-		-- DEBUG
-		bmp:blit(0, 0, bmp:rawWidth(), bmp:rawHeight())
+		paused = not paused
+		if not paused and not ticking then
+			timers.after(tick, tickPeriod)
+		end
 	elseif btn == A then
-		paused = true
-		bmp:setColour(bitmap.Colour.White)
-		bmp:drawRect(0, 30, 64, 30)
-		bmp:setColour(bitmap.Colour.Black)
-		bmp:drawTextCentred("Also...", 0, 30, 64, 30)
+		-- Rotate!
+		clearCurrentBrick()
+		setBrickRotation(current.angle + 90)
+		drawCurrentBrick()
 	elseif btn == B then
-		paused = true
-		require "bapple"
-		bmp:drawXbm(bapple.xbm, 10, 0, 0, 0, 48, 54)
-		bmp:drawXbm(bapple.xbm, 20, 54, 48, 0, 21, 54)
+		clearCurrentBrick()
+		setBrickRotation(current.angle - 90)
+		drawCurrentBrick()
+	elseif btn == Select then
+		if not paused then
+			bmp:setTransform(baseRotation:get())
+			bmp:setColour(bitmap.Colour.White)
+			bmp:drawRect(inset, 30, bmp:width() - inset*2, 30)
+			bmp:setColour(bitmap.Colour.Black)
+			bmp:drawTextCentred("Also...", 0, 30, 64, 30)
+			paused = true
+		else
+			require "bapple"
+			bmp:drawXbm(bapple.xbm, 10, 0, 0, 0, 48, 54)
+			bmp:drawXbm(bapple.xbm, 20, 54, 48, 0, 21, 54)
+		end
 	end
 	bmp:blit()
+	if weightless then
+		collectgarbage()
+	end
 end
