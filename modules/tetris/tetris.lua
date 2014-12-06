@@ -17,14 +17,16 @@ local inset = 2
 -- 2 blocks. For the line (which is solely on the top row), the second pair has
 -- a width of zero.
 bricks = {
-	block = { { 0, 2 }, { 0, 2 } },
-	backl = { { 2, 1 }, { 2, 3 } },
-	line  = { { 3, 4 }, { 3, 0 } },
-	ell   = { { 7, 1 }, { 5, 3 } },
-	ess   = { { 9, 2 }, { 8, 2 } },
-	tee   = { { 11, 1 }, { 10, 3 } },
-	backs = { { 12, 2 }, { 13, 2 } },
+	O = { { 0, 2 }, { 0, 2 } },
+	J = { { 2, 1 }, { 2, 3 } },
+	I = { { 3, 4 }, { 3, 0 } },
+	L = { { 7, 1 }, { 5, 3 } },
+	S = { { 9, 2 }, { 8, 2 } },
+	T = { { 11, 1 }, { 10, 3 } },
+	Z = { { 12, 2 }, { 13, 2 } },
 }
+
+brickList = { bricks.O, bricks.J, bricks.I, bricks.L, bricks.S, bricks.T, bricks.Z }
 
 -- Returns the top left index of brick in the xbm
 function xOriginForBrick(brick)
@@ -141,10 +143,13 @@ function init()
 	bmp = bitmap.create()
 	baseRotation = RotateTransform(270, bmp:rawWidth(), bmp:rawHeight())
 	bmp:setTransform(baseRotation:get())
+	bottomInset = inset + 2 * blockh
+
 	width = bmp:width() / blockw
-	height = bmp:height() / blockh
-	curIdx = "block"
-	local brick = bricks[curIdx]
+	height = (bmp:height() - bottomInset) / blockh
+	score = 0
+	lastKeypressTime = 0
+	local brick = nextBrick()
 	current = {
 		brick = brick,
 		x = width / 2,
@@ -159,10 +164,11 @@ function init()
 	paused = false
 	tickPeriod = 1000
 
-	local w, h = bmp:width()-1, bmp:height()-1
+	local w, h = bmp:width() - 1, bmp:height() - (bottomInset - 1)
 	bmp:drawLine(0, 0, 0, h)
 	bmp:drawLine(0, h, w, h)
 	bmp:drawLine(w, 0, w, h)
+	updateScore()
 
 	bmp:blit()
 
@@ -181,8 +187,8 @@ function init()
 end
 
 function start()
-	-- weightless = true; curIdx = "line"; current.brick = bricks[curIdx] -- DEBUG
-	-- weightless = true; curIdx = "ell"; current.brick = bricks[curIdx] -- DEBUG
+	-- weightless = true; current.brick = bricks.I -- DEBUG
+	-- weightless = true; current.brick = bricks.L -- DEBUG
 
 	if not weightless then
 		timers.after(tick, tickPeriod)
@@ -232,6 +238,7 @@ local function idForCurrentBrickOffset(x, y)
 end
 
 local function removeFullLines()
+	local linesCompleted = 0
 	for i = 0, height-1 do
 		local full = true
 		local line = lines[i]
@@ -243,10 +250,12 @@ local function removeFullLines()
 				end
 			end
 			if full then
+				linesCompleted = linesCompleted + 1
 				lines[i] = nil
 			end
 		end
 	end
+	score = score + 10 * linesCompleted * linesCompleted
 
 	-- TODO animate fullLines
 
@@ -265,7 +274,7 @@ local function removeFullLines()
 		i = i - 1
 	end
 
-	bmp:clear(inset, 0, bmp:width() - inset*2, bmp:height() - inset)
+	bmp:clear(inset, 0, bmp:width() - inset*2, bmp:height() - bottomInset)
 	for y = 0, height-1 do
 		if lines[y] then
 			for x = 0, width-1 do
@@ -301,12 +310,12 @@ local function removeFullLines()
 end
 
 local function landed()
-	print("Landed!")
+	-- print("Landed!")
 	for dy = 0, currentBrickHeight() - 1 do
 		for dx = 0, currentBrickWidth() - 1 do
 			if currentBlockSolidAt(dx, dy) then
 				local blockId = idForCurrentBrickOffset(dx, dy)
-				-- printf("BlockId for %s (%d,%d) = %x", curIdx, dx, dy, blockId)
+				-- printf("BlockId (%d,%d) = %x", dx, dy, blockId)
 				local x, lineIdx = current.x + dx, current.y + dy
 				local line = lines[lineIdx]
 				if line == nil then
@@ -319,9 +328,7 @@ local function landed()
 		end
 	end
 
-	-- TODO for next brick need better algorithm than simply cycling through
-	curIdx, current.brick = next(bricks, curIdx)
-	if not curIdx then curIdx, current.brick = next(bricks) end
+	current.brick = nextBrick()
 
 	-- And reset brick orientation and location
 	setBrickRotation(0, false)
@@ -330,11 +337,12 @@ local function landed()
 
 	-- Call this only after setting rotation to 0
 	removeFullLines()
+	updateScore()
 
 	if hitTest(current.x, current.y) then
 		-- We are full
 		playing = false
-		bmp:setTransform(current.baseRotation:get())
+		bmp:setTransform(baseRotation:get())
 		bmp:drawTextCentred("Game over!", 0, 20, bmp:width(), 0)
 	end
 end
@@ -415,8 +423,10 @@ end
 
 Up, Down, Left, Right, A, B, Select, Light = 0, 1, 2, 3, 4, 5, 6, 7
 
-function buttonPressed(op, btn)
+function buttonPressed(op, btn, timestamp)
 	if not playing then return end
+
+	lastKeypressTime = timestamp
 
 	if btn == Down then
 		if op == input.ButtonDown then
@@ -470,4 +480,17 @@ function buttonPressed(op, btn)
 	if weightless then
 		collectgarbage()
 	end
+end
+
+function nextBrick()
+	--local idx = (rand() % #brickList) + 1
+	local idx = lastKeypressTime % #brickList
+	return brickList[idx+1]
+end
+
+function updateScore()
+	local scoreText = string.format("%d", score)
+	bmp:clear(0, height * blockh + inset, bmp:width(), bottomInset - inset)
+	local w = bmp:getTextSize(scoreText)
+	bmp:drawText(scoreText, bmp:width() - w - 1, height * blockh + inset + 1)
 end

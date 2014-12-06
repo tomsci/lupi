@@ -81,14 +81,14 @@ local function handleKeypress(buttonMask, timestamp)
 			-- TODO autorepeat
 			if not bset then
 				b.pressed = false
-				observer(ButtonUp, i)
+				observer(ButtonUp, i, timestamp)
 			end
 		else
 			if bset then
 				b.pressed = true
 				b.t = timestamp
-				observer(ButtonDown, i)
-				observer(ButtonPressed, i)
+				observer(ButtonDown, i, timestamp)
+				observer(ButtonPressed, i, timestamp)
 			end
 		end
 	end

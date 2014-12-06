@@ -106,6 +106,9 @@ separate parameters, you may pass an array with two entries, for example:
 ]]
 --native function Bitmap:drawText(text, x, y)
 
+--[[**
+Draws text centred in the specified rect.
+]]
 function Bitmap:drawTextCentred(text, x, y, w, h)
 	local width, height = self:getTextSize(text)
 	self:drawText(text, x + (w-width) / 2, y + (h-height) / 2)
