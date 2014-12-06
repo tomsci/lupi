@@ -44,7 +44,11 @@ static int add(lua_State* L) { GETLR(L); int64_new(L, left + right); return 1; }
 static int sub(lua_State* L) { GETLR(L); int64_new(L, left - right); return 1; }
 static int mul(lua_State* L) { GETLR(L); int64_new(L, left * right); return 1; }
 static int div(lua_State* L) { GETLR(L); int64_new(L, left / right); return 1; }
-static int mod(lua_State* L) { GETLR(L); int64_new(L, left % right); return 1; }
+
+static int mod(lua_State* L) {
+	// __aeabi_ldivmod really doesn't work on this GCC (arm-none-eabi-gcc 4.8.3 20131129)
+	return luaL_error(L, "__aeabi_ldivmod appears to be completely busted so the %% operator is unavailable on int64s");
+}
 static int lt(lua_State* L) { GETLR(L); lua_pushboolean(L, left < right); return 1; }
 static int le(lua_State* L) { GETLR(L); lua_pushboolean(L, left <= right); return 1; }
 
