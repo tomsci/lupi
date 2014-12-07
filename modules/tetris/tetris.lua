@@ -148,6 +148,8 @@ function init()
 	width = bmp:width() / blockw
 	height = (bmp:height() - bottomInset) / blockh
 	score = 0
+	level = 1
+	lineCount = 0
 	lastKeypressTime = 0
 	local brick = nextBrick()
 	current = {
@@ -256,6 +258,10 @@ local function removeFullLines()
 		end
 	end
 	score = score + 10 * linesCompleted * linesCompleted
+	lineCount = lineCount + linesCompleted
+	if lineCount >= level * 10 then
+		level = level + 1
+	end
 
 	-- TODO animate fullLines
 
@@ -357,7 +363,7 @@ end
 function tick()
 	ticking = false
 	if paused or not playing then return end
-	timers.after(tick, tickPeriod)
+	timers.after(tick, tickPeriod - level * 100)
 	ticking = true
 	moveBrickDown()
 	-- lupi.memStats()
@@ -490,7 +496,10 @@ end
 
 function updateScore()
 	local scoreText = string.format("%d", score)
+	local levelText = string.format("%d", level)
 	bmp:clear(0, height * blockh + inset, bmp:width(), bottomInset - inset)
+	local y = height * blockh + inset + 1
+	bmp:drawText(levelText, 1, y)
 	local w = bmp:getTextSize(scoreText)
-	bmp:drawText(scoreText, bmp:width() - w - 1, height * blockh + inset + 1)
+	bmp:drawText(scoreText, bmp:width() - w - 1, y)
 end
