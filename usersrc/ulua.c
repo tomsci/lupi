@@ -170,7 +170,9 @@ int newProcessEntryPoint() {
 	lua_State* L = newLuaStateForModule(moduleName, NULL);
 	lua_atpanic(L, panicFn);
 #else
-	lua_State* L = lua_newstate(uluaHeap_allocFn, uluaHeap_init());
+	Heap* h = uluaHeap_init();
+	lua_State* L = lua_newstate(uluaHeap_allocFn, h);
+	uluaHeap_setLuaState(h, L);
 	luaL_openlibs(L);
 	lua_atpanic(L, panicFn);
 	newLuaStateForModule(moduleName, L);

@@ -35,6 +35,8 @@ whenever a cell is freed.
 #ifdef DEBUG_LOGGING
 #define DBG(args...) printf(args)
 #define ASSERT_DBG(cond, args...) do { if (!(cond)) { printf(args); abort(); } } while(0)
+#include <lua.h>
+#include <lauxlib.h>
 #else
 #define DBG(args...)
 #define DBGV(args...)
@@ -93,6 +95,7 @@ void* uluaHeap_init() {
 	h->topCell->next = 0;
 	setLen(h->topCell, (uintptr)h + 4096 - (uintptr)h->topCell);
 	h->freeList = h->topCell;
+	h->luaState = NULL;
 
 	DBG("Heap init %p\n", h);
 	return h;
@@ -245,7 +248,20 @@ void* uluaHeap_allocFn(void *ud, void *ptr, size_t osize, size_t nsize) {
 		DBG("Failed alloc for %ld\n", nsize);
 		// The lua_State arg is not used if DEBUG_LOGGING, so can be NULL
 		memStats_lua(NULL);
-		dumpFreeList(h); // Full dump of freelist
+		// dumpFreeList(h); // Full dump of freelist
+		// if (h->luaState && nsize > 1000) {
+		// 	lua_State* L = *h->luaState;
+		// 	// Free it to get some space for the traceback
+		// 	uluaHeap_allocFn(h, h->luaState, 1024, 0);
+		// 	h->luaState = NULL;
+		// 	// Try and get a stacktrace
+		// 	luaL_traceback(L, L, NULL, 1);
+		// 	printf("OOM DBG: %s", lua_tostring(L, -1));
+		// 	// Now abort so we can get the C stack too
+		// 	abort();
+		// 	lua_pop(L, 1);
+		// }
+
 #endif
 		return NULL;
 	}
@@ -304,7 +320,6 @@ void uluaHeap_reset(Heap* h) {
 #define MEMSTAT_PRINT(fmt, args...) printf(fmt "\n", args)
 
 int memStats_lua(lua_State* L) {
-	// lua_gc(L, LUA_GCCOLLECT, 0);
 	Heap* h = (Heap*)0x20070000;
 
 	HeapStats stats;
@@ -318,4 +333,16 @@ int memStats_lua(lua_State* L) {
 		MEMSTAT_PRINT("Lua: alloced = %d", luaAlloced);
 	}
 	return 0;
+}
+
+void uluaHeap_setLuaState(Heap* h, lua_State* luaState) {
+#ifdef DEBUG_LOGGING
+	// Reserve some heap so we can use luaState for a stacktrace in OOM
+	void* reserve = uluaHeap_allocFn(h, NULL, 0, 1024);
+	if (reserve) {
+		// And use the start of reserve to stash the lua_State while we're there
+		h->luaState = (lua_State**)reserve;
+		*h->luaState = luaState;
+	}
+#endif
 }
