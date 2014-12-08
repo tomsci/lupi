@@ -3,7 +3,7 @@
 
 #ifndef HOSTED
 
-#define _JBLEN 64 // I have no idea...
+#define _JBLEN 12
 typedef long jmp_buf[_JBLEN];
 
 int _setjmp(jmp_buf);
