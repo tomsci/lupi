@@ -154,7 +154,7 @@ function init()
 	local brick = nextBrick()
 	current = {
 		brick = brick,
-		x = width / 2,
+		x = width / 2 - 1,
 		y = 0,
 		angle = 0,
 		rotation = RotateTransform(0, brickSize(brick)),
@@ -221,7 +221,7 @@ function hitTest(x, y)
 				end
 				local line = lines[yy]
 				local blk = line and line[xx]
-				if blk and blk ~= 0 then return true end
+				if blk then return true end
 			end
 		end
 	end
@@ -339,7 +339,7 @@ local function landed()
 	-- And reset brick orientation and location
 	setBrickRotation(0, false)
 	current.y = 0
-	current.x = width / 2
+	current.x = width / 2 - 1
 
 	-- Call this only after setting rotation to 0
 	removeFullLines()
@@ -399,10 +399,19 @@ function setBrickRotation(angle, performHitTest)
 	current.rotation = RotateTransform(-current.angle, brickSize(current.brick))
 
 	if performHitTest and hitTest(current.x, current.y) then
-		-- No room to rotate
-		current.angle = oldAngle
-		current.rotation = RotateTransform(-current.angle, brickSize(current.brick))
-		return false
+		-- Try a wall kick, ie move block away from wall until it fits
+		local kickedX = width - currentBrickWidth()
+		if current.x > kickedX and not hitTest(kickedX, current.y) then
+			-- Don't call moveCurrent it is confusing to do so during a rotate
+			-- Instead update x directly, as the brick is about to be redrawn
+			-- anyway
+			current.x = kickedX
+		else
+			-- No room to rotate
+			current.angle = oldAngle
+			current.rotation = RotateTransform(-current.angle, brickSize(current.brick))
+			return false
+		end
 	end
 
 	bmp:setTransform(RotateTransform(current.angle):applyToRotation(baseRotation):get())
