@@ -131,40 +131,47 @@ Starts the event loop running. Does not return.
 function RunLoop:run()
 	assert(#self.pendingRequests > 0,
 		"Starting a run loop with no pending requests makes no sense...")
-	while true do
-		local numReqs = self:waitForAnyRequest()
-		-- Now search the list and complete exactly numReqs requests
-		for i, req, removeReqFromTable in misc.iter(self.pendingRequests) do
-			if numReqs == 0 then
-				break
+	local waitForAnyRequest = self.waitForAnyRequest
+	local queue = self.queue
+	local function innerLoop()
+		while true do
+			local numReqs = waitForAnyRequest()
+			-- Now search the list and complete exactly numReqs requests
+			for i, req, removeReqFromTable in misc.iter(self.pendingRequests) do
+				if numReqs == 0 then
+					break
+				end
+				local r = req:getResult()
+				if r ~= nil then
+					-- req has completed
+					numReqs = numReqs - 1
+					removeReqFromTable()
+					--self:handleCompletion(req, r)
+					local fn = req.completionFn or error("No completion function for AsyncRequest!")
+					req:clearFlags()
+					fn(req, r)
+					if req.requestFn then
+						queue(self, req) -- This will call requestFn
+					end
+				end
 			end
-			local r = req:getResult()
-			if r ~= nil then
-				-- req has completed
-				numReqs = numReqs - 1
-				removeReqFromTable()
-				self:handleCompletion(req, r)
+			if numReqs ~= 0 then
+				print("Uh oh numReqs not zero at end of RunLoop:"..numReqs)
+				print("Pending requests:")
+				for _, req in ipairs(self.pendingRequests) do
+					print(tostring(req))
+				end
+				error("Bad numReqs")
 			end
-		end
-		if numReqs ~= 0 then
-			print("Uh oh numReqs not zero at end of RunLoop:"..numReqs)
-			print("Pending requests:")
-			for _, req in ipairs(self.pendingRequests) do
-				print(tostring(req))
-			end
-			error("Bad numReqs")
 		end
 	end
-end
-
-function RunLoop:handleCompletion(obj, result)
-	local fn = obj.completionFn or error("No completion function for AsyncRequest!")
-	obj:clearFlags()
-	local ok, err = xpcall(obj.completionFn, debug.traceback, obj, result)
-	if not ok then
-		print(err)
-	elseif obj.requestFn then
-		self:queue(obj) -- This will call requestFn
+	while true do
+		-- Use a nested inner loop so we don't have to call xpcall every time
+		-- we service a new completion
+		local ok, err = xpcall(innerLoop, debug.traceback)
+		if not ok then
+			print(err)
+		end
 	end
 end
 
