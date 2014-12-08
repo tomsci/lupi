@@ -104,7 +104,7 @@ end
 -- Empty columns represented by nil
 -- Is in block idx order, ie lines[0] is the topmost line and lines[height-1] the bottom
 -- A completely empty line may be represented by nil or {}
-lines = {}
+lines = nil
 
 function currentBrickWidth()
 	if current.angle % 180 == 0 then
@@ -140,8 +140,15 @@ end
 function init()
 	local rl = runloop.current or runloop.new()
 
-	bmp = bitmap.create()
-	baseRotation = RotateTransform(270, bmp:rawWidth(), bmp:rawHeight())
+	if bmp then
+		-- Reset everything
+		bmp:clear()
+	else
+		bmp = bitmap.create()
+		baseRotation = RotateTransform(270, bmp:rawWidth(), bmp:rawHeight())
+		input.registerInputObserver(buttonPressed, 4)
+		timers.init()
+	end
 	bmp:setTransform(baseRotation:get())
 	bottomInset = inset + 2 * blockh
 
@@ -151,6 +158,7 @@ function init()
 	level = 1
 	lineCount = 0
 	lastKeypressTime = 0
+	lines = {}
 	local brick = nextBrick()
 	current = {
 		brick = brick,
@@ -183,9 +191,6 @@ function init()
 	-- drawBrick(bricks.tee, 3, 4)
 	-- drawBrick(bricks.line, 6, 5)
 	-- lupi.memStats()
-	input.registerInputObserver(buttonPressed, 4)
-
-	timers.init()
 end
 
 function start()
@@ -279,7 +284,10 @@ local function removeFullLines()
 		end
 		i = i - 1
 	end
+	redrawPlayArea()
+end
 
+function redrawPlayArea()
 	bmp:clear(inset, 0, bmp:width() - inset*2, bmp:height() - bottomInset)
 	for y = 0, height-1 do
 		if lines[y] then
@@ -439,7 +447,13 @@ end
 Up, Down, Left, Right, A, B, Select, Light = 0, 1, 2, 3, 4, 5, 6, 7
 
 function buttonPressed(op, btn, timestamp)
-	if not playing then return end
+	if not playing then
+		if op == input.ButtonPressed and btn == Light then
+			init()
+			start()
+		end
+		return
+	end
 
 	lastKeypressTime = timestamp
 
@@ -465,6 +479,14 @@ function buttonPressed(op, btn, timestamp)
 		end
 	elseif btn == Light then
 		paused = not paused
+		if paused then
+			bmp:setTransform(baseRotation:get())
+			bmp:drawTextCentred("Paused", 0, 20, bmp:width(), 0)
+		else
+			redrawPlayArea()
+			setBrickRotation(current.angle)
+			drawCurrentBrick()
+		end
 		if not paused and not ticking then
 			timers.after(tick, tickPeriod)
 		end
