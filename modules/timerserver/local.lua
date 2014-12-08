@@ -10,7 +10,7 @@ require "int64"
 local iter, array = misc.iter, misc.array
 local dbg = false
 
--- sorted array of { time = int64, msg = msg }
+-- sorted array of { time = int64, msg = fn }
 local timers = array {
 	{ time = int64.MAX } -- end of list marker
 }
@@ -36,18 +36,24 @@ local function timerExpired(timerRequest)
 	end
 end
 
-
+local function timerSortFn(l, r)
+	return l.time < r.time
+end
 
 function after(msg, msecs)
 	if dbg then print("[timers] after "..msecs) end
 	-- TODO we should probably resolve the targetTime client-side
 	local t = { time = lupi.getUptime() + msecs, msg = msg }
-	timers:insert(1, t)
-	if t.time < timers[2].time then
+
+	-- Don't use table.sort here, it reserves over 1KB of stack to ensure it can sort
+	local i = 1
+	while t.time > timers[i].time do
+		i = i + 1
+	end
+	timers:insert(i, t)
+	if i == 1 then
 		-- Need to tell kernel
 		setNewTimerCallback(timerRequest, t.time)
-	else
-		timers:sort(function(l,r) return l.time < r.time end)
 	end
 end
 
