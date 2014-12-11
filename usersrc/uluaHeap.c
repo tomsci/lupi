@@ -29,8 +29,8 @@ whenever a cell is freed.
 */
 
 
-#define DEBUG_LOGGING
-#define VERBOSE_LOGGING
+// #define DEBUG_LOGGING
+// #define VERBOSE_LOGGING
 
 #ifdef DEBUG_LOGGING
 #define DBG(h, args...) do { if (((uintptr)(h)->luaState & 1) == 0) { printf(args); } } while(0)
