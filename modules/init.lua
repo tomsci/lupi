@@ -12,8 +12,7 @@ local EValBootMode = 1 -- See exec.h
 local commandsToRunInInterpreter = [[
 ]]
 
-function main()
-	-- lupi.createProcess("timerserver.server")
+local function doMain()
 	local bootMode = lupi.getInt(EValBootMode)
 	if bootMode == string.byte('y') then
 		-- Yield tests - if it's working right, the yields should make the
@@ -29,7 +28,11 @@ function main()
 	elseif bootMode == 4 then
 		lupi.createProcess("passwordManager.gui")
 	elseif bootMode == 5 then
-		tryStartTetris()
+		local tetris = require("tetris")
+		tetris.init()
+		tetris.start()
+		collectgarbage()
+		return tetris.runloop.current:run()
 	elseif bootMode == string.byte('m') then
 		require("test.memTests").test_mem()
 	end
@@ -46,11 +49,14 @@ function main()
 	if hadPreCmd then
 		print("") -- Otherwise we'll get two lua prompts on one line
 	end
+	collectgarbage()
 	return interpreter.main()
 end
 
-function tryStartTetris()
-	local function go() return require("tetris").main() end
-	local ok, ret = pcall(go)
-	if not ok then print("Cannot start tetris\n", ret) end
+function main()
+	local ok, err = pcall(doMain)
+	if not ok then
+		print("Unable to perform init action")
+		print(err)
+	end
 end
