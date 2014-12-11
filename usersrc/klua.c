@@ -12,6 +12,10 @@
 #include <armv7-m.h>
 #endif
 
+#ifndef MALLOC_AVAILABLE
+#include <lupi/uluaHeap.h>
+#endif
+
 // #define MEM_DEBUG
 
 #ifdef MEM_DEBUG
@@ -36,11 +40,6 @@ byte getch();
 
 #ifdef HOSTED
 //#define USE_HOST_MALLOC_FOR_LUA
-#endif
-
-#ifndef MALLOC_AVAILABLE
-void* uluaHeap_allocFn(void *ud, void *ptr, size_t osize, size_t nsize);
-void* uluaHeap_init();
 #endif
 
 #if !defined(HOSTED) && !defined(ULUA_PRESENT)
@@ -205,7 +204,9 @@ static lua_State* initModule(uintptr heapBase, const char* module) {
 #ifdef LUPI_USE_MALLOC_FOR_KLUA
 	lua_State* L = luaL_newstate();
 #else
-	lua_State* L = lua_newstate(uluaHeap_allocFn, uluaHeap_init());
+	Heap* h = uluaHeap_init();
+	uluaHeap_disableDebugPrints(h); // Generally not helpful when wanting to use the debugger
+	lua_State* L = lua_newstate(uluaHeap_allocFn, h);
 #endif
 
 #else

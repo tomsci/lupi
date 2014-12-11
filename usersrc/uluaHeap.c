@@ -29,24 +29,24 @@ whenever a cell is freed.
 */
 
 
-// #define DEBUG_LOGGING
-// #define VERBOSE_LOGGING
+#define DEBUG_LOGGING
+#define VERBOSE_LOGGING
 
 #ifdef DEBUG_LOGGING
-#define DBG(args...) printf(args)
+#define DBG(h, args...) do { if (((uintptr)(h)->luaState & 1) == 0) { printf(args); } } while(0)
 #define ASSERT_DBG(cond, args...) do { if (!(cond)) { printf(args); abort(); } } while(0)
 #include <lua.h>
 #include <lauxlib.h>
 #else
-#define DBG(args...)
-#define DBGV(args...)
+#define DBG(h, args...)
+#define DBGV(h, args...)
 #define ASSERT_DBG(cond, args...)
 #endif // DEBUG_LOGGING
 
 #ifdef VERBOSE_LOGGING
-#define DBGV(args...) printf(args)
+#define DBGV(h, args...) DBG(h, args)
 #else
-#define DBGV(args...)
+#define DBGV(h, args...)
 #endif
 
 void* sbrk(ptrdiff_t inc);
@@ -67,7 +67,7 @@ ASSERT_COMPILE(sizeof(FreeCell) == 8);
 #ifdef DEBUG_LOGGING
 static void dumpFreeList(Heap* h) {
 	for (FreeCell* fc = h->freeList; fc != NULL; fc = fc->next) {
-		DBG("%08lX-%08lX len %d\n", (uintptr)fc, (uintptr)fc + getLen(fc), getLen(fc));
+		DBG(h, "%08lX-%08lX len %d\n", (uintptr)fc, (uintptr)fc + getLen(fc), getLen(fc));
 	}
 }
 #endif
@@ -80,7 +80,7 @@ static inline void link(Heap* h, FreeCell* a, FreeCell* b) {
 	a->next = b;
 
 	if (!b) {
-		DBGV("topCell was %p now %p\n", h->topCell, a);
+		DBGV(h, "topCell was %p now %p\n", h->topCell, a);
 		h->topCell = a;
 	}
 }
@@ -97,7 +97,7 @@ void* uluaHeap_init() {
 	h->freeList = h->topCell;
 	h->luaState = NULL;
 
-	DBG("Heap init %p\n", h);
+	DBG(h, "Heap init %p\n", h);
 	return h;
 }
 
@@ -130,13 +130,13 @@ static void addToFreeList(Heap* h, FreeCell* cell) {
 
 	// Now check if we can coelsce cell with either its prev or its next
 	if (prev && ((uintptr)prev + getLen(prev) == (uintptr)cell)) {
-		DBGV("Merging cell %p with prev %p len %d\n", cell, prev, getLen(prev));
+		DBGV(h, "Merging cell %p with prev %p len %d\n", cell, prev, getLen(prev));
 		setLen(prev, getLen(prev) + getLen(cell));
 		link(h, prev, next);
 		cell = prev;
 	}
 	if (next && ((uintptr)cell + getLen(cell) == (uintptr)next)) {
-		DBGV("Merging cell %p len %d with next %p\n", cell, getLen(cell), next);
+		DBGV(h, "Merging cell %p len %d with next %p\n", cell, getLen(cell), next);
 		setLen(cell, getLen(cell) + getLen(next));
 		link(h, cell, next->next);
 	}
@@ -150,7 +150,7 @@ void* uluaHeap_allocFn(void *ud, void *ptr, size_t osize, size_t nsize) {
 	Heap* h = (Heap*)ud;
 	if (nsize == 0) {
 		if (ptr) {
-			DBGV("Freeing %p len %ld\n", ptr, osize);
+			DBGV(h, "Freeing %p len %ld\n", ptr, osize);
 			FreeCell* cell = (FreeCell*)ptr;
 			setLen(cell, osize);
 			addToFreeList(h, cell);
@@ -160,7 +160,7 @@ void* uluaHeap_allocFn(void *ud, void *ptr, size_t osize, size_t nsize) {
 	}
 
 	if (ptr) {
-		DBGV("Realloc osize=%ld nsize=%ld ptr=%p\n", osize, nsize, ptr);
+		DBGV(h, "Realloc osize=%ld nsize=%ld ptr=%p\n", osize, nsize, ptr);
 		if (nsize == osize) {
 			return ptr;
 		} else if (nsize <= osize) {
@@ -226,10 +226,10 @@ void* uluaHeap_allocFn(void *ud, void *ptr, size_t osize, size_t nsize) {
 		}
 		if (found == h->topCell) {
 			h->topCell = newCell;
-			DBGV("topCell now %p, last freeCell prior %p\n", h->topCell, foundPrev);
+			DBGV(h, "topCell now %p, last freeCell prior %p\n", h->topCell, foundPrev);
 		}
 		h->totalAllocs++;
-		DBGV("Alloc found cell %p len=%d remainder=%d\n", found, getLen(found), remainder);
+		DBGV(h, "Alloc found cell %p len=%d remainder=%d\n", found, getLen(found), remainder);
 		return found;
 	}
 
@@ -243,30 +243,32 @@ void* uluaHeap_allocFn(void *ud, void *ptr, size_t osize, size_t nsize) {
 		topPtr = sbrk(growBy);
 	}
 	if (topPtr == (void*)-1) {
-		// OOM - dump some stats
 #ifdef DEBUG_LOGGING
-		DBG("Failed alloc for %ld\n", nsize);
+		// OOM - dump some stats
+		DBG(h, "Failed alloc for %ld\n", nsize);
 		// The lua_State arg is not used if DEBUG_LOGGING, so can be NULL
 		memStats_lua(NULL);
 		// dumpFreeList(h); // Full dump of freelist
-		// if (h->luaState && nsize > 1000) {
-		// 	lua_State* L = *h->luaState;
-		// 	// Free it to get some space for the traceback
-		// 	uluaHeap_allocFn(h, h->luaState, 1024, 0);
-		// 	h->luaState = NULL;
-		// 	// Try and get a stacktrace
-		// 	luaL_traceback(L, L, NULL, 1);
-		// 	printf("OOM DBG: %s", lua_tostring(L, -1));
-		// 	// Now abort so we can get the C stack too
-		// 	abort();
-		// 	lua_pop(L, 1);
-		// }
-
+		// Enable this to stop at a particularly large alloc
+#if 0
+		if ((uintptr)h->luaState > 1 && nsize > 1000) {
+			lua_State* L = *(lua_State**)((uintptr)h->luaState & ~1);
+			// Free it to get some space for the traceback
+			uluaHeap_allocFn(h, h->luaState, 1024, 0);
+			h->luaState = NULL;
+			// Try and get a stacktrace
+			luaL_traceback(L, L, NULL, 1);
+			printf("OOM DBG: %s", lua_tostring(L, -1));
+			// Now abort so we can get the C stack too
+			abort();
+			lua_pop(L, 1);
+		}
 #endif
+#endif // DEBUG_LOGGING
 		return NULL;
 	}
 	if (!h->topCell) {
-		DBG("Reinstating topCell %p\n", topPtr);
+		DBG(h, "Reinstating topCell %p\n", topPtr);
 		h->topCell = (FreeCell*)topPtr;
 		h->topCell->next = 0;
 		setLen(h->topCell, 0);
@@ -287,7 +289,7 @@ void* uluaHeap_allocFn(void *ud, void *ptr, size_t osize, size_t nsize) {
 	// If we reach here, prev->next should be pointing to the topCell, unless the topCell was null
 	h->topCell = newTop;
 	prev->next = newTop;
-	DBG("Alloc grew heap by %d and returned %p newTop=%p len=%d\n", growBy, result, newTop, getLen(newTop));
+	DBG(h, "Alloc grew heap by %d and returned %p newTop=%p len=%d\n", growBy, result, newTop, getLen(newTop));
 	return result;
 }
 
@@ -314,7 +316,7 @@ void uluaHeap_reset(Heap* h) {
 	setLen(h->topCell, top - (uintptr)h->topCell);
 	h->freeList = h->topCell;
 
-	DBG("Heap reset %p\n", h);
+	DBG(h, "Heap reset %p\n", h);
 }
 
 #define MEMSTAT_PRINT(fmt, args...) printf(fmt "\n", args)
@@ -338,11 +340,15 @@ int memStats_lua(lua_State* L) {
 void uluaHeap_setLuaState(Heap* h, lua_State* luaState) {
 #ifdef DEBUG_LOGGING
 	// Reserve some heap so we can use luaState for a stacktrace in OOM
-	void* reserve = uluaHeap_allocFn(h, NULL, 0, 1024);
-	if (reserve) {
-		// And use the start of reserve to stash the lua_State while we're there
-		h->luaState = (lua_State**)reserve;
-		*h->luaState = luaState;
-	}
+	// void* reserve = uluaHeap_allocFn(h, NULL, 0, 1024);
+	// if (reserve) {
+	// 	// And use the start of reserve to stash the lua_State while we're there
+	// 	h->luaState = (lua_State**)reserve;
+	// 	*h->luaState = luaState;
+	// }
 #endif
+}
+
+void uluaHeap_disableDebugPrints(Heap* h) {
+	h->luaState = (lua_State**)1;
 }

@@ -11,7 +11,7 @@ typedef struct Heap {
 	FreeCell* topCell; // Always last in freeList. May be null if we've filled the heap
 	uint16 totalAllocs;
 	uint16 totalFrees;
-	lua_State** luaState;
+	lua_State** luaState; // Bottom bit also doubles as "no debug" flag
 } Heap;
 
 typedef struct HeapStats {
@@ -31,6 +31,7 @@ void* uluaHeap_init();
 void* uluaHeap_allocFn(void *ud, void *ptr, size_t osize, size_t nsize);
 void uluaHeap_reset(Heap* h);
 void uluaHeap_setLuaState(Heap* h, lua_State* luaState);
+void uluaHeap_disableDebugPrints(Heap* h);
 
 void uluaHeap_stats(Heap* heap, HeapStats* stats);
 
