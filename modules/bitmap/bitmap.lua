@@ -172,26 +172,6 @@ Colour = {
 }
 
 --[[**
-Sets the transform for subsequent draw commands. If for example `degrees`
-is set to 90, drawing to (0, 0) will draw to the top-right pixel.
-]]
-function Bitmap:setRotation(degrees)
-	-- For a rotation, a == d and b == -c
-	degrees = degrees % 360
-	if degrees == 0 then
-		self:setTransform(nil)
-	elseif degrees == 90 then
-		self:setTransform(0, -1, 1, 0, self:rawWidth(), 0)
-	elseif degrees == 180 then
-		self:setTransform(-1, 0, 0, -1, self:rawWidth(), self:rawHeight())
-	elseif degrees == 270 then
-		self:setTransform(0, 1, -1, 0, 0, self:rawHeight())
-	else
-		error("degrees must be a multiple of 90")
-	end
-end
-
---[[**
 Sets the bitmap's current transform to:
 
 	x' = a * x + b * y + tx

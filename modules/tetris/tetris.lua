@@ -145,7 +145,7 @@ function init()
 		bmp:clear()
 	else
 		bmp = bitmap.create()
-		baseRotation = RotateTransform(270, bmp:rawWidth(), bmp:rawHeight())
+		baseRotation = RotateTransform(90, bmp:rawWidth(), bmp:rawHeight())
 		input.registerInputObserver(buttonPressed, 4)
 		timers.init()
 	end
@@ -174,11 +174,7 @@ function init()
 	paused = false
 	tickPeriod = 1000
 
-	local w, h = bmp:width() - 1, bmp:height() - (bottomInset - 1)
-	bmp:drawLine(0, 0, 0, h)
-	bmp:drawLine(0, h, w, h)
-	bmp:drawLine(w, 0, w, h)
-	updateScore()
+	redrawPlayArea(true)
 
 	bmp:blit()
 
@@ -285,10 +281,22 @@ local function removeFullLines()
 		i = i - 1
 	end
 	redrawPlayArea()
+	-- Restore bmp rotation
+	bmp:setTransform(baseRotation:get())
 end
 
-function redrawPlayArea()
-	bmp:clear(inset, 0, bmp:width() - inset*2, bmp:height() - bottomInset)
+function redrawPlayArea(redrawBorders)
+	if redrawBorders then
+		bmp:clear()
+		local w, h = bmp:width() - 1, bmp:height() - (bottomInset - 1)
+		bmp:drawLine(0, 0, 0, h)
+		bmp:drawLine(0, h, w, h)
+		bmp:drawLine(w, 0, w, h)
+		updateScore()
+	else
+		bmp:clear(inset, 0, bmp:width() - inset*2, bmp:height() - bottomInset)
+	end
+
 	for y = 0, height-1 do
 		if lines[y] then
 			for x = 0, width-1 do
@@ -319,8 +327,6 @@ function redrawPlayArea()
 			end
 		end
 	end
-	-- Restore bmp rotation
-	bmp:setTransform(baseRotation:get())
 end
 
 local function landed()
@@ -444,15 +450,28 @@ function setBrickRotation(angle, performHitTest)
 	return true
 end
 
-Up, Down, Left, Right, A, B, Select, Light = 0, 1, 2, 3, 4, 5, 6, 7
+-- 7 is actually 'Light' on the tilda, but hey
+Up, Down, Left, Right, A, B, Select, Start = 0, 1, 2, 3, 4, 5, 6, 7
+
+local mask = 0
 
 function buttonPressed(op, btn, timestamp)
 	if not playing then
-		if op == input.ButtonPressed and btn == Light then
+		if op == input.ButtonPressed and btn == Start then
 			init()
 			start()
 		end
 		return
+	end
+	if paused then
+		if op == input.ButtonDown then
+			mask = mask + btn
+			if mask == A + B then
+				bapple()
+			end
+		else
+			mask = 0
+		end
 	end
 
 	lastKeypressTime = timestamp
@@ -468,7 +487,7 @@ function buttonPressed(op, btn, timestamp)
 		end
 		return
 	end
-	if op ~= input.ButtonPressed then return end -- Not bovvered
+	if op ~= input.ButtonPressed then return end -- Rest of fn only deals in presses
 	if btn == Left then
 		if hitTest(current.x - 1, current.y) == false then
 			moveCurrent(-1, 0)
@@ -477,7 +496,7 @@ function buttonPressed(op, btn, timestamp)
 		if hitTest(current.x + 1, current.y) == false then
 			moveCurrent(1, 0)
 		end
-	elseif btn == Light then
+	elseif btn == Start then
 		paused = not paused
 		if paused then
 			bmp:setTransform(baseRotation:get())
@@ -500,24 +519,40 @@ function buttonPressed(op, btn, timestamp)
 		setBrickRotation(current.angle - 90)
 		drawCurrentBrick()
 	elseif btn == Select then
-		if not paused then
-			bmp:setTransform(baseRotation:get())
-			bmp:setColour(bitmap.Colour.White)
-			bmp:drawRect(inset, 30, bmp:width() - inset*2, 30)
-			bmp:setColour(bitmap.Colour.Black)
-			bmp:drawTextCentred("Also...", 0, 30, 64, 30)
-			paused = true
+		if baseRotation.b == 1 then
+			-- 270
+			baseRotation = RotateTransform(90, bmp:rawWidth(), bmp:rawHeight())
 		else
-			require "bapple"
-			bmp:drawXbm(bapple.xbm, 10, 0, 0, 0, 48, 54)
-			bmp:drawXbm(bapple.xbm, 20, 54, 48, 0, 21, 54)
+			-- b = -1 means 90
+			baseRotation = RotateTransform(270, bmp:rawWidth(), bmp:rawHeight())
 		end
+		bmp:setTransform(baseRotation:get())
+		redrawPlayArea(true)
+		setBrickRotation(current.angle)
+		drawCurrentBrick()
 	end
 	bmp:blit()
 	if weightless then
 		collectgarbage()
 	end
 end
+
+--[[
+function bapple()
+	if not paused then
+		bmp:setTransform(baseRotation:get())
+		bmp:setColour(bitmap.Colour.White)
+		bmp:drawRect(inset, 30, bmp:width() - inset*2, 30)
+		bmp:setColour(bitmap.Colour.Black)
+		bmp:drawTextCentred("Also...", 0, 30, 64, 30)
+		paused = true
+	else
+		local bapple = require("bapple")
+		bmp:drawXbm(bapple.xbm, 10, 0, 0, 0, 48, 54)
+		bmp:drawXbm(bapple.xbm, 20, 54, 48, 0, 21, 54)
+	end
+end
+]]
 
 function nextBrick()
 	--local idx = (rand() % #brickList) + 1
