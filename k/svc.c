@@ -63,8 +63,8 @@ int64 handleSvc(int cmd, uintptr arg1, uintptr arg2, void* savedRegisters) {
 				result = getch();
 				break;
 			}
-			thread_setState(t, EBlockedFromSvc);
 			saveCurrentRegistersForThread(savedRegisters);
+			thread_setState(t, EBlockedFromSvc);
 			thread_setBlockedReason(t, EBlockedOnGetch);
 			TheSuperPage->blockedUartReceiveIrqHandler = t;
 			reschedule();
@@ -138,8 +138,8 @@ int64 handleSvc(int cmd, uintptr arg1, uintptr arg2, void* savedRegisters) {
 				result = *reqs;
 				*reqs = 0;
 			} else {
-				thread_setState(t, EWaitForRequest);
 				saveCurrentRegistersForThread(savedRegisters);
+				thread_setState(t, EWaitForRequest);
 				reschedule();
 			}
 			break;

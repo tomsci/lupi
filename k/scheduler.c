@@ -146,7 +146,7 @@ void kern_sleep(int msec) {
 }
 
 static void do_request_complete(uintptr arg1, uintptr arg2, uintptr arg3) {
-	// printk("do_request_complete\n");
+	// printk("do_request_complete t=%X ptr=%X\n", (uint)arg1, (uint)arg2);
 	KAsyncRequest req = {
 		.thread = (Thread*)arg1,
 		.userPtr = arg2,

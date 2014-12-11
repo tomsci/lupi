@@ -51,7 +51,7 @@ thread is in an SVC call, and what exception handler is currently running.
 * If we are being called from the SVCall handler to do an explicit block,
   `savedRegisters` should be NULL. The exception return is not unwound, ie to
   resume the thread you need to trigger an EXC_RETURN from a handler.
-* If we are being called from another handler (presumably SysTick) for a
+* If we are being called from another handler (ie PendSV) for a
   preempt then `savedRegisters` should point to the {r4-r11} saved on the
   handler stack.
 */
@@ -112,6 +112,7 @@ NORETURN reschedule() {
 
 	TheSuperPage->currentThread = NULL;
 	// Bump pendsv priority so it can run during the WFI
+	// in case of ISRs that need a DFC to make a thread ready
 	PUT8(SHPR_PENDSV, KPriorityWfiPendsv);
 
 	while (t == NULL) {
@@ -126,8 +127,15 @@ NORETURN reschedule() {
 	scheduleThread(t);
 }
 
-void pendSV() {
-	// printk("pendSV\n");
+NAKED void pendSV() {
+	asm("PUSH {r4-r12, lr}");
+	asm("MOV r0, sp");
+	asm("BL doPendSv");
+	asm("POP {r4-r12, pc}");
+}
+
+static void USED doPendSv(void* savedRegisters) {
+	// printk("+pendSV\n");
 	Dfc dfcs[MAX_DFCS];
 	// Interrupts will always be enabled on entry to a configurable exception handler
 	kern_disableInterrupts();
@@ -147,32 +155,20 @@ void pendSV() {
 
 	// Last thing the pendSV handler does is to check for thread timeslice
 	// expired during SVC
-	if (atomic_setbool(&TheSuperPage->rescheduleNeededOnSvcExit, false)) {
-		saveCurrentRegistersForThread(NULL);
-		// Save the result also
-		reschedule();
-	}
-
+	// if (atomic_setbool(&TheSuperPage->rescheduleNeededOnSvcExit, false)) {
+	// 	saveCurrentRegistersForThread(savedRegisters);
+	// 	reschedule();
+	// }
+	// printk("-pendSV\n");
 }
 
-// static void reschedule_dfc(uintptr arg1, uintptr arg2, uintptr arg3) {
-// 	//TODO
-// }
-
-void NAKED sysTick() {
-	asm("PUSH {r4-r12, lr}");
-	asm("MOV r0, sp");
-	asm("MOV r1, lr");
-	asm("BL doTick");
-	asm("POP {r4-r12, pc}");
-}
-
-static void USED doTick(uint32* regs, uintptr excReturn) {
+void sysTick() {
 	// printk("+Tick!\n");
 	SuperPage* const s = TheSuperPage;
 	s->uptime++;
 	if (s->uptime == s->timerCompletionTime) {
 		s->timerCompletionTime = UINT64_MAX;
+		// printk("Queueing timer completion\n");
 		dfc_requestComplete(&s->timerRequest, 0);
 	}
 	/*TODO
@@ -193,7 +189,8 @@ static void USED doTick(uint32* regs, uintptr excReturn) {
 			// Thread timeslice expired
 			printk("timeslice expired\n");
 			thread_yield(t);
-			// TODO dfc_queue(reschedule_dfc, 0, 0, 0);
+			atomic_setbool(&TheSuperPage->rescheduleNeededOnSvcExit, true);
+			PUT32(SCB_ICSR, ICSR_PENDSVSET);
 		}
 	}
 	*/
