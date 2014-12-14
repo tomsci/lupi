@@ -35,7 +35,7 @@ ExceptionStackFrame* getExceptionStackFrame(uint32* spmain, uint32 excReturn) {
 	ExceptionStackFrame* esf;
 	if (excReturn == KExcReturnThreadProcess) {
 		// Exception frame will be on process stack
-		asm("MRS %0, PSP" : "=r" (esf));
+		READ_SPECIAL(PSP, esf);
 	} else {
 		// It's on our stack, stackUsed bytes above current stack pointer
 		esf = (ExceptionStackFrame*)spmain;

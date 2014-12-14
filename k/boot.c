@@ -204,6 +204,7 @@ void iThinkYouOughtToKnowImFeelingVeryDepressed() {
 		WRITE_SPECIAL(BASEPRI, pri);
 		// Allow bouncing from nested exception directly to thread mode
 		PUT32(SCB_CCR, GET32(SCB_CCR) | CCR_NONBASETHRDENA);
+		asm("DSB"); asm("ISB"); // after changing priorities
 #endif
 		TheSuperPage->rescheduleNeededOnSvcExit = false;
 #ifdef HAVE_SCREEN

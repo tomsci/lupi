@@ -114,16 +114,22 @@ NORETURN reschedule() {
 	// Bump pendsv priority so it can run during the WFI
 	// in case of ISRs that need a DFC to make a thread ready
 	PUT8(SHPR_PENDSV, KPriorityWfiPendsv);
+	asm("ISB"); asm("DSB");
 
-	while (t == NULL) {
+	for (;;) {
 		WFI();
 		kern_disableInterrupts(); // Could use BASEPRI instead here
 		t = findNextReadyThread();
+		if (t) {
+			break;
+		}
 		kern_enableInterrupts();
 	}
 
 	// Stop any further pendSVs during SVC
 	PUT8(SHPR_PENDSV, KPrioritySvc);
+	asm("ISB"); asm("DSB");
+	kern_enableInterrupts();
 	scheduleThread(t);
 }
 
