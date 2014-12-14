@@ -321,6 +321,13 @@ int init_module_kluadebugger(lua_State* L) {
 	MBUF_MEMBER(SuperPage, crashedHeapLimit);
 #endif
 
+#ifdef TIMER_DEBUG
+	MBUF_MEMBER(SuperPage, lastRescheduleTime);
+	MBUF_MEMBER(SuperPage, lastPendSvTime);
+	MBUF_MEMBER(SuperPage, lastSvcTime);
+	MBUF_MEMBER(SuperPage, lastSvc);
+#endif
+
 	MBUF_NEW(SuperPage, TheSuperPage);
 	lua_setglobal(L, "TheSuperPage");
 

@@ -29,6 +29,12 @@ NOINLINE NAKED uint64 readUserInt64(uintptr ptr) {
 
 int64 handleSvc(int cmd, uintptr arg1, uintptr arg2, void* savedRegisters) {
 	// printk("+handleSvc %x\n", cmd);
+#ifdef TIMER_DEBUG
+	if (!TheSuperPage->marvin) {
+		TheSuperPage->lastSvcTime = (TheSuperPage->uptime << 16) + GET32(SYSTICK_VAL);
+		TheSuperPage->lastSvc = cmd;
+	}
+#endif
 	if (cmd & KFastExec) {
 		cmd = cmd & ~KFastExec;
 	}

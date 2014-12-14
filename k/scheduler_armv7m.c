@@ -141,6 +141,9 @@ NAKED void pendSV() {
 }
 
 static void USED doPendSv(void* savedRegisters) {
+#ifdef TIMER_DEBUG
+	TheSuperPage->lastPendSvTime = (TheSuperPage->uptime << 16) + GET32(SYSTICK_VAL);
+#endif
 	// printk("+pendSV\n");
 	Dfc dfcs[MAX_DFCS];
 	// Interrupts will always be enabled on entry to a configurable exception handler
@@ -161,6 +164,9 @@ static void USED doPendSv(void* savedRegisters) {
 
 	// Last thing the pendSV handler does is to check for thread timeslice expired
 	if (atomic_setbool(&TheSuperPage->rescheduleNeededOnPendSvExit, false)) {
+#ifdef TIMER_DEBUG
+		TheSuperPage->lastRescheduleTime = (TheSuperPage->uptime << 16) + GET32(SYSTICK_VAL);
+#endif
 		// printk("Rescheduling\n");
 		saveCurrentRegistersForThread(savedRegisters);
 		reschedule();

@@ -10,6 +10,8 @@
 
 #define LUPI_VERSION_STRING "LuPi 0.22"
 
+// #define TIMER_DEBUG
+
 /*
 Limiting to 256 running processes makes the maths quite nice - the ProcessList fits into a page,
 and Process overhead is a maximum 1MB (sounds big but it's fixed). There's maybe also some
@@ -245,6 +247,12 @@ typedef struct SuperPage {
 #endif
 #ifndef HAVE_MMU
 	uintptr crashedHeapLimit;
+#endif
+#ifdef TIMER_DEBUG
+	uint64 lastRescheduleTime;
+	uint64 lastPendSvTime;
+	uint64 lastSvcTime;
+	uint32 lastSvc;
 #endif
 } SuperPage;
 
