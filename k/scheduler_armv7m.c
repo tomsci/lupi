@@ -159,12 +159,12 @@ static void USED doPendSv(void* savedRegisters) {
 		kern_enableInterrupts();
 	}
 
-	// Last thing the pendSV handler does is to check for thread timeslice
-	// expired during SVC
-	// if (atomic_setbool(&TheSuperPage->rescheduleNeededOnSvcExit, false)) {
-	// 	saveCurrentRegistersForThread(savedRegisters);
-	// 	reschedule();
-	// }
+	// Last thing the pendSV handler does is to check for thread timeslice expired
+	if (atomic_setbool(&TheSuperPage->rescheduleNeededOnPendSvExit, false)) {
+		// printk("Rescheduling\n");
+		saveCurrentRegistersForThread(savedRegisters);
+		reschedule();
+	}
 	// printk("-pendSV\n");
 }
 
@@ -176,30 +176,25 @@ void sysTick() {
 		s->timerCompletionTime = UINT64_MAX;
 		// printk("Queueing timer completion\n");
 		dfc_requestComplete(&s->timerRequest, 0);
+		// printk("Done\n");
 	}
-	/*TODO
 	Thread* t = s->currentThread;
 	if (t && t->state == EReady) {
 		if (t->timeslice > 0) {
 			t->timeslice--;
 		} else {
-			// This is only allowed if the thread is (still!) in an SVC,
-			bool threadWasInSvc = SvOrPendSvActive();
-			ASSERT(threadWasInSvc);
-			atomic_setbool(&TheSuperPage->rescheduleNeededOnSvcExit, true);
-			// And make sure PendSV is set
-			printk("Setting pendsv due to tick thread timeslice 0 in svc\n");
-			PUT32(SCB_ICSR, ICSR_PENDSVSET);
+			// This is only allowed if the PendSv handler has not yet run to
+			// reschedule the thread
+			ASSERT(SvOrPendSvActive() || TheSuperPage->rescheduleNeededOnPendSvExit);
 		}
 		if (t->timeslice == 0) {
 			// Thread timeslice expired
-			printk("timeslice expired\n");
+			// printk("timeslice expired\n");
 			thread_yield(t);
 			atomic_setbool(&TheSuperPage->rescheduleNeededOnPendSvExit, true);
 			PUT32(SCB_ICSR, ICSR_PENDSVSET);
 		}
 	}
-	*/
 	// printk("-Tick!\n");
 }
 
