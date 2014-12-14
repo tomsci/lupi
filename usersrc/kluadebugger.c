@@ -154,6 +154,34 @@ static int reboot_lua(lua_State* L) {
 	return 0;
 }
 
+#ifdef ARMV7_M
+static int GetThreadExceptionStackFrame_lua(lua_State* L) {
+	Thread* t = NULL;
+	if (lua_isnoneornil(L, 1)) {
+		t = TheSuperPage->currentThread;
+	} else if (lua_isnumber(L, 1)) {
+		t = (Thread*)lua_tointeger(L, 1);
+		ASSERTL(t != 0);
+	} else {
+		MemBuf* threadBuf = mbuf_checkbuf_type(L, 1, "Thread");
+		t = (Thread*)threadBuf->ptr;
+	}
+
+	ExceptionStackFrame* esf;
+	if (t == TheSuperPage->currentThread) {
+		// Then the exception stack frame will be in PSP, and we need to read it
+		// from there because we aren't guaranteed to have saved the current
+		// thread's registers at this point
+		READ_SPECIAL(PSP, esf);
+	} else {
+		// It'll be saved in the Thread savedRegisters
+		esf = (ExceptionStackFrame*)t->savedRegisters[KSavedR13];
+	}
+	mbuf_new(L, esf, sizeof(ExceptionStackFrame), "ExceptionStackFrame");
+	return 1;
+}
+#endif
+
 int init_module_kluadebugger(lua_State* L) {
 	PRINT_MEM_STATS("Mem usage pre init_module_kluadebugger = %d B\n");
 
@@ -412,6 +440,9 @@ int init_module_kluadebugger(lua_State* L) {
 	MBUF_MEMBER(ExceptionStackFrame, psr);
 
 	FORCE_OUTOFLINE_COPY(getThreadExceptionStackFrame);
+
+	DECLARE_FN(L, GetThreadExceptionStackFrame_lua, "getEsf");
+
 #endif
 
 	if (TheSuperPage->totalRam < 256*1024) {
