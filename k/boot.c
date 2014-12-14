@@ -198,6 +198,8 @@ void iThinkYouOughtToKnowImFeelingVeryDepressed() {
 		TheSuperPage->svcPsrMode |= KPsrIrqDisable;
 		TheSuperPage->rescheduleNeededOnSvcExit = false;
 #elif defined(ARMV7_M)
+		// Stop the clock
+		PUT32(SYSTICK_CTRL, GET32(SYSTICK_CTRL) & ~SYSTICK_CTRL_ENABLE);
 		// Promote SVC to high priority
 		PUT32(SCB_SHPR2, KCrashedPrioritySvc << 24);
 		// Prevent anything else from running
