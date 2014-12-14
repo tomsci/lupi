@@ -12,11 +12,6 @@
 
 // #define TIMER_DEBUG
 
-/*
-Limiting to 256 running processes makes the maths quite nice - the ProcessList fits into a page,
-and Process overhead is a maximum 1MB (sounds big but it's fixed). There's maybe also some
-cacheing tweaks we can do a la Multiple Memory Model on ARM11.
-*/
 #ifdef HAVE_MMU
 #define MAX_PROCESSES 256
 #else
@@ -97,7 +92,7 @@ typedef struct Thread {
 typedef enum ThreadState {
 	EReady = 0,
 	EBlockedFromSvc = 1, // Reason is exitReason
-	EDying = 2, // Thread has executed its last but hasn't yet been cleaned up by dfc_threadExit
+	EDying = 2, // Thread has executed its last but hasn't yet been cleaned up by threadExit_dfc
 	EDead = 3, // Stacks have been freed
 	EWaitForRequest = 4,
 } ThreadState;

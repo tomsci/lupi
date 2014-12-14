@@ -1,7 +1,11 @@
 #!/usr/local/bin/lua
 
 --[[**
-Converts an XBM to the column-packed format used by the TiLDA screen
+Converts an XBM to the column-packed format used by the TiLDA screen.
+
+Syntax:
+
+	./xbm2colpacked.lua < img.xbm
 ]]
 
 require "bit32"

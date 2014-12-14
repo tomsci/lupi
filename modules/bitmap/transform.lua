@@ -55,6 +55,10 @@ function RotateTransform(degrees, width, height)
 	return t
 end
 
+--[[**
+Transform the supplied coordinates. If `w` and `h` are not supplied, they
+are assumed to be `1`. Returns 4 results: `newx, newy, neww, newh`.
+]]
 function Transform:transform(x, y, w, h)
 	if not w then w = 1 end
 	if not h then h = 1 end
@@ -88,24 +92,6 @@ function Transform:inverse()
 		-self.ty * self.d + self.tx * self.c
 	)
 end
-
---[[
-function Transform:invert(x,y)
-	local a, d = self.a, self.d
-	local b, c = -self.b, -self.c
-	local tx = -self.tx * self.a + self.ty * self.b
-	local ty = -self.ty * self.d + self.tx * self.c
-
-	local xx = a * x + b * y + tx
-	local yy = c * x + d * y + ty
-
-	-- Workaround a la DrawContext.pixelTransform - NEEDED?
-	if tx > 0 then xx = xx - 1 end
-	if ty > 0 then yy = yy - 1 end
-
-	return xx, yy
-end
-]]
 
 function Transform:__eq(other)
 	local l,r = self,other

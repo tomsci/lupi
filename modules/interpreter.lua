@@ -1,6 +1,6 @@
 --[[**
-A command line interpreter module. Supports basic cursor navigation and command-
-line history.
+A command line interpreter module. Supports basic cursor navigation and
+command-line history.
 ]]
 
 
@@ -53,8 +53,9 @@ end
 
 --[[**
 In order to seamlessly support printing large MemBuf objects using their
-[description()](membuf/membuf.lua#MemBuf_description) API rather than `tostring`, we
-have to override the default print function with a `description`-aware version.
+[description()](membuf/types.lua#MemBuf_description) API rather than `tostring`,
+we have to override the default print function with a `description`-aware
+version.
 ]]
 function print(...)
 	local nargs = select("#", ...)
