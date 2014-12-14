@@ -196,6 +196,7 @@ void iThinkYouOughtToKnowImFeelingVeryDepressed() {
 		// Make sure IRQs remain disabled in subsequent SVC calls by the klua debugger
 #if defined(ARM)
 		TheSuperPage->svcPsrMode |= KPsrIrqDisable;
+		TheSuperPage->rescheduleNeededOnSvcExit = false;
 #elif defined(ARMV7_M)
 		// Promote SVC to high priority
 		PUT32(SCB_SHPR2, KCrashedPrioritySvc << 24);
@@ -206,7 +207,6 @@ void iThinkYouOughtToKnowImFeelingVeryDepressed() {
 		PUT32(SCB_CCR, GET32(SCB_CCR) | CCR_NONBASETHRDENA);
 		asm("DSB"); asm("ISB"); // after changing priorities
 #endif
-		TheSuperPage->rescheduleNeededOnSvcExit = false;
 #ifdef HAVE_SCREEN
 		screen_drawCrashed();
 #endif

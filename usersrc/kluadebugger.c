@@ -274,10 +274,14 @@ int init_module_kluadebugger(lua_State* L) {
 	// TODO handle arrays...
 	// Servers, for implementation reasons, fill the servers array from the end backwards
 	mbuf_declare_member(L, "SuperPage", "firstServer", offsetof(SuperPage, servers[MAX_SERVERS-1]), sizeof(Server), "Server");
-	MBUF_MEMBER(SuperPage, rescheduleNeededOnSvcExit);
 #ifdef ARM
+	MBUF_MEMBER(SuperPage, rescheduleNeededOnSvcExit);
 	MBUF_MEMBER(SuperPage, svcPsrMode);
 #endif
+#ifdef ARMV7_M
+	MBUF_MEMBER(SuperPage, rescheduleNeededOnPendSvExit);
+#endif
+
 	MBUF_MEMBER(SuperPage, screenFormat);
 	MBUF_MEMBER(SuperPage, numDfcsPending);
 	MBUF_MEMBER(SuperPage, needToSendTouchUp);
@@ -301,6 +305,7 @@ int init_module_kluadebugger(lua_State* L) {
 	MBUF_MEMBER(Thread, index);
 	MBUF_MEMBER_TYPE(Thread, state, "ThreadState");
 	MBUF_MEMBER(Thread, timeslice);
+	MBUF_MEMBER(Thread, completedRequests);
 	MBUF_MEMBER(Thread, exitReason);
 #ifdef ARMV7_M
 	MBUF_MEMBER_TYPE(Thread, savedRegisters, "threadregset");

@@ -214,9 +214,12 @@ typedef struct SuperPage {
 	uint32 crashFar;
 	byte uartBuf[68];
 	Server servers[MAX_SERVERS];
-	bool rescheduleNeededOnSvcExit;
 #ifdef ARM
+	bool rescheduleNeededOnSvcExit;
 	byte svcPsrMode; // settable so we don't accidentally enable interrupts when crashed
+#endif
+#ifdef ARMV7_M
+	bool rescheduleNeededOnPendSvExit;
 #endif
 	uint8 screenFormat;
 	uint8 numDfcsPending;

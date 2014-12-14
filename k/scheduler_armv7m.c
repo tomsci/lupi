@@ -195,7 +195,7 @@ void sysTick() {
 			// Thread timeslice expired
 			printk("timeslice expired\n");
 			thread_yield(t);
-			atomic_setbool(&TheSuperPage->rescheduleNeededOnSvcExit, true);
+			atomic_setbool(&TheSuperPage->rescheduleNeededOnPendSvExit, true);
 			PUT32(SCB_ICSR, ICSR_PENDSVSET);
 		}
 	}
@@ -204,8 +204,8 @@ void sysTick() {
 }
 
 void dfc_queue(DfcFn fn, uintptr arg1, uintptr arg2, uintptr arg3) {
-	// printk("dfc_queue\n");
 	int mask = kern_disableInterrupts();
+	// printk("+dfc_queue\n");
 	uint8 n = ++(TheSuperPage->numDfcsPending);
 	ASSERT(n <= MAX_DFCS);
 	Dfc* dfc = &TheSuperPage->dfcs[n-1];
@@ -213,6 +213,7 @@ void dfc_queue(DfcFn fn, uintptr arg1, uintptr arg2, uintptr arg3) {
 	dfc->args[0] = arg1;
 	dfc->args[1] = arg2;
 	dfc->args[2] = arg3;
+	// printk("-dfc_queue\n");
 	kern_restoreInterrupts(mask);
 	PUT32(SCB_ICSR, ICSR_PENDSVSET);
 }
