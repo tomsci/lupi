@@ -68,12 +68,12 @@ void saveCurrentRegistersForThread(void* savedRegisters) {
 }
 
 static NORETURN NAKED doScheduleThread(uint32* savedRegisters) {
-	asm("MOV r12, r0"); // R12 = &savedRegisters[0]
-	asm("LDM r12, {r4-r11}"); // restore r4-r11
+	asm("LDM r0!, {r4-r11}"); // restore r4-r11
+	// r0 is now pointing to saved SP
 	// Set the PSP to this thread's saved SP
-	asm("LDR r3, [r12, %0]" : : "i" (KSavedR13 * 4)); // r3 = savedRegisters[8]
-	asm("MSR PSP, r3");
-	// Remember to clear exclusive 
+	asm("LDR r0, [r0]");
+	asm("MSR PSP, r0");
+	// Remember to clear exclusive
 	asm("CLREX");
 
 	// Reset the handler stack pointer, it'll be a bit of a mess by now
@@ -101,6 +101,12 @@ void thread_writeSvcResult(Thread* t, uintptr result) {
 	esf->r0 = result;
 }
 
+static void setPendSvPriority(uint8 priority) {
+	PUT8(SHPR_PENDSV, priority);
+	asm("ISB");
+	asm("DSB");
+}
+
 Thread* findNextReadyThread();
 
 NORETURN reschedule() {
@@ -113,8 +119,7 @@ NORETURN reschedule() {
 	TheSuperPage->currentThread = NULL;
 	// Bump pendsv priority so it can run during the WFI
 	// in case of ISRs that need a DFC to make a thread ready
-	PUT8(SHPR_PENDSV, KPriorityWfiPendsv);
-	asm("ISB"); asm("DSB");
+	setPendSvPriority(KPriorityWfiPendsv);
 
 	for (;;) {
 		WFI();
@@ -127,8 +132,7 @@ NORETURN reschedule() {
 	}
 
 	// Stop any further pendSVs during SVC
-	PUT8(SHPR_PENDSV, KPrioritySvc);
-	asm("ISB"); asm("DSB");
+	setPendSvPriority(KPrioritySvc);
 	kern_enableInterrupts();
 	scheduleThread(t);
 }

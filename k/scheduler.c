@@ -95,7 +95,7 @@ int kern_disableInterrupts() {
 #elif defined(ARMV7_M)
 	int result;
 	READ_SPECIAL(PRIMASK, result);
-	asm("CPSID i");
+	WRITE_SPECIAL(PRIMASK, 1);
 	return result;
 #endif
 }
@@ -104,7 +104,7 @@ void kern_enableInterrupts() {
 #if defined(ARM)
 	ModeSwitch(KPsrModeSvc | KPsrFiqDisable);
 #elif defined(ARMV7_M)
-	asm("CPSIE i");
+	WRITE_SPECIAL(PRIMASK, 0);
 #endif
 }
 
@@ -116,10 +116,7 @@ void kern_restoreInterrupts(int mask) {
 #if defined(ARM)
 	ModeSwitchVar(mask);
 #elif defined(ARMV7_M)
-	if (mask == 0) {
-		// PRIMASK of 0 means interrupts were enabled and thus should be restored
-		asm("CPSIE i");
-	}
+	WRITE_SPECIAL(PRIMASK, mask);
 #endif
 }
 

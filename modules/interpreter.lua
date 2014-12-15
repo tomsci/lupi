@@ -62,7 +62,7 @@ function print(...)
 	for i = 1, nargs do
 		if i > 1 then printNoNewline("\t") end
 		local obj = select(i, ...)
-		if getmetatable(obj) ~= nil and obj.description ~= nil then
+		if getmetatable(obj) ~= nil and type(obj.description) == "function" then
 			-- Use description rather than normal tostring
 			obj:description(gprint)
 		else

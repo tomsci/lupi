@@ -10,8 +10,6 @@
 
 #define LUPI_VERSION_STRING "LuPi 0.22"
 
-// #define TIMER_DEBUG
-
 #ifdef HAVE_MMU
 #define MAX_PROCESSES 256
 #else

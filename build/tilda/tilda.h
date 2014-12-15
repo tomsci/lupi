@@ -148,4 +148,6 @@ Bit-banded user mem				22E00000-230C0000
 	asm("MOV " #reg ", %0" : : "i" (0x20000000)); \
 	asm("ADD " #reg ", %0" : : "i" (0x87000))
 
-#endif
+#define TIMER_DEBUG
+
+#endif // LUPI_BUILD_TILDA_H
