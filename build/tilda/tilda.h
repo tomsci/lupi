@@ -60,6 +60,9 @@
 #define PMC_PCSR0	0x400E0618 // PMC Peripheral Clock Status Register 0
 #define PMC_MCKR	0x400E0630 // Master clock register
 #define PMC_SR		0x400E0668
+#define PMC_PCER1	0x400E0700 // PMC Peripheral Clock Enable Register 1
+#define PMC_PCDR1	0x400E0704 // PMC Peripheral Clock Disable Register 1
+#define PMC_PCSR1	0x400E0708 // PMC Peripheral Clock Status Register 1
 
 // p47
 #define PERIPHERAL_ID_UART		8
@@ -69,6 +72,8 @@
 #define PERIPHERAL_ID_PIOD		14
 #define PERIPHERAL_ID_USART0	17
 #define PERIPHERAL_ID_SPI0		24
+#define PERIPHERAL_ID_PWM		36
+#define PERIPHERAL_ID_DACC		38
 
 // Peripheral DMA Controller (PDC) p524
 #define PERIPH_PTCR		0x120
@@ -80,6 +85,12 @@
 
 #define GPIO_LED_TX (PIOA | 21)
 #define GPIO_LED_RX (PIOC | 30)
+
+// p1373
+#define DACC_MR		0x400C8004
+#define DACC_CHER	0x400C8010 // DACC Channel Enable Register
+#define DACC_CHDR	0x400C8014 // DACC Channel Disable Register
+#define DACC_CDR	0x400C8020 // DACC Conversion Data Register
 
 #define KCrashedPrioritySvc	(0x1 << 4)
 #define KCrashedBasePri		(0x2 << 4)

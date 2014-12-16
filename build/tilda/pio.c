@@ -28,6 +28,9 @@ extern void dummy();
 #define SPI_SR_TDRE		(1 << 1) // Transmit Data Register Empty (ie RTS)
 #define SPI_SR_TXEMPTY	(1 << 9) // Transmit register empty
 
+// SPI_TDR or SPI_CR
+#define SPI_LASTXFER	(1 << 24)
+
 void gpio_set(uint32 pin, bool value) {
 	uint32 pio = pin & 0xFFFFFF00;
 	uint32 pinmask = 1 << (pin & 0x1F);
@@ -85,22 +88,27 @@ void spi_beginTransaction(uint32 chipSelectRegAddr) {
 
 #define WaitForBit(b) while ((GET32(SPI0 + SPI_SR) & (b)) == 0) { dummy(); }
 
+/*
 void spi_endTransaction() {
 	WaitForBit(SPI_SR_TXEMPTY);
 	// For now don't bother deselecting chip select
 }
+*/
 
-void spi_readwrite_poll(uint8* buf, int length, bool writeBack) {
+void spi_readwrite_poll(uint8* buf, int length, uint32 flags) {
 	for (int i = 0; i < length; i++) {
 		// Wait for fifo to be ready
 		//printk("T");
 		WaitForBit(SPI_SR_TDRE);
+		if ((flags & KSpiFlagLastXfer) && i == length - 1) {
+			PUT32(SPI0 + SPI_CR, SPI_LASTXFER);
+		}
 		PUT32(SPI0 + SPI_TDR, buf[i]);
 		// Wait for the corresponding read byte
 		//printk("R");
 		WaitForBit(SPI_SR_RDRF);
 		uint32 ret = GET32(SPI0 + SPI_RDR);
-		if (writeBack) {
+		if (flags & KSpiFlagWriteback) {
 			buf[i] = (uint8)ret;
 		}
 	}

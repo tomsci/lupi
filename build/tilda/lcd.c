@@ -116,7 +116,7 @@ void screen_init() {
 			spi_write_poll(&pattern, 1);
 		}
 	}
-	spi_endTransaction();
+	// spi_endTransaction();
 
 	kern_registerDriver(FOURCC("SCRN"), screen_handleSvc);
 }
