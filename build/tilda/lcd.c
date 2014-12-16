@@ -12,7 +12,7 @@
 #define LCD_RESET			(1 << 2) // PC2, "34"
 #define LCD_A0				(1 << 6) // PC6, "38
 #define LCD_POWER			(1 << 8) // PC8, "40"
-#define LCD_C_PINS			(LCD_RESET | LCD_A0 | LCD_POWER)
+#define LCD_C_PINS			(LCD_BACKLIGHT | LCD_RESET | LCD_A0 | LCD_POWER)
 
 #define GPIO_LCD_POWER		(PIOC | 8)
 #define GPIO_LCD_CS			(PIOB | 21)
