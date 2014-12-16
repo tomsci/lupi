@@ -100,10 +100,14 @@ void spi_readwrite_poll(uint8* buf, int length, uint32 flags) {
 		// Wait for fifo to be ready
 		//printk("T");
 		WaitForBit(SPI_SR_TDRE);
+		PUT32(SPI0 + SPI_TDR, buf[i]);
 		if ((flags & KSpiFlagLastXfer) && i == length - 1) {
+			// Despite how the common sense of race conditions might lead you to
+			// assume, you have to write SPI_LASTXFER to SPI_CR *after* writing
+			// the last byte to SPI_TDR, and not before like you might expect
 			PUT32(SPI0 + SPI_CR, SPI_LASTXFER);
 		}
-		PUT32(SPI0 + SPI_TDR, buf[i]);
+
 		// Wait for the corresponding read byte
 		//printk("R");
 		WaitForBit(SPI_SR_RDRF);
@@ -113,5 +117,8 @@ void spi_readwrite_poll(uint8* buf, int length, uint32 flags) {
 		}
 	}
 	//printk("D");
-	//WaitForBit(SPI_SR_TXEMPTY);
+	if (flags & KSpiFlagLastXfer) {
+		// This is really important otherwise the SPI_LASTXFER flag won't take effect
+		WaitForBit(SPI_SR_TXEMPTY);
+	}
 }

@@ -63,4 +63,9 @@ typedef enum {
 	InputButtonLight,
 } InputButton;
 
+#define KExecDriverFlashErase 1
+#define KExecDriverFlashStatus 2
+#define KExecDriverFlashRead 3
+#define KExecDriverFlashWrite 4
+
 #endif

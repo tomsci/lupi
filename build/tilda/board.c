@@ -3,6 +3,7 @@
 #include <exec.h>
 
 void spi_init();
+void flash_init();
 static void setPeripheralInterruptPriority(int peripheralId, uint8 priority);
 static void configureButtons(uint32 pio, uint32 mask, uint32 peripheralId);
 static void buttonEvent(InputButton but, uint32 pressed);
@@ -53,6 +54,7 @@ void board_init() {
 
 	kern_enableInterrupts();
 	spi_init();
+	flash_init();
 
 	kern_registerDriver(FOURCC("INPT"), inputHandleSvc);
 }

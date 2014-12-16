@@ -15,6 +15,7 @@ config = {
 		"build/tilda/board.c",
 		"build/tilda/pio.c",
 		"build/tilda/lcd.c",
+		"build/tilda/flash.c",
 	},
 
 	extraStdInc = "build/tilda/stdinc",
