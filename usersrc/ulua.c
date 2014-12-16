@@ -41,6 +41,8 @@ int exec_getInt(ExecGettableValue val);
 void exec_threadYield();
 int exec_threadCreate(void* newThreadState);
 void exec_threadExit(int reason);
+int exec_driverConnect(uint32 driverId);
+int exec_driverCmd(uint32 driverHandle, uint32 arg1, uint32 arg2);
 void hang();
 
 uint32 user_ProcessPid;
@@ -151,6 +153,27 @@ static int panicFn(lua_State* L) {
 	return 0;
 }
 
+static int driverConnect_lua(lua_State* L) {
+	size_t codeLen;
+	const char* code = luaL_checklstring(L, 1, &codeLen);
+	ASSERTL(codeLen == 4, "Driver code must be 4 characters");
+	int ret = exec_driverConnect(FOURCC(code));
+	if (ret < 0) {
+		return luaL_error(L, "Driver connection to '%s' failed with %d", code, ret);
+	}
+	lua_pushinteger(L, ret);
+	return 1;
+}
+
+static int driverCmd_lua(lua_State* L) {
+	uint32 handle = (uint32)luaL_checkinteger(L, 1);
+	int arg1 = luaL_checkint(L, 2);
+	int arg2 = luaL_optint(L, 3, 0);
+	int ret = exec_driverCmd(handle, arg1, arg2);
+	lua_pushinteger(L, ret);
+	return 1;
+}
+
 static int threadCreate_lua(lua_State* L);
 void ulua_setupGlobals(lua_State* L);
 
@@ -212,6 +235,8 @@ void ulua_setupGlobals(lua_State* L) {
 		{ "yield", yield_lua },
 		{ "getch_async", getch_async },
 		{ "memStats", memStats_lua },
+		{ "driverConnect", driverConnect_lua },
+		{ "driverCmd", driverCmd_lua },
 		{ NULL, NULL }
 	};
 	lua_rawgeti(L, LUA_REGISTRYINDEX, LUA_RIDX_GLOBALS);
