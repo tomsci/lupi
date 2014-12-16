@@ -60,6 +60,7 @@ luaModules = {
 	"modules/passwordManager/gui.lua",
 	"modules/passwordManager/keychain.lua",
 	{ path = "modules/bapple/bapple.lua", native = "modules/bapple/bapple.c" },
+	{ path = "modules/tetris/tetris.lua", native = "modules/tetris/tetris.c", strip = nil },
 	{ path = "modules/flash/flash.lua", native = "modules/flash/flash.c" },
 }
 
@@ -140,7 +141,7 @@ kernelSources = {
 	{ path = "usersrc/uexec.c", user = true },
 	mallocSource,
 	{ path = "usersrc/uluaHeap.c", user = true, enabled = useUluaHeap },
-	{ path = "usersrc/kluaHeap.c", user = true, kluaPresent },
+	{ path = "usersrc/kluaHeap.c", user = true, enabled = kluaPresent },
 	{ path = "k/bootMenu.c", enabled = bootMenuOnly },
 	{ path = "testing/atomic.c", enabled = bootMenuOnly },
 }
