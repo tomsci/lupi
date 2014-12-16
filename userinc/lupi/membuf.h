@@ -55,6 +55,10 @@ void mbuf_push_object(lua_State* L, uintptr ptr, int size);
 Construct a new MemBuf. `type` can be NULL, or a string previously passed to
 [mbuf\_declare\_type()](#mbuf_declare_type). The returned `MemBuf*` is owned by
 the Lua runtime - the corresponding Lua userdata is pushed onto the stack.
+
+If `ptr` is `NULL` and `len` is non-zero, a new region of RAM is allocated and
+the MemBuf set to point to it. The region is owned by the Lua runtime and will
+be freed when the Lua MemBuf userdata is collected.
 */
 MemBuf* mbuf_new(lua_State* L, void* ptr, int len, const char* type);
 

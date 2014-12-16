@@ -8,9 +8,7 @@
 
 #define MemBufMetatable "LupiMemBufMt"
 
-/**
-The maximum permitted size of a MemBuf.
-*/
+// The maximum permitted size of a MemBuf.
 #define MAX_BUFSIZE 1024*1024
 
 MemBuf* mbuf_checkbuf(lua_State* L, int idx) {
@@ -195,8 +193,14 @@ int init_module_membuf_membuf(lua_State* L) {
 #define CALL(L, nargs, nret) lua_call(L, nargs, nret)
 
 MemBuf* mbuf_new(lua_State* L, void* ptr, int len, const char* type) {
-	MemBuf* buf = (MemBuf*)lua_newuserdata(L, sizeof(MemBuf));
-
+	MemBuf* buf;
+	if (len > 0 && ptr == NULL) {
+		// Allocate memory for the buffer after the MemBuf struct
+		buf = (MemBuf*)lua_newuserdata(L, sizeof(MemBuf) + len);
+		ptr = buf + 1;
+	} else {
+		buf = (MemBuf*)lua_newuserdata(L, sizeof(MemBuf));
+	}
 	luaL_getmetatable(L, MemBufMetatable);
 	// Make sure module has been loaded lua-side before proceeding
 	if (lua_isnil(L, -1)) {
