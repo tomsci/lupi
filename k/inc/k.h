@@ -8,7 +8,7 @@
 #define KPageSize 4096
 #define KPageShift 12
 
-#define LUPI_VERSION_STRING "LuPi 0.22"
+#define LUPI_VERSION_STRING "LuPi 0.23"
 
 #ifdef HAVE_MMU
 #define MAX_PROCESSES 256
@@ -50,14 +50,20 @@ void PUT8(uint32 addr, byte val);
 #define kabort() assertionFail(0, __FILE__, __LINE__, "(kabort)")
 #define kabort1(arg) assertionFail(1, __FILE__, __LINE__, "(kabort)", arg)
 
-// These are just helpers to make the macros easier to read
-#define ASSERT_U8(x) ASSERT(x >= KUserHeapBase && x < KUserMemLimit, x);
-#define ASSERT_U16(x) ASSERT(x >= KUserHeapBase && x < KUserMemLimit && !(x & 1), x);
-#define ASSERT_U32(x) ASSERT(x >= KUserHeapBase && x < KUserMemLimit && !(x & 3), x);
+#define ASSERT_USER(x, writeable, align) \
+	ASSERT(!(x & align) && \
+		((!writeable && x >= KKernelCodeBase && x < KKernelCodeBase + KKernelCodesize) \
+		|| (x >= KUserHeapBase && x < KUserMemLimit)), x)
 
-#define ASSERT_USER_PTR8(x) ASSERT_U8((uintptr)(x))
-#define ASSERT_USER_PTR16(x) ASSERT_U16((uintptr)(x))
-#define ASSERT_USER_PTR32(x) ASSERT_U32((uintptr)(x))
+// Must be readable user memory (ie user heap or const data)
+#define ASSERT_USER_PTR8(x) ASSERT_USER((uintptr)(x), false, 0)
+#define ASSERT_USER_PTR16(x) ASSERT_USER((uintptr)(x), false, 1)
+#define ASSERT_USER_PTR32(x) ASSERT_USER((uintptr)(x), false, 3)
+
+// Must be writeable user memory
+#define ASSERT_USER_WPTR8(x) ASSERT_USER((uintptr)(x), true, 0)
+#define ASSERT_USER_WPTR16(x) ASSERT_USER((uintptr)(x), true, 1)
+#define ASSERT_USER_WPTR32(x) ASSERT_USER((uintptr)(x), true, 3)
 
 #define FOURCC(str) ((str[0]<<24)|(str[1]<<16)|(str[2]<<8)|(str[3]))
 #define IS_POW2(val) ((val & (val-1)) == 0)

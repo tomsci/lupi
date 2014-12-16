@@ -15,12 +15,12 @@ int kern_setInputRequest(uintptr userInputRequestPtr) {
 	}
 	// Currently, no-one else gets to steal being the input handler
 	ASSERT(TheSuperPage->currentThread == TheSuperPage->inputRequest.thread);
-	ASSERT_USER_PTR32(userInputRequestPtr);
+	ASSERT_USER_WPTR32(userInputRequestPtr);
 	int* maxSamplesPtr = (int*)*(uintptr*)userInputRequestPtr;
-	ASSERT_USER_PTR32(maxSamplesPtr);
+	ASSERT_USER_WPTR32(maxSamplesPtr);
 	TheSuperPage->inputRequestBufferSize = *maxSamplesPtr;
 	TheSuperPage->inputRequestBuffer = (uintptr)maxSamplesPtr + sizeof(int);
-	ASSERT_USER_PTR8(TheSuperPage->inputRequestBuffer + TheSuperPage->inputRequestBufferSize * 3*sizeof(uint32) - 1);
+	ASSERT_USER_WPTR8(TheSuperPage->inputRequestBuffer + TheSuperPage->inputRequestBufferSize * 3*sizeof(uint32) - 1);
 	TheSuperPage->inputRequest.userPtr = userInputRequestPtr;
 	// printk("kern_setInputRequest done\n");
 	return 0;
