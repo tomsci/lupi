@@ -42,6 +42,8 @@ end
 
 function after(msg, msecs)
 	if dbg then print("[timers] after "..msecs) end
+	if not timerRequest then init() end
+
 	-- TODO we should probably resolve the targetTime client-side
 	local t = { time = lupi.getUptime() + msecs, msg = msg }
 
