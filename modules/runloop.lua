@@ -90,6 +90,12 @@ Sets the pending flag. Is called automatically by
 --native function AsyncRequest:setPending()
 
 --[[**
+Returns true if the request has been set pending (by calling `setPending` or
+`queue`).
+]]
+--native function AsyncRequest:isPending()
+
+--[[**
 Returns true if the message is not in use (from the kernel's point of view).
 ]]
 --native function AsyncRequest:isFree()
@@ -126,15 +132,18 @@ function run()
 end
 
 --[[**
-Starts the event loop running. Does not return.
+Starts the event loop running. Returns only when `exitCond.exit` has been set
+to `true`. If `exitCond` is `nil` then `self` is used instead (ie the loop exits
+when `self.exit` is true). Calls can be nested.
 ]]
-function RunLoop:run()
+function RunLoop:run(exitCond)
 	assert(#self.pendingRequests > 0,
 		"Starting a run loop with no pending requests makes no sense...")
 	local waitForAnyRequest = self.waitForAnyRequest
 	local queue = self.queue
+	if not exitCond then exitCond = self end
 	local function innerLoop()
-		while true do
+		while not exitCond.exit do
 			local numReqs = waitForAnyRequest()
 			-- Now search the list and complete exactly numReqs requests
 			for i, req, removeReqFromTable in misc.iter(self.pendingRequests) do
@@ -150,7 +159,7 @@ function RunLoop:run()
 					local fn = req.completionFn or error("No completion function for AsyncRequest!")
 					req:clearFlags()
 					fn(req, r)
-					if req.requestFn then
+					if req.requestFn and not req:isPending() then
 						queue(self, req) -- This will call requestFn
 					end
 				end
@@ -165,7 +174,7 @@ function RunLoop:run()
 			end
 		end
 	end
-	while true do
+	while not exitCond.exit do
 		-- Use a nested inner loop so we don't have to call xpcall every time
 		-- we service a new completion
 		local ok, err = xpcall(innerLoop, debug.traceback)

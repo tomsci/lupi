@@ -118,6 +118,12 @@ static int setPending(lua_State* L) {
 	return 0;
 }
 
+static int isPending(lua_State* L) {
+	AsyncRequest* req = runloop_checkRequest(L, 1);
+	lua_pushboolean(L, req->flags & KAsyncFlagPending);
+	return 1;
+}
+
 static int isFree(lua_State* L) {
 	AsyncRequest* req = runloop_checkRequest(L, 1);
 	lua_pushboolean(L, !(req->flags & KAsyncFlagAccepted));
@@ -148,6 +154,7 @@ int init_module_runloop(lua_State* L) {
 		{ "getResult", getResult },
 		{ "setResult", setResult },
 		{ "setPending", setPending },
+		{ "isPending", isPending },
 		{ "isFree", isFree },
 		{ "clearFlags", clearFlags },
 		{ "__tostring", tostring },
