@@ -62,6 +62,8 @@ luaModules = {
 	{ path = "modules/bapple/bapple.lua", native = "modules/bapple/bapple.c" },
 	{ path = "modules/tetris/tetris.lua", native = "modules/tetris/tetris.c", strip = nil },
 	{ path = "modules/flash/flash.lua", native = "modules/flash/flash.c" },
+	"modules/luazero.lua",
+	{ path = "modules/ymodem.lua", strip = false },
 }
 
 local kluaCopts = {} -- Filled in later

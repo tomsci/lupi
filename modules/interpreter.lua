@@ -212,7 +212,7 @@ function executeLine(lineString)
 	printPrompt()
 end
 
-local function gotChar(ch)
+function gotChar(ch)
 	if string.char(ch) == "\r" then
 		print("")
 		local lineString = table.concat(line)
@@ -233,13 +233,13 @@ function main()
 
 	if lupi ~= nil then
 		local rl = runloop.current or runloop.new()
-		local chreq = rl:newAsyncRequest({
+		getChRequest = rl:newAsyncRequest({
 			completionFn = function(req, ch)
 				gotChar(ch)
 			end,
 			requestFn = lupi.getch_async,
 		})
-		rl:queue(chreq)
+		rl:queue(getChRequest)
 		rl:run()
 	else
 		-- Run blocking (klua doesn't support async)
