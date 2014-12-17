@@ -201,6 +201,9 @@ void iThinkYouOughtToKnowImFeelingVeryDepressed() {
 #elif defined(ARMV7_M)
 		// Stop the clock
 		PUT32(SYSTICK_CTRL, GET32(SYSTICK_CTRL) & ~SYSTICK_CTRL_ENABLE);
+		// Clear SVCALLACT and SVCALLPENDED as we are bouncing out of svc if we were in it
+		uint32 shcsr = GET32(SCB_SHCSR);
+		PUT32(SCB_SHCSR, shcsr & ~(SHCSR_SVCALLPENDED | SHCSR_SVCALLACT));
 		// Promote SVC to high priority
 		PUT32(SCB_SHPR2, KCrashedPrioritySvc << 24);
 		// Prevent anything else from running

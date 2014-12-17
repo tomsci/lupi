@@ -53,6 +53,7 @@
 #define SHCSR_USGFAULTENA		(1 << 18)
 #define SHCSR_BUSFAULTENA		(1 << 17)
 #define SHCSR_MEMFAULTENA		(1 << 16)
+#define SHCSR_SVCALLPENDED		(1 << 15)
 #define SHCSR_PENDSVACT			(1 << 10)
 #define SHCSR_SVCALLACT			(1 << 7)
 
