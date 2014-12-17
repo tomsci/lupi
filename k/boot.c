@@ -16,6 +16,7 @@ void board_init();
 void screen_init();
 void screen_drawCrashed();
 #endif
+void early_printk(const char* fmt, ...) ATTRIBUTE_PRINTF(1, 2);
 void dump_atags();
 void parseAtags(uint32* atagsPtr, AtagsParams* params);
 
@@ -40,7 +41,7 @@ void Boot(uintptr atagsPhysAddr) {
 #endif
 	uart_init();
 
-	printk("\n\n" LUPI_VERSION_STRING);
+	early_printk("\n\n" LUPI_VERSION_STRING);
 
 #ifdef HAVE_MPU
 	mmu_enable();
@@ -48,9 +49,9 @@ void Boot(uintptr atagsPhysAddr) {
 
 #if defined(ARM) && !defined(ICACHE_IS_STILL_BROKEN)
 	// Remove the temporary identity mapping for the first code page
-	printk("Identity mapping going bye-bye\n");
+	early_printk("Identity mapping going bye-bye\n");
 	*(uint32*)KKernelPdeBase = 0;
-	printk("Identity mapping gone\n");
+	early_printk("Identity mapping gone\n");
 #endif
 
 	AtagsParams atags;
@@ -70,7 +71,7 @@ void Boot(uintptr atagsPhysAddr) {
 		units = "KB";
 		amt = atags.totalRam >> 10;
 	}
-	printk(" (RAM = %d %s, board = %X, bootMode = %d)\n", amt, units, atags.boardRev, BOOT_MODE);
+	early_printk(" (RAM = %d %s, board = %X, bootMode = %d)\n", amt, units, atags.boardRev, BOOT_MODE);
 
 #ifdef LUPI_NO_SECTION0
 	initSuperPage(&atags);

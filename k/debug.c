@@ -90,6 +90,14 @@ void printk(const char* fmt, ...) {
 	va_end(args);
 }
 
+void early_printk(const char* fmt, ...) {
+	va_list args;
+	va_start(args, fmt);
+	doPrint(fmt, args, putch, putstr);
+	va_end(args);
+}
+
+
 static void putchNowWithAddedNewlines(char ch) {
 	// exec_putch is more like putbyte
 	if (ch == '\n') {
