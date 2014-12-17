@@ -31,10 +31,33 @@ static int doWriteTest(lua_State* L) {
 	return 0;
 }
 
+// #define INCLUDE_TETRISDATA
+
+#ifdef INCLUDE_TETRISDATA
+
+#include "../tetris/tetrisa.pcm.chunk0.c"
+
+static int writePageFromData(lua_State* L) {
+	int handle = luaL_checkint(L, 1);
+	int offset = luaL_checkint(L, 2);
+	const uint8* dataPtr = &data[offset];
+	uint32 destAddr = dataStart + offset;
+	int dataLen = min(256, sizeof(data) - offset);
+	uintptr args[] = { (uintptr)dataPtr, destAddr, dataLen };
+	exec_driverCmd(handle, KExecDriverFlashWrite, (uintptr)args);
+	bool moreData = (offset + dataLen < sizeof(data));
+	lua_pushboolean(L, moreData);
+	return 1;
+}
+#endif
+
 int init_module_flash_flash(lua_State* L) {
 	luaL_Reg fns[] = {
 		{ "doReadTest", doReadTest },
 		{ "doWriteTest", doWriteTest },
+#ifdef INCLUDE_TETRISDATA
+		{ "writePageFromData", writePageFromData },
+#endif
 		{ NULL, NULL }
 	};
 	luaL_setfuncs(L, fns, 0);

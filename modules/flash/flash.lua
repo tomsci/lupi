@@ -1,5 +1,6 @@
 require "bit32"
 local timers = require "timerserver.local"
+require "runloop"
 
 FlashErase = 1
 FlashStatus = 2
@@ -7,19 +8,9 @@ FlashRead = 3
 
 handle = lupi.driverConnect('FLSH')
 
-local function checkEraseCompletion()
-	local status = lupi.driverCmd(handle, FlashStatus)
-	printf("status=%d", status)
-	if bit32.band(status, 1) == 0 then
-		print("Erase completed")
-	else
-		timers.after(checkEraseCompletion, 1000)
-	end
-end
-
 function erase()
 	lupi.driverCmd(handle, FlashErase)
-	timers.after(checkEraseCompletion, 1000)
+	waitForWriteComplete(1000)
 end
 
 --native function doReadTest(handle)
@@ -30,10 +21,37 @@ function read()
 	return doReadTest(handle, 0)
 end
 
-function write()
+function writeTestData()
 	doWriteTest(handle, 0x20)
 end
 
 function getStatus()
 	return lupi.driverCmd(handle, FlashStatus)
+end
+
+function waitForWriteComplete(pollTime)
+	local stopper = {}
+	local function checkWriteCompletion()
+		local status = lupi.driverCmd(handle, FlashStatus)
+		if bit32.band(status, 1) == 0 then
+			stopper.exit = true
+		else
+			timers.after(checkWriteCompletion, pollTime)
+		end
+	end
+	collectgarbage()
+	timers.after(checkWriteCompletion, 2)
+	runloop.current:run(stopper)
+end
+
+function writeData()
+	local offset = 0
+	local moreData = true
+	while moreData do
+		moreData = writePageFromData(handle, offset)
+		-- Check every 2ms, spec sheet says takes up to 5ms
+		waitForWriteComplete(2)
+		offset = offset + 256
+	end
+	print("*** Done ***")
 end
