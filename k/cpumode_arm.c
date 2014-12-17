@@ -193,6 +193,7 @@ static uintptr stackBaseForMode(uint32 mode) {
 }
 
 void dumpRegisters(uint32* regs, uint32 pc, uint32 dataAbortFar) {
+	TheSuperPage->quiet = false;
 	uint32 spsr, r13, r14;
 	asm("MRS %0, spsr" : "=r" (spsr));
 	const uint32 crashMode = spsr & KPsrModeMask;

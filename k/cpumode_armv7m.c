@@ -107,6 +107,7 @@ void NAKED svc() {
 }
 
 void dumpRegisters(uint32* regs, uint32 excReturn) {
+	TheSuperPage->quiet = false;
 	// excReturn should be 0 if you just want to dump out the non-general
 	// registers and SCB stuff.
 

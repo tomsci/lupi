@@ -190,6 +190,7 @@ void zeroPages(void* addr, int num) {
 #ifdef KLUA_DEBUGGER
 
 void iThinkYouOughtToKnowImFeelingVeryDepressed() {
+	TheSuperPage->quiet = false;
 	uint32 far = getFAR();
 	if (!TheSuperPage->marvin) {
 		TheSuperPage->marvin = true;
@@ -252,6 +253,10 @@ const char KAssertionFailed[] = "\nASSERTION FAILURE at %s:%d\nASSERT(%s)\n";
 void NAKED assertionFail(int nextras, const char* file, int line, const char* condition, ...) {
 	// Make sure we preserve r14 across the call to printk
 	asm("PUSH {r0, r14}");
+	// Disable quiet just in case
+	LoadSuperPageAddress(r0);
+	asm("MOV r14, #0");
+	asm("STRB r14, [r0, %0]" : : "i" (offsetof(SuperPage, quiet)));
 	asm("LDR r0, =KAssertionFailed");
 	asm("BL printk");
 

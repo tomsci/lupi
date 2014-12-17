@@ -217,7 +217,6 @@ typedef struct SuperPage {
 	Server servers[MAX_SERVERS];
 #ifdef ARM
 	bool rescheduleNeededOnSvcExit;
-	byte svcPsrMode; // settable so we don't accidentally enable interrupts when crashed
 #endif
 #ifdef ARMV7_M
 	bool rescheduleNeededOnPendSvExit;
@@ -236,6 +235,14 @@ typedef struct SuperPage {
 	int inputRequestBufferSize; // in samples
 	uint32 inputRequestBufferPos; // in samples
 	uint32 buttonStates;
+	bool quiet; // Suppress printks
+#ifdef ARM
+	byte svcPsrMode; // settable so we don't accidentally enable interrupts when crashed
+#else
+	byte spare1;
+#endif
+	byte spare2;
+	byte spare3;
 
 #ifdef LUPI_NO_SECTION0
 	// We compact some other data structures into the superpage when we're

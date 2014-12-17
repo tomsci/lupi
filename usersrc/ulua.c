@@ -43,6 +43,7 @@ int exec_threadCreate(void* newThreadState);
 void exec_threadExit(int reason);
 int exec_driverConnect(uint32 driverId);
 int exec_driverCmd(uint32 driverHandle, uint32 arg1, uint32 arg2);
+void exec_supressKernelDebug(bool suppress);
 void hang();
 
 uint32 user_ProcessPid;
@@ -174,6 +175,11 @@ static int driverCmd_lua(lua_State* L) {
 	return 1;
 }
 
+static int stfu(lua_State* L) {
+	exec_supressKernelDebug(lua_toboolean(L, 1));
+	return 0;
+}
+
 static int threadCreate_lua(lua_State* L);
 void ulua_setupGlobals(lua_State* L);
 
@@ -237,6 +243,7 @@ void ulua_setupGlobals(lua_State* L) {
 		{ "memStats", memStats_lua },
 		{ "driverConnect", driverConnect_lua },
 		{ "driverCmd", driverCmd_lua },
+		{ "suppressPrints", stfu },
 		{ NULL, NULL }
 	};
 	lua_rawgeti(L, LUA_REGISTRYINDEX, LUA_RIDX_GLOBALS);

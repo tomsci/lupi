@@ -208,6 +208,9 @@ int64 handleSvc(int cmd, uintptr arg1, uintptr arg2, void* savedRegisters) {
 			result = i | KDriverHandle;
 			break;
 		}
+		case KExecStfu:
+			TheSuperPage->quiet = (bool)arg1;
+			break;
 		default: {
 			ASSERT(cmd & KDriverHandle, cmd);
 			int driverIdx = cmd & 0xFF;

@@ -29,6 +29,7 @@
 #define KExecThreadCreate		21
 
 #define KExecDriverConnect		22
+#define KExecStfu				23
 
 typedef enum {
 	EValTotalRam,

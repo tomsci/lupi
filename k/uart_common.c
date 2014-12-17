@@ -29,9 +29,11 @@ bool byteReady() {
 
 byte getch() {
 	SuperPage* s = TheSuperPage;
-	uint8 droppedChars = atomic_set8(&s->uartDroppedChars, 0);
-	if (droppedChars) {
-		printk("|Warning: %d dropped chars|", droppedChars);
+	if (!s->quiet) {
+		uint8 droppedChars = atomic_set8(&s->uartDroppedChars, 0);
+		if (droppedChars) {
+			printk("|Warning: %d dropped chars|", droppedChars);
+		}
 	}
 	if (!ring_empty(s->uartBuf, UART_BUF_SIZE)) {
 		return ring_pop(s->uartBuf, UART_BUF_SIZE);

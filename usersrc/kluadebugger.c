@@ -276,7 +276,6 @@ int init_module_kluadebugger(lua_State* L) {
 	mbuf_declare_member(L, "SuperPage", "firstServer", offsetof(SuperPage, servers[MAX_SERVERS-1]), sizeof(Server), "Server");
 #ifdef ARM
 	MBUF_MEMBER(SuperPage, rescheduleNeededOnSvcExit);
-	MBUF_MEMBER(SuperPage, svcPsrMode);
 #endif
 #ifdef ARMV7_M
 	MBUF_MEMBER(SuperPage, rescheduleNeededOnPendSvExit);
@@ -291,6 +290,11 @@ int init_module_kluadebugger(lua_State* L) {
 	MBUF_MEMBER(SuperPage, inputRequestBufferSize);
 	MBUF_MEMBER(SuperPage, inputRequestBufferPos);
 	MBUF_MEMBER(SuperPage, buttonStates);
+	MBUF_MEMBER(SuperPage, quiet);
+#ifdef ARM
+	MBUF_MEMBER(SuperPage, svcPsrMode);
+#endif
+
 
 	MBUF_TYPE(ThreadState);
 	MBUF_ENUM(ThreadState, EReady);

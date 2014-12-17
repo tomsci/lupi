@@ -117,3 +117,7 @@ int NAKED exec_driverConnect(uint32 driverId) {
 int NAKED exec_driverCmd(uint32 driverHandle, uint32 arg1, uint32 arg2) {
 	DO_EXEC();
 }
+
+void NAKED exec_supressKernelDebug(bool suppress) {
+	SLOW_EXEC1(KExecStfu);
+}

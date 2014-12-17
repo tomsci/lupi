@@ -83,6 +83,7 @@ void NAKED lupi_printstring(const char* str);
 void NAKED exec_putch(char ch);
 
 void printk(const char* fmt, ...) {
+	if (TheSuperPage->quiet) return;
 	va_list args;
 	va_start(args, fmt);
 	doPrint(fmt, args, putch, putstr);
