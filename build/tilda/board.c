@@ -4,6 +4,8 @@
 
 void spi_init();
 void flash_init();
+void audio_init();
+
 static void setPeripheralInterruptPriority(int peripheralId, uint8 priority);
 static void configureButtons(uint32 pio, uint32 mask, uint32 peripheralId);
 static void buttonEvent(InputButton but, uint32 pressed);
@@ -24,13 +26,6 @@ static DRIVER_FN(inputHandleSvc);
 #define C_BUTTONS		(BUTTON_A | BUTTON_B)
 #define D_BUTTONS		(BUTTON_UP | BUTTON_DOWN | BUTTON_LEFT | BUTTON_RIGHT)
 
-// #define AUDIO_CLIP_TEST
-// #define AUDIO_FLASH_TEST
-
-#if defined(AUDIO_CLIP_TEST) || defined(AUDIO_FLASH_TEST)
-static void audioTest();
-#endif
-
 void board_init() {
 	// Enable more specific fault handlers
 	PUT32(SCB_SHCSR, SHCSR_USGFAULTENA | SHCSR_BUSFAULTENA | SHCSR_MEMFAULTENA);
@@ -43,6 +38,7 @@ void board_init() {
 	setPeripheralInterruptPriority(PERIPHERAL_ID_PIOA, KPriorityPeripheral);
 	setPeripheralInterruptPriority(PERIPHERAL_ID_PIOC, KPriorityPeripheral);
 	setPeripheralInterruptPriority(PERIPHERAL_ID_PIOD, KPriorityPeripheral);
+	setPeripheralInterruptPriority(PERIPHERAL_ID_DACC, KPriorityAudio);
 
 	// Lowest, SVC and pendSV 0xA
 	PUT8(SHPR_SVCALL, KPrioritySvc);
@@ -62,13 +58,7 @@ void board_init() {
 	kern_enableInterrupts();
 	spi_init();
 	flash_init();
-
-	// Piezo buzzer is connected to DAC0
-	PUT32(PMC_PCER1, 1 << (PERIPHERAL_ID_DACC - 32));
-
-#if defined(AUDIO_CLIP_TEST) || defined(AUDIO_FLASH_TEST)
-	audioTest();
-#endif
+	audio_init();
 
 	kern_registerDriver(FOURCC("INPT"), inputHandleSvc);
 }
@@ -161,74 +151,3 @@ static DRIVER_FN(inputHandleSvc) {
 
 	return TheSuperPage->buttonStates;
 }
-
-
-#if defined(AUDIO_CLIP_TEST) || defined(AUDIO_FLASH_TEST)
-
-void nanowait(int ns) {
-	// ns must be less than 10000000, ie one full SysTick period
-	// only accurate to the speed of SysTick, MCK/8 ie +/- 95ns
-	int systicks = (ns * 105) / 10000;
-	// printk("Waiting %d systicks\n", systicks);
-	int current = GET32(SYSTICK_VAL);
-	int target = current - systicks;
-	if (target < 0) {
-		// Need to wait for wrap around
-		target = target + 0x2904;
-		volatile uint64* uptimePtr = &TheSuperPage->uptime;
-		uint64 curUp = *uptimePtr;
-		while (*uptimePtr == curUp) {
-			WFI();
-		}
-	}
-	while (GET32(SYSTICK_VAL) > target) { /* Spin */ }
-}
-
-#endif // audio test common
-
-#ifdef AUDIO_CLIP_TEST
-
-#include "../../modules/tetris/tetrisclip.c"
-
-static void audioTest() {
-	PUT32(DACC_CHER, 1 << 0); // Enable channel 0
-	for (int i = 0; i < sizeof(audio); i++) {
-		// Source is 8 bit and the DACC takes 12-bit input, so multiply up
-		PUT32(DACC_CDR, ((uint32)audio[i]) << 4);
-		// 45us is the time between samples for 22kHz audio
-		nanowait(45000);
-	}
-}
-
-#endif // AUDIO_CLIP_TEST
-
-#ifdef AUDIO_FLASH_TEST
-
-#include "pio.h"
-#define FLASH_CHIPSELECT (SPI0 + SPI_CSR0)
-#define READ_DATA		0x03
-
-// Stream from flash
-static void audioTest() {
-	kern_sleep(5);
-	PUT32(DACC_MR, 1 << 8); // Set REFRESH to something like 20us
-	PUT32(DACC_CHER, 1 << 0); // Enable channel 0
-	spi_beginTransaction(FLASH_CHIPSELECT);
-	uint8 cmd[] = { READ_DATA, 0, 0, 0 };
-	spi_readwrite_poll(cmd, sizeof(cmd), 0);
-	const int musicLen = 1707228; // length of tetrisa.pcm
-	for (int i = 0; i < musicLen; i++) {
-		// And just read the data byte by byte from SPI. In theory the flash bus is so much faster
-		// than the audio sample rate (42MHz vs 22kHz) that the flash access time should be
-		// inconsequential. In practice, it isn't.
-		uint8 data = 0;
-		spi_readwrite_poll(&data, 1, KSpiFlagWriteback | (i+1 == musicLen ? KSpiFlagLastXfer : 0));
-		PUT32(DACC_CDR, ((uint32)data) << 3);
-		// 45us is the time between samples for 22kHz audio
-		// 20us seems approximately right for the
-		nanowait(20000);
-	}
-}
-
-
-#endif // AUDIO_FLASH_TEST

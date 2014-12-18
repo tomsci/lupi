@@ -244,13 +244,6 @@ typedef struct SuperPage {
 	byte spare2;
 	byte spare3;
 
-#ifdef LUPI_NO_SECTION0
-	// We compact some other data structures into the superpage when we're
-	// on a mem-constrained platform
-	// uint8 pageAllocatorMem[pageAllocator_size(KRamSize >> KPageShift)];
-	Process mainProcess;
-	// User BSS follows (but is not explicitly included in the struct definition)
-#endif
 #ifndef HAVE_MMU
 	uintptr crashedHeapLimit;
 #endif
@@ -259,6 +252,18 @@ typedef struct SuperPage {
 	uint64 lastPendSvTime;
 	uint64 lastSvcTime;
 	uint32 lastSvc;
+#endif
+
+	uint32 audioAddr;
+	uint32 audioEnd;
+	byte audioBuf[18];
+
+#ifdef LUPI_NO_SECTION0
+	// We compact some other data structures into the superpage when we're
+	// on a mem-constrained platform
+	// uint8 pageAllocatorMem[pageAllocator_size(KRamSize >> KPageShift)];
+	Process mainProcess;
+	// User BSS follows (but is not explicitly included in the struct definition)
 #endif
 } SuperPage;
 
@@ -354,5 +359,6 @@ void ring_push(byte* ring, int size, byte b);
 byte ring_pop(byte* ring, int size);
 bool ring_empty(byte* ring, int size);
 bool ring_full(byte* ring, int size);
+int ring_free(byte* ring, int size);
 
 #endif // LUPI_K_H

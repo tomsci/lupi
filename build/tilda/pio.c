@@ -86,7 +86,7 @@ void spi_beginTransaction(uint32 chipSelectRegAddr) {
 	PUT32(SPI0 + SPI_MR, SPI_MR_MSTR | SPI_MR_MODFDIS | (pcs << 16));
 }
 
-#define WaitForBit(b) while ((GET32(SPI0 + SPI_SR) & (b)) == 0) { dummy(); }
+#define WaitForBit(b) while ((GET32(SPI0 + SPI_SR) & (b)) == 0) { /*dummy();*/ }
 
 /*
 void spi_endTransaction() {

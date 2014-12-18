@@ -16,6 +16,7 @@ config = {
 		"build/tilda/pio.c",
 		"build/tilda/lcd.c",
 		"build/tilda/flash.c",
+		"build/tilda/audio.c",
 	},
 
 	extraStdInc = "build/tilda/stdinc",
@@ -24,6 +25,7 @@ config = {
 	-- Not enough ram for our wasteful klua allocator to load modules
 	-- kluaIncludesModules = true,
 	ulua = true,
+	-- malloc = true,
 
 	textSectionStart = 0x00080000, -- Must match KKernelCodeBase
 	bssSectionStart = 0x20087DE0, -- Must match KUserBss

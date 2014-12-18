@@ -69,4 +69,6 @@ typedef enum {
 #define KExecDriverFlashRead 3
 #define KExecDriverFlashWrite 4
 
+#define KExecDriverAudioPlay 1
+
 #endif

@@ -72,6 +72,7 @@
 #define PERIPHERAL_ID_PIOD		14
 #define PERIPHERAL_ID_USART0	17
 #define PERIPHERAL_ID_SPI0		24
+#define PERIPHERAL_ID_TC0		27
 #define PERIPHERAL_ID_PWM		36
 #define PERIPHERAL_ID_DACC		38
 
@@ -86,14 +87,9 @@
 #define GPIO_LED_TX (PIOA | 21)
 #define GPIO_LED_RX (PIOC | 30)
 
-// p1373
-#define DACC_MR		0x400C8004
-#define DACC_CHER	0x400C8010 // DACC Channel Enable Register
-#define DACC_CHDR	0x400C8014 // DACC Channel Disable Register
-#define DACC_CDR	0x400C8020 // DACC Conversion Data Register
-
 #define KCrashedPrioritySvc	(0x1 << 4)
 #define KCrashedBasePri		(0x2 << 4)
+#define KPriorityAudio		(0x3 << 4)
 #define KPrioritySysTick	(0x4 << 4)
 #define KPriorityPeripheral	(0x8 << 4)
 #define KPriorityWfiPendsv	(0x9 << 4)
@@ -159,6 +155,6 @@ Bit-banded user mem				22E00000-230C0000
 	asm("MOV " #reg ", %0" : : "i" (0x20000000)); \
 	asm("ADD " #reg ", %0" : : "i" (0x87000))
 
-#define TIMER_DEBUG
+// #define TIMER_DEBUG
 
 #endif // LUPI_BUILD_TILDA_H

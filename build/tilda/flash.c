@@ -94,10 +94,8 @@ static int getStatus() {
 
 #define ADDR2BYTES(address) ((address) & 0xFF0000) >> 16, ((address) & 0xFF00) >> 8, ((address) & 0xFF)
 
-static void readData(uint8* buf, uintptr address, int len) {
+void flash_readData(uint8* buf, uintptr address, int len) {
 	// printk("Reading %d from %p to %p\n", len, (void*)address, buf);
-	ASSERT_USER_WPTR8(buf);
-	ASSERT_USER_WPTR8(buf + len - 1);
 	spi_beginTransaction(FLASH_CHIPSELECT);
 	// Using a 42MHz clock means we can just squeeze in without needing to use
 	// fast read. (Cutoff is 44MHz according to the datasheet)
@@ -128,7 +126,11 @@ static DRIVER_FN(flash_handleSvc) {
 			return getStatus();
 		case KExecDriverFlashRead: {
 			uintptr* args = (uintptr*)arg2;
-			readData((uint8*)args[0], args[1], (int)args[2]);
+			uint8* buf = (uint8*)args[0];
+			int len = (int)args[2];
+			ASSERT_USER_WPTR8(buf);
+			ASSERT_USER_WPTR8(buf + len - 1);
+			flash_readData(buf, args[1], len);
 			return 0;
 		}
 		case KExecDriverFlashWrite: {

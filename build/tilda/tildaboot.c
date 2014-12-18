@@ -53,6 +53,15 @@ void NAKED _start() {
 	asm(".word unhandledException"); // 43 = IRQ 27
 	asm(".word unhandledException"); // 44 = IRQ 28
 	asm(".word unhandledException"); // 45 = IRQ 29
+	asm(".word unhandledException"); // 46 = IRQ 30
+	asm(".word unhandledException"); // 47 = IRQ 31
+	asm(".word unhandledException"); // 48 = IRQ 32
+	asm(".word unhandledException"); // 49 = IRQ 33
+	asm(".word unhandledException"); // 50 = IRQ 34
+	asm(".word unhandledException"); // 51 = IRQ 35
+	asm(".word unhandledException"); // 52 = IRQ 36
+	asm(".word unhandledException"); // 53 = IRQ 37
+	asm(".word daccInterrupt"); // 54 = IRQ 38 (PERIPHERAL_ID_DACC)
 }
 
 #define CKGR_MOR	0x400E0620 // Main oscillator register

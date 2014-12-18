@@ -36,3 +36,10 @@ byte ring_pop(byte* ring, int size) {
 	return result;
 }
 
+int ring_free(byte* ring, int size) {
+	byte got = ring[size];
+	byte read = ring[size+1];
+	if (got == 0xFF) return 0; // Full
+	else if (read >= got) return read - got;
+	else return size - (got - read);
+}

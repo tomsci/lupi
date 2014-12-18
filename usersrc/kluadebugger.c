@@ -294,7 +294,19 @@ int init_module_kluadebugger(lua_State* L) {
 #ifdef ARM
 	MBUF_MEMBER(SuperPage, svcPsrMode);
 #endif
-
+#ifndef HAVE_MMU
+	MBUF_MEMBER(SuperPage, crashedHeapLimit);
+#endif
+#ifdef TIMER_DEBUG
+	MBUF_MEMBER(SuperPage, lastRescheduleTime);
+	MBUF_MEMBER(SuperPage, lastPendSvTime);
+	MBUF_MEMBER(SuperPage, lastSvcTime);
+	MBUF_MEMBER(SuperPage, lastSvc);
+#endif
+	MBUF_MEMBER(SuperPage, audioAddr);
+	MBUF_MEMBER(SuperPage, audioEnd);
+	mbuf_declare_member(L, "SuperPage", "audioBuf_got", offsetof(SuperPage, audioBuf) + sizeof(TheSuperPage->audioBuf) - 2, 1, NULL);
+	mbuf_declare_member(L, "SuperPage", "audioBuf_read", offsetof(SuperPage, audioBuf) + sizeof(TheSuperPage->audioBuf) - 1, 1, NULL);
 
 	MBUF_TYPE(ThreadState);
 	MBUF_ENUM(ThreadState, EReady);
@@ -319,17 +331,6 @@ int init_module_kluadebugger(lua_State* L) {
 
 #ifdef ARM
 	MBUF_MEMBER_TYPE(SuperPage, dfcThread, "Thread");
-#endif
-
-#ifndef HAVE_MMU
-	MBUF_MEMBER(SuperPage, crashedHeapLimit);
-#endif
-
-#ifdef TIMER_DEBUG
-	MBUF_MEMBER(SuperPage, lastRescheduleTime);
-	MBUF_MEMBER(SuperPage, lastPendSvTime);
-	MBUF_MEMBER(SuperPage, lastSvcTime);
-	MBUF_MEMBER(SuperPage, lastSvc);
 #endif
 
 	MBUF_NEW(SuperPage, TheSuperPage);

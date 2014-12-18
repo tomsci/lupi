@@ -173,6 +173,7 @@ function init()
 	dropping = false
 	paused = false
 	tickPeriod = 1000
+	audioDriver = lupi.driverConnect("BEEP")
 
 	redrawPlayArea(true)
 
@@ -568,4 +569,8 @@ function updateScore()
 	bmp:drawText(levelText, 1, y)
 	local w = bmp:getTextSize(scoreText)
 	bmp:drawText(scoreText, bmp:width() - w - 1, y)
+end
+
+function playAudio()
+	lupi.driverCmd(audioDriver, 1, 0, 1707228)
 end
