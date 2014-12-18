@@ -171,12 +171,12 @@ static int driverCmd_lua(lua_State* L) {
 	int arg1 = luaL_checkint(L, 2);
 	uintptr arg2 = (uintptr)luaL_optint(L, 3, 0);
 	uintptr args[4]; // 4 should be enough
-	int nextraargs = lua_gettop(L) - 2;
+	int nextraargs = min(4, lua_gettop(L) - 3);
 	if (nextraargs > 0) {
 		args[0] = arg2;
 		arg2 = (uintptr)args;
 		for (int i = 0; i < nextraargs; i++) {
-			args[i+1] = luaL_checkinteger(L, 2 + i);
+			args[i+1] = luaL_checkinteger(L, 4 + i);
 		}
 	}
 

@@ -66,6 +66,7 @@
 
 // p47
 #define PERIPHERAL_ID_UART		8
+#define PERIPHERAL_ID_SMC_SDRAMC 9
 #define PERIPHERAL_ID_PIOA		11
 #define PERIPHERAL_ID_PIOB		12
 #define PERIPHERAL_ID_PIOC		13
@@ -122,6 +123,9 @@ SuperPage		20087000-20088000	(4k)
 
 #define KSuperPageAddress		0x20087000
 #define KHandlerStackBase		0x20086000
+
+// NAND Flash Controller has 4KB of RAM we can steal
+#define KNfcRamBase				0x20100000
 
 /**
 User memory map

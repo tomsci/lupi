@@ -305,8 +305,8 @@ int init_module_kluadebugger(lua_State* L) {
 #endif
 	MBUF_MEMBER(SuperPage, audioAddr);
 	MBUF_MEMBER(SuperPage, audioEnd);
-	mbuf_declare_member(L, "SuperPage", "audioBuf_got", offsetof(SuperPage, audioBuf) + sizeof(TheSuperPage->audioBuf) - 2, 1, NULL);
-	mbuf_declare_member(L, "SuperPage", "audioBuf_read", offsetof(SuperPage, audioBuf) + sizeof(TheSuperPage->audioBuf) - 1, 1, NULL);
+	MBUF_MEMBER(SuperPage, audioBufPtr);
+	MBUF_MEMBER(SuperPage, audioBufNewestDataEnd);
 
 	MBUF_TYPE(ThreadState);
 	MBUF_ENUM(ThreadState, EReady);

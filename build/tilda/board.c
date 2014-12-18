@@ -30,6 +30,9 @@ void board_init() {
 	// Enable more specific fault handlers
 	PUT32(SCB_SHCSR, SHCSR_USGFAULTENA | SHCSR_BUSFAULTENA | SHCSR_MEMFAULTENA);
 
+	// Enable SMC so we can use NAND RAM
+	PUT32(PMC_PCER0, 1 << PERIPHERAL_ID_SMC_SDRAMC);
+
 	// Highest priority - sys tick (0x4).
 	PUT8(SHPR_SYSTICK, KPrioritySysTick);
 

@@ -256,7 +256,8 @@ typedef struct SuperPage {
 
 	uint32 audioAddr;
 	uint32 audioEnd;
-	byte audioBuf[18];
+	uint8* audioBufPtr;
+	uint8* audioBufNewestDataEnd;
 
 #ifdef LUPI_NO_SECTION0
 	// We compact some other data structures into the superpage when we're
