@@ -174,6 +174,7 @@ function init()
 	paused = false
 	tickPeriod = 1000
 	audioDriver = lupi.driverConnect("BEEP")
+	shouldPlayAudio = true
 
 	redrawPlayArea(true)
 
@@ -200,11 +201,16 @@ function start()
 	end
 	drawCurrentBrick()
 	bmp:blit()
+	if shouldPlayAudio then
+		playAudio()
+	end
 end
 
 function main()
 	init()
-	start()
+	playing = false
+	bmp:drawTextCentred("Press A", 0, 20, bmp:width(), 0)
+	bmp:blit()
 	collectgarbage()
 	runloop.current:run()
 end
@@ -458,8 +464,9 @@ local mask = 0
 
 function buttonPressed(op, btn, timestamp)
 	if not playing then
-		if op == input.ButtonPressed and btn == Start then
+		if op == input.ButtonPressed then
 			init()
+			if btn == Select then shouldPlayAudio = false end
 			start()
 		end
 		return
@@ -571,6 +578,11 @@ function updateScore()
 	bmp:drawText(scoreText, bmp:width() - w - 1, y)
 end
 
+local KExecDriverAudioPlay = 1
+local KExecDriverAudioPlayLoop = 2
+
+local pcmLen = 1707228
+
 function playAudio()
-	lupi.driverCmd(audioDriver, 1, 0, 1707228)
+	lupi.driverCmd(audioDriver, KExecDriverAudioPlayLoop, 0, pcmLen)
 end

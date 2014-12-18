@@ -65,6 +65,7 @@ static void fillAudioBuf();
 static void stop();
 
 #define KAudioBufBase ((uint8*)KNfcRamBase)
+#define KAudioBufMid (KAudioBufBase + 2048)
 #define KAudioBufEnd (KAudioBufBase + 4096)
 
 static void fillAudioBuf_dfc(uintptr arg0, uintptr arg1, uintptr arg2) {
@@ -72,38 +73,49 @@ static void fillAudioBuf_dfc(uintptr arg0, uintptr arg1, uintptr arg2) {
 }
 
 static void fillAudioBuf() {
-	uint8* ptrToFill;
-	int size;
+	// bool amlooping=0;
 	int availableAudioData = TheSuperPage->audioEnd - TheSuperPage->audioAddr;
 	if (availableAudioData == 0) {
-		printk("Filling buf with no more data!\n");
-		stop();
-		return;
+		if (TheSuperPage->audioLoopLen) {
+			TheSuperPage->audioAddr = TheSuperPage->audioEnd - TheSuperPage->audioLoopLen;
+			availableAudioData = TheSuperPage->audioLoopLen;
+			// printk("Looping audio from %x to %x\n", TheSuperPage->audioAddr, TheSuperPage->audioEnd);
+			// amlooping=1;
+		} else {
+			printk("No more data to fill audioBuf!\n");
+			stop();
+			return;
+		}
 	}
+	uint8* ptrToFill;
+	int size;
 	if (!TheSuperPage->audioBufPtr) {
 		// Buf empty, fill whole thing
 		ptrToFill = KAudioBufBase;
 		size = min(4096, availableAudioData);
 		TheSuperPage->audioBufPtr = KAudioBufBase;
-	} else if (TheSuperPage->audioBufNewestDataEnd == KAudioBufEnd) {
+	} else if (TheSuperPage->audioBufNewestDataEnd > KAudioBufMid) {
 		// Fill bottom half
 		ptrToFill = KAudioBufBase;
 		size = min(2048, availableAudioData);
 	} else {
 		// Fill top half
-		ptrToFill = KAudioBufBase + 2048;
+		ptrToFill = KAudioBufMid;
 		size = min(2048, availableAudioData);
 	}
+	// if (amlooping) printk("filling %p sz=%d", ptrToFill, size);
 	flash_readData(ptrToFill, TheSuperPage->audioAddr, size);
 	TheSuperPage->audioAddr += size;
 	TheSuperPage->audioBufNewestDataEnd = ptrToFill + size;
+	// if (amlooping) printk("!\n");
 	// printk("audioBufNewestDataEnd = %p\n", TheSuperPage->audioBufNewestDataEnd);
 }
 
-static void play(uint32 addr, int len) {
+static void play(uint32 addr, int len, bool loop) {
 	TheSuperPage->audioAddr = addr;
 	TheSuperPage->audioEnd = addr + len;
-	// printk("Playing audio from %x to %x\n", addr, addr+len);
+	TheSuperPage->audioLoopLen = loop ? len : 0;
+	// printk("Playing audio from %x to %x loop=%d\n", addr, addr+len, loop);
 	fillAudioBuf();
 
 	// Preload DACC fifo
@@ -120,19 +132,25 @@ static void play(uint32 addr, int len) {
 }
 
 static void stop() {
-	TheSuperPage->audioEnd = 0;
 	PUT32(TC_CCR0, TC_CCR_CLKDIS);
 	PUT32(DACC_IDR, DACC_TXRDY);
 	// Clear pending interrupt in case it stays up
 	PUT32(NVIC_ICPR1, 1 << (PERIPHERAL_ID_DACC - 32));
+
+	TheSuperPage->audioAddr = 0;
+	TheSuperPage->audioEnd = 0;
+	TheSuperPage->audioLoopLen = 0;
+	TheSuperPage->audioBufPtr = 0;
+	TheSuperPage->audioBufNewestDataEnd = 0;
 }
 
 static DRIVER_FN(audioSvc) {
 	switch(arg1) {
+		case KExecDriverAudioPlayLoop: // Drop thru
 		case KExecDriverAudioPlay: {
 			if (TheSuperPage->audioEnd) return KErrAlreadyExists;
 			uintptr* args = (uintptr*)arg2;
-			play(args[0], args[1]);
+			play(args[0], args[1], arg1==KExecDriverAudioPlayLoop);
 			break;
 		}
 	default:
@@ -147,9 +165,8 @@ void daccInterrupt() {
 	while ((GET32(DACC_ISR) & DACC_TXRDY)) {
 		PUT32(DACC_CDR, ((uint32)(*TheSuperPage->audioBufPtr++) << 4));
 		if (TheSuperPage->audioBufPtr == TheSuperPage->audioBufNewestDataEnd) {
-			printk("Underflow!\n");
+			printk("Underflow! audioBufPtr=%p\n", TheSuperPage->audioBufPtr);
 			stop();
-			return;
 		} else if (TheSuperPage->audioBufPtr == KAudioBufBase + 2048) {
 			// Half way, fill bottom
 			dfc_queue(fillAudioBuf_dfc, 0, 0, 0);

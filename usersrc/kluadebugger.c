@@ -305,6 +305,7 @@ int init_module_kluadebugger(lua_State* L) {
 #endif
 	MBUF_MEMBER(SuperPage, audioAddr);
 	MBUF_MEMBER(SuperPage, audioEnd);
+	MBUF_MEMBER(SuperPage, audioLoopLen);
 	MBUF_MEMBER(SuperPage, audioBufPtr);
 	MBUF_MEMBER(SuperPage, audioBufNewestDataEnd);
 

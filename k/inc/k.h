@@ -256,6 +256,7 @@ typedef struct SuperPage {
 
 	uint32 audioAddr;
 	uint32 audioEnd;
+	uint32 audioLoopLen;
 	uint8* audioBufPtr;
 	uint8* audioBufNewestDataEnd;
 
