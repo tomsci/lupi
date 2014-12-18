@@ -160,7 +160,8 @@ static void doBlit(uintptr arg2) {
 		write(CMD_SET_COLUMN_LO | (colAddr & 0xF));
 		gpio_set(GPIO_LCD_A0, 1);
 		int srcPage = (y >> 3) + pageIdx;
-		spi_write_poll(data + (srcPage * bwidth) + x, w);
+		uint32 flags = (pageIdx == numPages-1) ? KSpiFlagLastXfer : 0;
+		spi_readwrite_poll((uint8*)data + (srcPage * bwidth) + x, w, flags);
 	}
 }
 
