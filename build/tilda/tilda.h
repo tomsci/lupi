@@ -148,8 +148,8 @@ Bit-banded user mem				22E00000-230C0000
 
 #define KUserMemLimit			KHandlerStackBase
 
-#define USER_STACK_SIZE			(2048)
-#define USER_STACK_AREA_SHIFT	(11)
+#define USER_STACK_SIZE			(4096)
+#define USER_STACK_AREA_SHIFT	(12)
 
 #define LoadSuperPageAddress(reg) \
 	asm("MOV " #reg ", %0" : : "i" (0x20000000)); \
