@@ -64,17 +64,19 @@ void screen_init() {
 
 	gpio_set(GPIO_LCD_POWER, 0); // That's what it says...
 	gpio_set(GPIO_LCD_A0, 0);
-	// gpio_set(GPIO_LCD_CS, 1);
 	gpio_set(GPIO_LCD_RESET, 0);
 
 	kern_sleep(200);
 
 	gpio_set(GPIO_LCD_RESET, 1);
-	// gpio_set(GPIO_LCD_CS, 1); // CS is active low so this disables
 
 	uint32 csr =
 		(1 << 24) | // DLYBCT = 32*1 cycles delay between writes
-		(21 << 8) |	// SCBR = 21 with our 84MHz clock means 4MHz SPI clock
+		//(255 << 16) | // DLYBS = Delay before SPCK
+		// (4 << 8) |	// SCBR = 4 with our 84MHz clock means 21MHz SPI clock
+		(5 << 8) |	// SCBR = 5 with our 84MHz clock means 16.8MHz SPI clock
+		// (9 << 8) |	// SCBR = 9 with our 84MHz clock means 9.33MHz SPI clock
+		// (21 << 8) |	// SCBR = 21 with our 84MHz clock means 4MHz SPI clock
 		SPI_MODE0;	// We are a nice boring mode0 device (CPOL=0 CPHA=0)
 	PUT32(LCD_SPI_CHIPSELECT, csr);
 
@@ -133,7 +135,7 @@ static void setBrightness(uint8 val) {
 
 static void doBlit(uintptr arg2) {
 	// Format of *arg2 is { dataPtr, bitmapWidth, screenx, screeny, x, y, w, h }
-
+	spi_beginTransaction(LCD_SPI_CHIPSELECT);
 	ASSERT_USER_PTR32(arg2);
 	uint32* op = (uint32*)arg2;
 	const uint8* data = (uint8*)op[0];

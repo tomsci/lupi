@@ -23,6 +23,9 @@ extern void dummy();
 #define SPI_MR_PS		(1 << 1) // Peripheral Select, 0=Fixed 1=Variable
 #define SPI_MR_MODFDIS	(1 << 4) // Mode fault detection, 0=Enabled 1=Disabled
 
+// First num is DLYBCS
+#define SPI_MR_CONFIG	((0 << 24) | SPI_MR_MSTR | SPI_MR_MODFDIS)
+
 // SPI_SR
 #define SPI_SR_RDRF		(1 << 0) // Receive Data Register Full (ie ready to read)
 #define SPI_SR_TDRE		(1 << 1) // Transmit Data Register Empty (ie RTS)
@@ -67,7 +70,7 @@ void spi_init() {
 	// We are using fixed peripheral select because it fits better with our
 	// begin(), write(), end() model so we don't set SPI_MR_PS which is more
 	// for stateless activity
-	PUT32(SPI0 + SPI_MR, SPI_MR_MSTR | SPI_MR_MODFDIS);
+	PUT32(SPI0 + SPI_MR, SPI_MR_CONFIG);
 	PUT32(SPI0 + SPI_CR, SPI_CR_SPIEN); // Now enable SPI
 }
 
@@ -83,7 +86,7 @@ void spi_beginTransaction(uint32 chipSelectRegAddr) {
 	uint32 id = ((chipSelectRegAddr & 0xFF) - SPI_CSR0) >> 2;
 	// printk("spi_beginTransaction CS=%d\n", id);
 	uint32 pcs = 0xF ^ (1 << id); // Wow I actually get to use XOR operator!
-	PUT32(SPI0 + SPI_MR, SPI_MR_MSTR | SPI_MR_MODFDIS | (pcs << 16));
+	PUT32(SPI0 + SPI_MR, SPI_MR_CONFIG | (pcs << 16));
 }
 
 #define WaitForBit(b) while ((GET32(SPI0 + SPI_SR) & (b)) == 0) { /*dummy();*/ }
