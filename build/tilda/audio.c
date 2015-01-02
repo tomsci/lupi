@@ -4,6 +4,27 @@
 #include <err.h>
 #include "pio.h"
 
+/**
+The way audio playback works is as follows. We read 8-bit PCM data from the
+secondary Flash chip into one of two 2KB RAM buffers. These buffers are taken
+from the NAND Flash Controller RAM area, since we're not using it for anything
+else and main memory is rather constrained.
+
+The speaker is connected to the DAC0 output, and the DACC is configured to
+output a sample from its FIFO whenever the timer counter TC0 TIOA output rises.
+TC0 is configured to output a 22050Hz square wave signal which is used to clock
+the DACC. We keep the DACC FIFO filled using the `daccInterrupt` which fires
+whenever the FIFO has space. This interrupt handler fills the FIFO from the RAM
+buffer.
+
+If the interrupt empties the buffer, it switches to reading from the other
+buffer and queues a DFC to fill the empty buffer. Providing the DFC fires and
+completes the SPI flash read before the second buffer is exhausted (which it
+does), audio playback is uninterrupted because `daccInterrupt` is the highest
+priority we configure and thus can preempt almost anything including the SPI
+flash read.
+*/
+
 // p1373
 #define DACC_MR		0x400C8004
 #define DACC_CHER	0x400C8010 // DACC Channel Enable Register
@@ -65,8 +86,9 @@ static void fillAudioBuf();
 static void stop();
 
 #define KAudioBufBase ((uint8*)KNfcRamBase)
-#define KAudioBufMid (KAudioBufBase + 2048)
-#define KAudioBufEnd (KAudioBufBase + 4096)
+#define KAudioBufSize 2048
+#define KAudioBufMid (KAudioBufBase + KAudioBufSize)
+#define KAudioBufEnd (KAudioBufMid + KAudioBufSize)
 
 static void fillAudioBuf_dfc(uintptr arg0, uintptr arg1, uintptr arg2) {
 	fillAudioBuf();
@@ -74,41 +96,52 @@ static void fillAudioBuf_dfc(uintptr arg0, uintptr arg1, uintptr arg2) {
 
 static void fillAudioBuf() {
 	// bool amlooping=0;
-	int availableAudioData = TheSuperPage->audioEnd - TheSuperPage->audioAddr;
+	bool loopToFillBuf = false;
+	SuperPage* s = TheSuperPage;
+	int availableAudioData = s->audioEnd - s->audioAddr;
 	if (availableAudioData == 0) {
-		if (TheSuperPage->audioLoopLen) {
-			TheSuperPage->audioAddr = TheSuperPage->audioEnd - TheSuperPage->audioLoopLen;
-			availableAudioData = TheSuperPage->audioLoopLen;
-			// printk("Looping audio from %x to %x\n", TheSuperPage->audioAddr, TheSuperPage->audioEnd);
+		if (s->audioLoopLen) {
+			s->audioAddr = s->audioEnd - s->audioLoopLen;
+			availableAudioData = s->audioLoopLen;
+			// printk("Looping audio from %x to %x\n", s->audioAddr, s->audioEnd);
 			// amlooping=1;
 		} else {
 			printk("No more data to fill audioBuf!\n");
 			stop();
 			return;
 		}
+	} else if (availableAudioData < KAudioBufSize && s->audioLoopLen >= KAudioBufSize) {
+		loopToFillBuf = true;
 	}
 	uint8* ptrToFill;
 	int size;
-	if (!TheSuperPage->audioBufPtr) {
+	if (!s->audioBufPtr) {
 		// Buf empty, fill whole thing
 		ptrToFill = KAudioBufBase;
-		size = min(4096, availableAudioData);
-		TheSuperPage->audioBufPtr = KAudioBufBase;
-	} else if (TheSuperPage->audioBufNewestDataEnd > KAudioBufMid) {
+		size = min(availableAudioData, 2 * KAudioBufSize);
+		s->audioBufPtr = ptrToFill;
+	} else if (s->audioBufNewestDataEnd > KAudioBufMid) {
 		// Fill bottom half
 		ptrToFill = KAudioBufBase;
-		size = min(2048, availableAudioData);
+		size = min(KAudioBufSize, availableAudioData);
 	} else {
 		// Fill top half
 		ptrToFill = KAudioBufMid;
-		size = min(2048, availableAudioData);
+		size = min(KAudioBufSize, availableAudioData);
 	}
 	// if (amlooping) printk("filling %p sz=%d", ptrToFill, size);
-	flash_readData(ptrToFill, TheSuperPage->audioAddr, size);
-	TheSuperPage->audioAddr += size;
-	TheSuperPage->audioBufNewestDataEnd = ptrToFill + size;
+	flash_readData(ptrToFill, s->audioAddr, size);
+	if (loopToFillBuf) {
+		// Do another read to fill buffer
+		s->audioAddr = s->audioEnd - s->audioLoopLen;
+		ptrToFill += size;
+		size = KAudioBufSize - size;
+		flash_readData(ptrToFill, s->audioAddr, size);
+	}
+	s->audioAddr += size;
+	s->audioBufNewestDataEnd = ptrToFill + size;
 	// if (amlooping) printk("!\n");
-	// printk("audioBufNewestDataEnd = %p\n", TheSuperPage->audioBufNewestDataEnd);
+	// printk("audioBufNewestDataEnd = %p\n", s->audioBufNewestDataEnd);
 }
 
 static void play(uint32 addr, int len, bool loop) {
@@ -160,19 +193,25 @@ static DRIVER_FN(audioSvc) {
 }
 
 void daccInterrupt() {
+	// We only enable TXRDY interrupts so there's no real need to check the ISR
+	// or indeed to put the while loop in - the NVIC will call straight back in
+	// to us if TXRDY is still asserted (I think)
+
 	// uint32 isr = GET32(DACC_ISR);
 	// printk("daccInterrupt %x\n", isr);
+	SuperPage* s = TheSuperPage;
 	while ((GET32(DACC_ISR) & DACC_TXRDY)) {
-		PUT32(DACC_CDR, ((uint32)(*TheSuperPage->audioBufPtr++) << 4));
-		if (TheSuperPage->audioBufPtr == TheSuperPage->audioBufNewestDataEnd) {
-			printk("Underflow! audioBufPtr=%p\n", TheSuperPage->audioBufPtr);
+		PUT32(DACC_CDR, ((uint32)(*s->audioBufPtr++) << 4));
+		if (s->audioBufPtr == s->audioBufNewestDataEnd) {
+			printk("Underflow! audioBufPtr=%p\n", s->audioBufPtr);
+			kabort();
 			stop();
-		} else if (TheSuperPage->audioBufPtr == KAudioBufBase + 2048) {
-			// Half way, fill bottom
+		} else if (s->audioBufPtr == KAudioBufMid) {
+			// Half way, fill first buf
 			dfc_queue(fillAudioBuf_dfc, 0, 0, 0);
-		} else if (TheSuperPage->audioBufPtr == KAudioBufEnd) {
-			TheSuperPage->audioBufPtr = KAudioBufBase;
-			// Wrapped around, so fill top buf
+		} else if (s->audioBufPtr == KAudioBufEnd) {
+			s->audioBufPtr = KAudioBufBase;
+			// Wrapped around, so fill second buf
 			dfc_queue(fillAudioBuf_dfc, 0, 0, 0);
 		}
 	}
@@ -241,8 +280,8 @@ static void audioTest() {
 		spi_readwrite_poll(&data, 1, KSpiFlagWriteback | (i+1 == musicLen ? KSpiFlagLastXfer : 0));
 		// uint8 data = spi_readOne();
 		PUT32(DACC_CDR, ((uint32)data) << 3);
-		// 45us is the time between samples for 22kHz audio
-		// 20us seems approximately right for the
+		// 45us is the time between samples for 22kHz audio, but with the overhead of the SPI
+		// this has to be tweaked, and 20us makes it sound about right.
 		nanowait(20000);
 		// nanowait(45000);
 	}
