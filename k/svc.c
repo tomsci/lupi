@@ -10,6 +10,7 @@ void putbyte(byte b);
 bool byteReady();
 byte getch();
 static int getInt(int arg);
+static const char* getString(int arg);
 
 NOINLINE NAKED uint64 readUserInt64(uintptr ptr) {
 	asm("MOV r2, r0");
@@ -195,6 +196,9 @@ int64 handleSvc(int cmd, uintptr arg1, uintptr arg2, void* savedRegisters) {
 		case KExecGetInt:
 			result = getInt(arg1);
 			break;
+		case KExecGetString:
+			result = (uintptr)getString(arg1);
+			break;
 		case KExecDriverConnect: {
 			uint32 id = arg1;
 			// Find the driver
@@ -267,6 +271,15 @@ static int getInt(int arg) {
 		return TheSuperPage->screenFormat;
 	default:
 		ASSERT(false, arg);
+	}
+}
+
+static const char* getString(int arg) {
+	switch(arg) {
+	case EValVersion:
+		return LUPI_VERSION_STRING;
+	default:
+		return NULL;
 	}
 }
 

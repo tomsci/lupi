@@ -39,6 +39,7 @@ void exec_getch_async(AsyncRequest* request);
 NORETURN exec_abort();
 void exec_reboot();
 int exec_getInt(ExecGettableValue val);
+const char* exec_getString(ExecGettableValue val);
 void exec_threadYield();
 int exec_threadCreate(void* newThreadState);
 void exec_threadExit(int reason);
@@ -141,6 +142,7 @@ static const char* KGetIntEnums[] = {
 	"ScreenWidth",
 	"ScreenHeight",
 	"ScreenFormat",
+	"Version",
 	NULL // Must be last
 };
 
@@ -154,6 +156,20 @@ static int getInt(lua_State* L) {
 	}
 	int result = exec_getInt(arg);
 	lua_pushinteger(L, result);
+	return 1;
+}
+
+static int getString(lua_State* L) {
+	int type = lua_type(L, 1);
+	int arg;
+	if (type == LUA_TSTRING) {
+		arg = luaL_checkoption(L, 1, NULL, KGetIntEnums);
+	} else {
+		arg = luaL_checkinteger(L, 1);
+	}
+	const char* result = exec_getString(arg);
+	if (!result) return luaL_error(L, "Value is not a string");
+	lua_pushstring(L, result);
 	return 1;
 }
 
@@ -267,6 +283,7 @@ void ulua_setupGlobals(lua_State* L) {
 		{ "createThread", threadCreate_lua },
 		{ "getUptime", getUptime },
 		{ "getInt", getInt },
+		{ "getString", getString },
 		{ "yield", yield_lua },
 		{ "getch_async", getch_async },
 		{ "memStats", memStats_lua },

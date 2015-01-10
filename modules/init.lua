@@ -13,6 +13,9 @@ local commandsToRunInInterpreter = [[
 ]]
 
 local function doMain()
+	collectgarbage("setpause", 125) -- Start cycle when mem usage gets to 125% of prev
+	collectgarbage("setstepmul", 250) -- Slightly more agressive than the default 200
+
 	local bootMode = lupi.getInt(EValBootMode)
 	if bootMode == string.byte('y') then
 		-- Yield tests - if it's working right, the yields should make the
@@ -29,10 +32,9 @@ local function doMain()
 		lupi.createProcess("passwordManager.gui")
 	elseif bootMode == 5 then
 		local tetris = require("tetris")
-		tetris.init()
-		tetris.start()
-		collectgarbage()
-		return tetris.runloop.current:run()
+		return tetris.main()
+	elseif bootMode == 6 then
+		require("bootMenu").main()
 	elseif bootMode == string.byte('m') then
 		require("test.memTests").test_mem()
 	end
@@ -54,7 +56,7 @@ local function doMain()
 end
 
 function main()
-	local ok, err = pcall(doMain)
+	local ok, err = xpcall(doMain, debug.traceback)
 	if not ok then
 		print("Unable to perform init action")
 		print(err)

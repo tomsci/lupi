@@ -32,12 +32,15 @@
 #define KExecStfu				23
 #define KExecReplaceProcess		24
 
+#define KExecGetString			25
+
 typedef enum {
 	EValTotalRam,
 	EValBootMode,
 	EValScreenWidth,
 	EValScreenHeight,
 	EValScreenFormat,
+	EValVersion,
 } ExecGettableValue;
 
 typedef enum {

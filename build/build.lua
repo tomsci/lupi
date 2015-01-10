@@ -55,15 +55,16 @@ luaModules = {
 	{ path = "modules/bitmap/transform.lua" },
 	{ path = "modules/input/input.lua", native = "modules/input/input.c" },
 	"modules/passwordManager/textui.lua",
-	"modules/passwordManager/uicontrols.lua",
-	"modules/passwordManager/window.lua",
 	"modules/passwordManager/gui.lua",
 	"modules/passwordManager/keychain.lua",
+	{ path = "modules/passwordManager/uicontrols.lua", strip = false },
+	{ path = "modules/passwordManager/window.lua", strip = false },
 	{ path = "modules/bapple/bapple.lua", native = "modules/bapple/bapple.c" },
 	{ path = "modules/tetris/tetris.lua", native = "modules/tetris/tetris.c", strip = nil },
 	{ path = "modules/flash/flash.lua", native = "modules/flash/flash.c" },
 	"modules/luazero.lua",
-	{ path = "modules/ymodem.lua", strip = false },
+	{ path = "modules/ymodem.lua" },
+	{ path = "modules/bootMenu.lua", strip = nil },
 }
 
 local kluaCopts = {} -- Filled in later

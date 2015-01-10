@@ -114,6 +114,10 @@ int NAKED exec_getInt(ExecGettableValue val) {
 	SLOW_EXEC1(KExecGetInt);
 }
 
+const char* NAKED exec_getString(ExecGettableValue val) {
+	SLOW_EXEC1(KExecGetString);
+}
+
 int NAKED exec_driverConnect(uint32 driverId) {
 	SLOW_EXEC1(KExecDriverConnect);
 }
