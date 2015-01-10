@@ -1,10 +1,10 @@
-LuPi
-====
+Geoff
+=====
 
 Introduction
 ------------
 
-LuPi is an embedded OS for ARM hardware, that deliberately does not do a lot of
+Geoff is an embedded OS for ARM hardware, that deliberately does not do a lot of
 stuff. It is an experiment on how far you can push a few concepts before it all
 falls apart. These concepts are, roughly:
 
@@ -435,7 +435,10 @@ address as the entry point. This is the default configuration anyway. As on
 linux, the MMU must be disabled, and the CPU must be in Supervisor Mode with
 interrupts disabled. We also expect the bootloader to be atags-compliant and
 pass a pointer to atags data in r2, as well as a machine ID in r1 (which we
-currently ignore).
+currently ignore). On TiLDA the kernel image is on the internal flash accessible
+at `0x80000` and the boot proceeds as defined in the ARMv7-M spec.
+
+_Pi sequence is as follows:_
 
 The kernel entry-point `_start()` is defined in `piboot.c` and the build script
 ensures this is placed at the beginning of the kernel image. When called by the
@@ -456,7 +459,7 @@ point finshes by calling the more generic `Boot()` function, located in
 
 `Boot()` first enables the ARM data cache (and instruction cache if I can ever
 get it working!) before initialising the default uart by calling `uart_init()`.
-This done it prints the LuPi version. It then begins to setup the kernel data
+This done it prints the OS version. It then begins to setup the kernel data
 structures like the PageAllocator, the SuperPage and the Process pages. It also
 uses the atags data passed in by the bootloader to establish the amount of RAM
 available and board revision. Then it calls `irq_init()`.
@@ -518,8 +521,8 @@ non-sparse heap growing upwards from `KUserHeapBase` (`0x8000`).
 Once the lua environment is set up, the `main()` function is called and the
 process is fully started.
 
-Differences between LuPi and standard Lua 5.2
----------------------------------------------
+Differences compared to standard Lua 5.2
+----------------------------------------
 
 The Lua environment used for user-side processes is broadly a standard 5.2
 setup, with none of the 5.1 compatibility options enabled. There are however
@@ -548,7 +551,7 @@ helper functions defined in the misc module - see [roundDownUnsigned][] and
 ### No io or os
 
 The `io` and `os` tables are not available. They rely on a lot of standard C
-stuff that is not implemented in LuPi, and since there is no filesystem some of
+stuff that is not implemented here, and since there is no filesystem some of
 them can't even _be_ implemented. Therefore, the `file` functions are not
 available either.
 

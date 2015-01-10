@@ -8,7 +8,7 @@
 #define KPageSize 4096
 #define KPageShift 12
 
-#define LUPI_VERSION_STRING "LuPi 0.23"
+#define LUPI_VERSION_STRING "Geoff 0.24"
 
 #ifdef HAVE_MMU
 #define MAX_PROCESSES 256

@@ -185,7 +185,7 @@ local function doBuild()
 	-- Create index
 	local indexFile = build.objForSrc("index.md", ".md")
 	local index = assert(io.open(indexFile, "w"))
-	index:write("# LuPi index\n\n")
+	index:write("# Index\n\n")
 	for _, file in ipairs(mdSources) do
 		local origFile = origSources[file] or file
 		local relPath = build.makeRelativePath(docForSrc(file), indexFile)
