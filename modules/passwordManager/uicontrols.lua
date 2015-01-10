@@ -1,9 +1,9 @@
-require "input"
 require "bitmap"
 require "oo"
 
 --[[**
-Some basic UI controls.
+Some basic UI controls. See [window.lua](window.lua) for the interface that all
+UI controls must support in order to be rendered in a `Window`.
 ]]
 
 local Colour = bitmap.Colour
@@ -24,6 +24,7 @@ Button = class {
 	text = nil,
 	enabled = true,
 	pressed = false,
+	keyFocus = false,
 	x = 0,
 	y = 0,
 	fixedWidth = nil,
@@ -72,6 +73,12 @@ function Button:setPressed(flag)
 	self:draw()
 end
 
+function Button:setKeyFocus(flag)
+	assert(self.enabled ~= false)
+	self.keyFocus = flag
+	self:draw()
+end
+
 --[[**
 Call to disable a button. Disabled buttons are drawn greyed out and do not
 respond to input.
@@ -104,6 +111,16 @@ function Button:draw()
 	if edgeColour then
 		bitmap:setColour(edgeColour)
 		bitmap:drawBox(x, y, w, h)
+		if keyFocus then
+			-- If we have a button edge, draw focus box tight around the content
+			bitmap:setColour(textColour)
+			bitmap:drawBox(x + (w - contentw) / 2, y + (h - contenth) / 2, contentw + 1, contenth + 1)
+		end
+	elseif keyFocus then
+		-- If there's no button edge, and we have key focus, draw it where the
+		-- edge would be
+		bitmap:setColour(textColour)
+		bitmap:drawBox(x, y, w, h)
 	end
 
 	local fg = pressed and backgroundColour
@@ -116,8 +133,7 @@ function Button:drawContent(w, h)
 	local _ENV = self + _ENV
 	local lpad = fixedWidth and (fixedWidth - w)/2 or hpadding
 	local tpad = fixedHeight and (fixedHeight - h)/2 or vpadding
-	-- Plus one is because text hugs the top
-	bitmap:drawText(text, x + lpad, y + tpad + 1)
+	bitmap:drawText(text, x + lpad, y + tpad)
 end
 
 --[[**

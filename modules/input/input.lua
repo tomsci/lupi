@@ -10,7 +10,7 @@ ADC.
 
 local observer
 
--- Calibration data
+-- Calibration data for PiTFT screen
 xmin, xmax = 250, 3800
 ymin, ymax = 230, 3700
 
@@ -27,6 +27,9 @@ TouchDown = 1
 ButtonDown = 3
 ButtonPressed = 4
 ButtonUp = 5
+
+-- As per enum InputButton
+Up, Down, Left, Right, A, B, Select, Start = 0, 1, 2, 3, 4, 5, 6, 7
 
 --[[**
 Function to take the 12-bit raw sample data from the TSC's ADC and convert to
