@@ -109,12 +109,10 @@ The second special member is `_super` which can be used to chain together a
 Note that `_super` should not be accessed as if it were a normal member, because
 it will not behave the way you might expect super to behave when called from the
 member of a class which is not the leaf of the class hierarchy. If you really
-want a super variable in a member function, you must access it via the
-explicitly-named class object, as in:
+want to chain a super-call you must do it explicitly:
 
-	function SomeClass:someFn()
-		local super = SomeClass._super
-		super:someFn()
+	function SomeClass:someFn(...)
+		SomeClass._super.someFn(self, ...)
 	end
 
 Instances are given a `__pairs` metamethod meaning that you can iterate over

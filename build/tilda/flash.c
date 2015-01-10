@@ -5,7 +5,7 @@
 
 #define FLASH_CHIPSELECT (SPI0 + SPI_CSR0)
 
-#define SPI0_NPCS0			(1 << 28) // PA28 peripheral A, chip pin 111
+#define SPI0_NPCS0		(1 << 28) // PA28 peripheral A, chip pin 111
 
 #define FLASH_CS_PIN	SPI0_NPCS0
 #define FLASH_HOLD		(1 << 14) // PC14 chip pin 96
@@ -42,7 +42,7 @@ void flash_init() {
 	PUT32(PIOA + PERIPHERAL_ENABLE, FLASH_CS_PIN);
 
 	uint32 csr =
-		(32 << 24) |	// DLYBCT = 32*1 cycles delay between writes
+		(32 << 24) |	// DLYBCT = 32*32 cycles delay between writes
 		(2 << 8) |		// SCBR = 2 with our 84MHz clock means 42MHz SPI clock
 		SPI_CSR_CSAAT |
 		SPI_MODE0;		// We are a nice boring mode0 device (CPOL=0 CPHA=0)

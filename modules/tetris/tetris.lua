@@ -13,8 +13,8 @@ local inset = 2
 
 -- These coordinates correspond to where the bricks are located in tetris.xbm
 -- They consist of 2 pairs of numbers: the first describing the x position and
--- width of the top 2 blocks of the brick; and the second describing the bottom
--- 2 blocks. For the line (which is solely on the top row), the second pair has
+-- width of the top block(s) of the brick; and the second describing the bottom
+-- block(s). For the line (which is solely on the top row), the second pair has
 -- a width of zero.
 bricks = {
 	O = { { 0, 2 }, { 0, 2 } },
@@ -581,7 +581,8 @@ end
 local KExecDriverAudioPlay = 1
 local KExecDriverAudioPlayLoop = 2
 
-local pcmLen = 1707228
+local pcmLen = 1702256
+-- local pcmLen = 1707228 -- Full length of original PCM
 
 function playAudio()
 	lupi.driverCmd(audioDriver, KExecDriverAudioPlayLoop, 0, pcmLen)

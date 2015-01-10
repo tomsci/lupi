@@ -44,6 +44,12 @@ function waitForWriteComplete(pollTime)
 	runloop.current:run(stopper)
 end
 
+--[[**
+If `INCLUDE_TETRISDATA` is defined in flash.c, this function writes a chunk of
+data from the ROM to the secondary flash chip.
+]]
+--native function writePageFromData(handle, offset)
+
 function writeData()
 	local offset = 0
 	local moreData = true
