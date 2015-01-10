@@ -328,6 +328,7 @@ static inline Process* processForServer(Server* s) {
 NOIGNORE int process_new(const char* name, Process** resultProcess);
 NORETURN process_start(Process* p);
 NOIGNORE bool process_grow_heap(Process* p, int incr);
+int process_reset(Thread* t, const char* name);
 NOIGNORE int thread_new(Process* p, uintptr context, Thread** resultThread);
 void thread_setState(Thread* t, enum ThreadState s);
 NORETURN thread_exit(Thread* t, int reason);

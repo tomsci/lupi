@@ -380,3 +380,17 @@ void thread_requestSignal(KAsyncRequest* request) {
 		// Next reschedule will run it
 	}
 }
+
+int process_reset(Thread* t, const char* name) {
+#ifdef HAVE_MMU
+	// No real point supporting this
+	return KErrNotSupported;
+#else
+	Process* p = processForThread(t);
+	ASSERT(t == firstThreadForProcess(p), (uintptr)t);
+	ASSERT(t == TheSuperPage->currentThread, (uintptr)t);
+	ASSERT(p->numThreads == 1); // Otherwise more cleanup needed
+	process_exit(p, 0);
+	return process_init(p, name);
+#endif
+}

@@ -211,6 +211,16 @@ int64 handleSvc(int cmd, uintptr arg1, uintptr arg2, void* savedRegisters) {
 		case KExecStfu:
 			TheSuperPage->quiet = (bool)arg1;
 			break;
+		case KExecReplaceProcess: {
+			const char* newName = (const char*)arg1;
+			ASSERT_USER_PTR8(newName);
+			result = process_reset(t, newName);
+			// printk("process_reset to '%s' completed with %d\n", newName, (int)result);
+			if (result) break;
+			process_start(p);
+			// Doesn't return
+			break;
+		}
 		default: {
 			ASSERT(cmd & KDriverHandle, cmd);
 			int driverIdx = cmd & 0xFF;

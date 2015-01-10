@@ -7,6 +7,7 @@
 #include <lupi/runloop.h>
 #include <lupi/int64.h>
 #include <lupi/exec.h>
+#include <lupi/err.h>
 #ifndef MALLOC_AVAILABLE
 #include <lupi/uluaHeap.h>
 #endif
@@ -45,6 +46,7 @@ int exec_driverConnect(uint32 driverId);
 int exec_driverCmd(uint32 driverHandle, uint32 arg1, uint32 arg2);
 void exec_supressKernelDebug(bool suppress);
 void hang();
+int exec_replaceProcess(const char* name);
 
 uint32 user_ProcessPid;
 char user_ProcessName[32];
@@ -86,6 +88,22 @@ static int createProcess(lua_State* L) {
 	}
 	lua_pushinteger(L, pid);
 	return 1;
+}
+
+static int replaceProcess(lua_State* L) {
+	const char* name = luaL_checkstring(L, 1);
+	int ret = exec_replaceProcess(name);
+
+	if (ret == KErrNotSupported) {
+		// Create new process, then exit this one
+		createProcess(L);
+		exec_threadExit(0);
+		// Doesn't return
+		return 0;
+	} else {
+		// If successful exec_replaceProcess won't even return
+		return luaL_error(L, "Unable to replace process: %d", ret);
+	}
 }
 
 static int getUptime(lua_State* L) {
@@ -245,6 +263,7 @@ void ulua_setupGlobals(lua_State* L) {
 	static const luaL_Reg lupi_funcs[] = {
 		{ "getProcessName", getProcessName },
 		{ "createProcess", createProcess },
+		{ "replaceProcess", replaceProcess },
 		{ "createThread", threadCreate_lua },
 		{ "getUptime", getUptime },
 		{ "getInt", getInt },

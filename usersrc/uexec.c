@@ -53,6 +53,10 @@ int NAKED exec_createProcess(const char* name) {
 	SLOW_EXEC1(KExecCreateProcess);
 }
 
+int NAKED exec_replaceProcess(const char* name) {
+	SLOW_EXEC1(KExecReplaceProcess);
+}
+
 uint64 NAKED exec_getUptime() {
 	SLOW_EXEC(KExecGetUptime);
 }

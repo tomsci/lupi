@@ -3,7 +3,11 @@
 #include <exec.h>
 
 #ifndef LUPI_NO_PROCESS
-NORETURN NAKED do_process_start(uint32 sp) {
+
+int newProcessEntryPoint();
+
+
+static NORETURN NAKED do_first_process_start(uint32 sp, uint32 defaultRegVal) {
 	// We only have one process so we know we must be in initial thread state
 	// So setup stack then drop to depriviledged mode and go
 	// (If we had more processes we'd have to do an actual reschedule call here
@@ -14,7 +18,6 @@ NORETURN NAKED do_process_start(uint32 sp) {
 	asm("ISB");
 	asm("LDR r0, =newProcessEntryPoint");
 	// Clear all other registers to make stack dumps clearer
-	asm("LDR r1, .clearReg");
 	asm("MOV r2, r1");
 	asm("MOV r3, r1");
 	asm("MOV r4, r1");
@@ -30,8 +33,41 @@ NORETURN NAKED do_process_start(uint32 sp) {
 	asm("BLX r0");
 	// Will only return here if thread returns
 	asm("B exec_threadExit");
+}
 
-	LABEL_WORD(.clearReg, 0xA11FADED);
+static NAKED NORETURN do_replaced_process_start(uint32 sp, uint32 defaultRegVal) {
+	asm("MSR PSP, r0");
+	asm("MOV r0, %0" : : "i" (KExcReturnThreadProcess));
+	asm("MOV r4, r1");
+	asm("MOV r5, r1");
+	asm("MOV r6, r1");
+	asm("MOV r7, r1");
+	asm("MOV r8, r1");
+	asm("MOV r9, r1");
+	asm("MOV r10, r1");
+	asm("MOV r11, r1");
+	asm("BX r0");
+}
+
+void exec_threadExit(int reason);
+
+#define KRegisterDefaultValue 0xA11FADED
+
+NORETURN do_process_start(uint32 sp) {
+	if (TheSuperPage->currentProcess->pid == 1) {
+		do_first_process_start(sp, KRegisterDefaultValue);
+	} else {
+		// We must be doing a process replace from an SVC, but the original
+		// stack frame will have been nuked when the Process was reset
+		ExceptionStackFrame* esf = pushDummyExceptionStackFrame((uint32*)sp, (uintptr)newProcessEntryPoint);
+		esf->r0 = KRegisterDefaultValue;
+		esf->r1 = KRegisterDefaultValue;
+		esf->r2 = KRegisterDefaultValue;
+		esf->r3 = KRegisterDefaultValue;
+		esf->r12 = KRegisterDefaultValue;
+		esf->lr = (uintptr)exec_threadExit;
+		do_replaced_process_start((uintptr)esf, KRegisterDefaultValue);
+	}
 }
 
 void do_thread_new(Thread* t, uintptr context) {
