@@ -157,7 +157,7 @@ function init()
 	score = 0
 	level = 1
 	lineCount = 0
-	lastKeypressTime = 0
+	if not lastKeypressTime then lastKeypressTime = 0 end
 	lines = {}
 	local brick = nextBrick()
 	current = {
@@ -465,6 +465,7 @@ local mask = 0
 function buttonPressed(op, btn, timestamp)
 	if not playing then
 		if op == input.ButtonPressed then
+			lastKeypressTime = timestamp
 			init()
 			if btn == Select then shouldPlayAudio = false end
 			start()
