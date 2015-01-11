@@ -1,9 +1,12 @@
 require "runloop"
 require "input"
 require "bitmap"
+
 local uicontrols = require "passwordManager.uicontrols"
 local window = require "passwordManager.window"
 local keychain = require "passwordManager.keychain"
+local lockscreen = require "passwordManager.lockscreen"
+
 --BEGIN DEBUG
 for i = 1, 30 do
 	table.insert(keychain.items, { url = "Filler item "..i, pass="Item"..i.."pass" })
@@ -24,6 +27,7 @@ function main()
 	input.registerInputObserver(function (...) win:gotInput(...) end)
 
 	assert(xpcall(displayMainList, debug.traceback))
+	-- assert(xpcall(lockscreen.displayLockScreen, debug.traceback, win))
 
 	if rl then
 		rl:run()
