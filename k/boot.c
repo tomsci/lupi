@@ -202,17 +202,11 @@ void iThinkYouOughtToKnowImFeelingVeryDepressed() {
 #elif defined(ARMV7_M)
 		// Stop the clock
 		PUT32(SYSTICK_CTRL, GET32(SYSTICK_CTRL) & ~SYSTICK_CTRL_ENABLE);
-		// Clear SVCALLACT and SVCALLPENDED as we are bouncing out of svc if we were in it
-		uint32 shcsr = GET32(SCB_SHCSR);
-		PUT32(SCB_SHCSR, shcsr & ~(SHCSR_SVCALLPENDED | SHCSR_SVCALLACT));
-		// Promote SVC to high priority
-		PUT32(SCB_SHPR2, KCrashedPrioritySvc << 24);
 		// Prevent anything else from running
 		uint32 pri = KCrashedBasePri;
 		WRITE_SPECIAL(BASEPRI, pri);
 		// Allow bouncing from nested exception directly to thread mode
 		PUT32(SCB_CCR, GET32(SCB_CCR) | CCR_NONBASETHRDENA);
-		asm("DSB"); asm("ISB"); // after changing priorities
 #endif
 #ifdef HAVE_SCREEN
 		screen_drawCrashed();
@@ -236,6 +230,16 @@ void iThinkYouOughtToKnowImFeelingVeryDepressed() {
 		TheSuperPage->crashFar = far;
 		// We use a custom stack at the start of the debugger heap section
 		switchToKluaDebuggerMode();
+
+		// Now we're in debugger mode there's some more cleanup we need to do
+#ifdef ARMV7_M
+		// Clear SVCALLACT and SVCALLPENDED as we are bouncing out of svc if we were in it
+		uint32 shcsr = GET32(SCB_SHCSR);
+		PUT32(SCB_SHCSR, shcsr & ~(SHCSR_SVCALLPENDED | SHCSR_SVCALLACT));
+		// Promote SVC to high priority
+		PUT32(SCB_SHPR2, KCrashedPrioritySvc << 24);
+		asm("DSB"); asm("ISB"); // after changing priorities
+#endif
 		klua_runInterpreterModule();
 	}
 }
