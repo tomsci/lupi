@@ -1,4 +1,3 @@
-require "bit32"
 local timers = require "timerserver.local"
 require "runloop"
 
@@ -33,7 +32,7 @@ function waitForWriteComplete(pollTime)
 	local stopper = {}
 	local function checkWriteCompletion()
 		local status = lupi.driverCmd(handle, FlashStatus)
-		if bit32.band(status, 1) == 0 then
+		if status & 1 == 0 then
 			stopper.exit = true
 		else
 			timers.after(checkWriteCompletion, pollTime)

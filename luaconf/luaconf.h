@@ -178,6 +178,11 @@
 
 #else			/* }{ */
 
+#if 1 // TOMSCI
+// These aren't used by our loader so needn't contain anything
+#define LUA_PATH_DEFAULT ""
+#define LUA_CPATH_DEFAULT ""
+#else
 #define LUA_ROOT	"/usr/local/"
 #define LUA_LDIR	LUA_ROOT "share/lua/" LUA_VDIR "/"
 #define LUA_CDIR	LUA_ROOT "lib/lua/" LUA_VDIR "/"
@@ -187,6 +192,7 @@
 		"./?.lua;" "./?/init.lua"
 #define LUA_CPATH_DEFAULT \
 		LUA_CDIR"?.so;" LUA_CDIR"loadall.so;" "./?.so"
+#endif // TOMSCI
 #endif			/* } */
 
 
@@ -772,7 +778,7 @@ static inline long luai_nummod_helper(void* L, long a, long b) {
 */
 
 //BEGIN TOMSCI
-#define LUA_COMPAT_BITLIB // temp
+// #define LUA_COMPAT_BITLIB // temp
 #define LUA_COMPAT_APIINTCASTS
 
 #undef LUA_USE_AFORMAT // We don't support this even though the tests above believe we do

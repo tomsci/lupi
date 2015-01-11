@@ -1,6 +1,5 @@
 require "runloop"
 require "membuf"
-require "bit32"
 
 --[[**
 Module to interface with the touchscreen driver in the kernel. Currently this
@@ -79,7 +78,7 @@ local function handleKeypress(buttonMask, timestamp)
 			b = {}
 			buttonStates[i] = b
 		end
-		local bset = bit32.band(buttonMask, bit32.lshift(1, i)) ~= 0
+		local bset = buttonMask & (1 << i) ~= 0
 		if b.pressed then
 			-- TODO autorepeat
 			if not bset then
@@ -107,8 +106,8 @@ local function gotInput(inputRequest, numSamples)
 			return handleKeypress(buttonMask, timestamp)
 		end
 		local xy = inputRequest.data:getInt(offset + 4)
-		local x = bit32.rshift(xy, 16)
-		local y = bit32.band(xy, 0xFFFF)
+		local x = xy >> 16
+		local y = xy & 0xFFFF
 		observer(flags, calibratedCoords(x, y))
 	end
 end

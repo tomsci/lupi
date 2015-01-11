@@ -35,7 +35,7 @@ local function handleServerMsg(server, ptr)
 	connection message, OR .... something else! (dum dum DUUUUM)
 	]]
 	--printf("Got server message %x", ptr)
-	if bit32.band(ptr, 0xFFF) == 0 then
+	if ptr & 0xFFF == 0 then
 		-- Shared page address, connection message from new client
 		local p = getSharedPage(ptr)
 		server.clientSharedPages[ptr] = p

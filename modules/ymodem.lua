@@ -1,6 +1,5 @@
 require "interpreter"
 require "runloop"
-require "bit32"
 require "luazero"
 local at, strmid, rng = luazero.at, luazero.strmid, luazero.rng
 local timers = require("timerserver.local")
@@ -28,16 +27,16 @@ function crc16(data)
 	local crc = 0
 	local length = #data
 	for i = 1, length do
-		crc = bit32.bxor(crc, data:byte(i) * 256)
+		crc = crc ~ data:byte(i) * 256 -- Yes XOR is binary tilde
 		for j = 1, 8 do
-			if bit32.band(crc, 0x8000) > 0 then
-				crc = bit32.bxor(bit32.lshift(crc, 1), 0x1021)
+			if crc & 0x8000 > 0 then
+				crc = (crc << 1) ~ 0x1021
 			else
-				crc = bit32.lshift(crc, 1)
+				crc = crc << 1
 			end
 		end
 	end
-	return bit32.band(crc, 0xFFFF)
+	return crc & 0xFFFF
 end
 
 function send(val)
@@ -227,7 +226,7 @@ function Session:receiveBlock(firstBlock, repetition)
 
 	local b0, b1 = block:byte(1, 2)
 	-- I don't know why the packetNumber-1 check is in here!
-	if b0 == bit32.band(bit32.bnot(b1), 0xFF) and (b0 == self.packetNumber or b0 == self.packetNumber - 1) and self:verifyBlock(block) then
+	if (b0 == (~b1) & 0xFF) and (b0 == self.packetNumber or b0 == self.packetNumber - 1) and self:verifyBlock(block) then
 		dbg("Got block OK")
 		send(ack)
 		if at(block, 0) == self.packetNumber then

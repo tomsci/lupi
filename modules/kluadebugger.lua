@@ -194,7 +194,7 @@ function stack(obj)
 	local stackTop
 	if addr <= 0x4000000 and addr > 0 then
 		-- Check if it's a user stack or an svc stack
-		local stackAreaStart = roundDown(addr+100, bit32.lshift(1, USER_STACK_AREA_SHIFT))
+		local stackAreaStart = roundDown(addr+100, 1 << USER_STACK_AREA_SHIFT)
 		local svc = addr >= stackAreaStart - 100 and addr < stackAreaStart + KPageSize
 		if svc then
 			stackTop = stackAreaStart + KPageSize

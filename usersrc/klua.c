@@ -224,7 +224,7 @@ static lua_State* initModule(uintptr heapBase, const char* module) {
 		{LUA_LOADLIBNAME, luaopen_package},
 		{LUA_TABLIBNAME, luaopen_table},
 		{LUA_STRLIBNAME, luaopen_string},
-		{LUA_BITLIBNAME, luaopen_bit32},
+		// {LUA_BITLIBNAME, luaopen_bit32},
 		{NULL, NULL}
 	};
 	for (const luaL_Reg* lib = libsWeDontHate; lib->func; lib++) {
