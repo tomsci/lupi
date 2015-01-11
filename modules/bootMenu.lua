@@ -47,12 +47,12 @@ function main()
 
 	local y = 0
 	local _, texth = bmp:getTextSize(" ")
-	bmp:setColour(Colour.Black)
+	bmp:setColour(Colour.White)
+	bmp:setBackgroundColour(Colour.Black)
+	bmp:clear(0, y, win:width(), texth)
 	local version = lupi.getString("Version")
-	bmp:drawText(version, 0, y)
-	y = y + texth
-	bmp:drawLine(0, y, bmp:width(), y)
-	y = y + 3
+	bmp:drawTextCentred(version, 0, y, win:width(), texth)
+	y = y + texth + 2
 
 	-- We will simulate a list box with a bunch of buttons. Should be good
 	-- enough for now, until we get enough entries to need it to scroll, at
