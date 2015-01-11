@@ -62,7 +62,7 @@
 #define hashstr(t,str)		hashpow2(t, (str)->hash)
 #define hashboolean(t,p)	hashpow2(t, p)
 #define hashint(t,i)		hashpow2(t, i)
-
+#define hashfloat(t, f) hashint(t, f) //TOMSCI
 
 /*
 ** for some types, it is better to avoid modulus by power of 2, as
@@ -94,6 +94,7 @@ static int numisinteger (lua_Number x, lua_Integer *p) {
   else return 0;
 }
 
+#if 0 // TOMSCI
 
 /*
 ** hash for floating-point numbers
@@ -110,6 +111,7 @@ static Node *hashfloat (const Table *t, lua_Number n) {
   return hashmod(t, i);
 }
 
+#endif
 
 
 /*

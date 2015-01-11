@@ -386,7 +386,7 @@ static void copyArg(lua_State* oldL, int arg, lua_State* newL) {
 			luaL_Buffer buf;
 			luaL_buffinit(newL, &buf); // Use the new stack for buf
 			lua_pushvalue(oldL, arg); // Get fn at top
-			lua_dump(oldL, dumpToBuf, &buf);
+			lua_dump(oldL, dumpToBuf, &buf, 0);
 			luaL_pushresult(&buf);
 			lua_pop(oldL, 1); // Remove fn
 			size_t len;

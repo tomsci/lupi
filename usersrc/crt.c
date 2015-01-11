@@ -76,7 +76,7 @@ const char* strpbrk(const char *s1, const char *s2) {
 
 #ifdef ARM
 
-int NAKED _setjmp(jmp_buf env) {
+int NAKED setjmp(jmp_buf env) {
 	asm("ldr r1, .jmpbufMagicVal");
 	asm("str r1, [r0], #4");
 	// We don't do floating point (yet)
@@ -87,7 +87,7 @@ int NAKED _setjmp(jmp_buf env) {
 	LABEL_WORD(.jmpbufMagicVal, 0x5CAFF01D);
 }
 
-void NAKED _longjmp(jmp_buf env, int val) {
+void NAKED longjmp(jmp_buf env, int val) {
 	//TODO check jmpbufMagicVal
 	asm("add r0, #4");
 	asm("ldmia r0, {r4-r14}");
@@ -97,7 +97,7 @@ void NAKED _longjmp(jmp_buf env, int val) {
 
 #elif defined(THUMB2)
 
-int NAKED _setjmp(jmp_buf env) {
+int NAKED setjmp(jmp_buf env) {
 	asm("ldr r1, .jmpbufMagicVal");
 	asm("str r1, [r0], #4");
 	asm("mov r2, r13");
@@ -109,7 +109,7 @@ int NAKED _setjmp(jmp_buf env) {
 	LABEL_WORD(.jmpbufMagicVal, 0x5CAFF01D);
 }
 
-void NAKED _longjmp(jmp_buf env, int val) {
+void NAKED longjmp(jmp_buf env, int val) {
 	//TODO check jmpbufMagicVal
 	asm("add r0, #4");
 	asm("ldmia r0, {r2-r12}");

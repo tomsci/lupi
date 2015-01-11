@@ -8,6 +8,7 @@
 
 #define CHAR_MAX 255 // unsigned char, bitches
 #define CHAR_MIN 0
+#define CHAR_BIT 8
 
 #define USHRT_MAX 65535
 #define SHRT_MAX  32767

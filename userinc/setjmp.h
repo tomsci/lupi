@@ -6,8 +6,8 @@
 #define _JBLEN 12
 typedef long jmp_buf[_JBLEN];
 
-int _setjmp(jmp_buf);
-void _longjmp(jmp_buf, int) __attribute__((noreturn));
+int setjmp(jmp_buf);
+void longjmp(jmp_buf, int) __attribute__((noreturn));
 
 #endif
 

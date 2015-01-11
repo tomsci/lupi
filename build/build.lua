@@ -31,6 +31,7 @@ luaSources = {
 	--"lua/loslib.c",
 	"lua/lstrlib.c",
 	"lua/ltablib.c",
+	"lua/lutf8lib.c",
 	"lua/loadlib.c",
 	"lua/linit.c",
 }
