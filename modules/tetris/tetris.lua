@@ -152,8 +152,8 @@ function init()
 	bmp:setTransform(baseRotation:get())
 	bottomInset = inset + 2 * blockh
 
-	width = bmp:width() / blockw
-	height = (bmp:height() - bottomInset) / blockh
+	width = bmp:width() // blockw
+	height = (bmp:height() - bottomInset) // blockh
 	score = 0
 	level = 1
 	lineCount = 0
@@ -162,7 +162,7 @@ function init()
 	local brick = nextBrick()
 	current = {
 		brick = brick,
-		x = width / 2 - 1,
+		x = width // 2 - 1,
 		y = 0,
 		angle = 0,
 		rotation = RotateTransform(0, brickSize(brick)),
@@ -310,9 +310,9 @@ function redrawPlayArea(redrawBorders)
 				local id = lines[y][x]
 				if id then
 					-- printf("Line %d col %d drawing 0x%x", y, x, id)
-					local angle = bit32.band(id, bit32.bnot(31)) / 32
-					id = bit32.band(id, 31)
-					local blockx, blocky = bit32.band(id, 15), bit32.band(id, 16) / 16
+					local angle = (id & (~31)) // 32
+					id = id & 31
+					local blockx, blocky = id & 15, (id & 16) // 16
 
 					-- Starting to lose the plot here... condensed code from setBrickRotation
 					bmp:setTransform(RotateTransform(angle):applyToRotation(baseRotation):get())
