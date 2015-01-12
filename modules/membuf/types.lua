@@ -15,10 +15,17 @@ end
 
 function MemBuf._declareMember(type, memberName, offset, size, memberType)
 	local t = MemBuf._types[type]
-	--# The "type" table t serves two purposes. In its integer keys it stores the members in order.
-	--# Its non-integer keys also acts as a lookup of memberName to member
-	--# (In addition to _type and _size)
+	-- The "type" table t serves two purposes. In its integer keys it stores the members in order.
+	-- Its non-integer keys also acts as a lookup of memberName to member
+	-- (In addition to _type and _size)
+
 	local member = { name=memberName, offset=offset, size=size, type=memberType }
+	if memberType and memberType:match("^BITFIELD#") then
+		-- Needs the size in the type to so that a uint16 bitfield can be distinguished from a uint32 one etc.
+		member.type = string.format("BITFIELD#%d%s", size, memberType:sub(10))
+		-- print(string.format("BITFIELD! type=%s", member.type))
+	end
+
 	t[memberName] = member
 	table.insert(t, member)
 end
@@ -93,8 +100,25 @@ function MemBuf:_descriptionForMember(m, printer, linePrefix)
 
 	local desc = string.format("%s%s", linePrefix, str)
 	-- See if type has any decription of the value
-	local memberType = MemBuf._types[m.type]
-	local valueName = memberType and memberType._values and memberType._values[val]
+	-- print(string.format("_descriptionForMember %s", tostring(m.type)))
+	local valueName
+	local bitfield = m.type and m.type:match("^BITFIELD#%d(.*)")
+	if bitfield then
+		local parts = {}
+		local enumType = MemBuf._types[bitfield]
+		-- print(string.format("Describing BITFIELD %s of %s!", m.type, bitfield))
+		if enumType then
+			for enumVal, name in pairs(enumType._values) do
+				if bit32.band(val, bit32.lshift(1, enumVal)) > 0 then
+					table.insert(parts, name)
+				end
+			end
+			valueName = table.concat(parts, "|")
+		end
+	else
+		local memberType = MemBuf._types[m.type]
+		valueName = memberType and memberType._values and memberType._values[val]
+	end
 
 	if valueName then
 		desc = desc .. string.format(" (%s)", valueName)
@@ -186,22 +210,22 @@ end
 function MemBuf._newObject(obj)
 	local t = obj:getType()
 	if t == nil then
-		--# Anonymous untyped objects don't go in the global array
+		-- Anonymous untyped objects don't go in the global array
 		return
 	end
 
-	--# If there is a type, check it agrees with the obj len otherwise it's an error
+	-- If there is a type, check it agrees with the obj len otherwise it's an error
 	if t._size ~= obj:getLength() then
-		error("Mismatch between object length and type size")
+		error("Mismatch between object length "..tostring(obj:getLength()).." and the size "..tostring(t._size).." of type "..t._type)
 	end
 
 	if not MemBuf._objects then MemBuf._objects = {} end
 	MemBuf._objects[obj:getAddress()] = obj
 
-	--# Check for embedded objects and declare them too
+	-- Check for embedded objects and declare them too
 	for i, member in ipairs(t) do
 		if member.type then
-			--printf("subobject of %s at %d+%d %s %s", t._type, member.offset, member.size, member.type, member.name)
+			-- print(string.format("subobject of %s at %d+%d %s %s", t._type, member.offset, member.size, member.type, member.name))
 			obj:sub(member.offset, member.size, member.type)
 		end
 	end

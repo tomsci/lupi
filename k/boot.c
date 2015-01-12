@@ -218,9 +218,9 @@ void iThinkYouOughtToKnowImFeelingVeryDepressed() {
 		}
 #endif
 	}
-	if (TheSuperPage->trapAbort) {
-		TheSuperPage->exception = true;
-		TheSuperPage->trapAbort = false;
+	if (kern_getFlag(TrapAbort)) {
+		kern_setFlag(ExceptionOccurred, true);
+		kern_setFlag(TrapAbort, false);
 		//printk("Returning from abort\n");
 		return;
 	} else if (TheSuperPage->crashFar && far == TheSuperPage->crashFar) {

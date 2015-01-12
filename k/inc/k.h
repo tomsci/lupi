@@ -191,6 +191,12 @@ struct Driver {
 	DriverExecFn execFn;
 };
 
+typedef enum Flag {
+	NeedToSendTouchUp = 0,
+	TrapAbort = 1,
+	ExceptionOccurred = 2, // only used in kluadebugger
+} Flag;
+
 typedef struct SuperPage {
 	uint32 totalRam;
 	uint32 boardRev;
@@ -204,9 +210,10 @@ typedef struct SuperPage {
 	int numValidProcessPages;
 	Thread* blockedUartReceiveIrqHandler;
 	Thread* readyList;
+	uint32 flags;
+	uint8 screenFormat;
+	uint8 numDfcsPending;
 	bool marvin;
-	bool trapAbort;
-	bool exception; // only used in kdebugger mode
 	uint8 uartDroppedChars; // Access only with atomic_*
 	KAsyncRequest uartRequest;
 	KAsyncRequest timerRequest;
@@ -215,18 +222,15 @@ typedef struct SuperPage {
 	uint32 crashFar;
 	byte uartBuf[68];
 	Server servers[MAX_SERVERS];
+	bool quiet; // Suppress printks
+	byte spare1;
 #ifdef ARM
 	bool rescheduleNeededOnSvcExit;
+	byte svcPsrMode; // settable so we don't accidentally enable interrupts when crashed
 #endif
 #ifdef ARMV7_M
 	bool rescheduleNeededOnPendSvExit;
-#endif
-	uint8 screenFormat;
-	uint8 numDfcsPending;
-	bool needToSendTouchUp;
-#ifdef ARM
-	// DFCs implemented using PendSV rather than a Thread in ARMv7-M
-	Thread dfcThread;
+	byte spare2;
 #endif
 	Dfc dfcs[MAX_DFCS];
 	Driver drivers[MAX_DRIVERS];
@@ -235,14 +239,6 @@ typedef struct SuperPage {
 	int inputRequestBufferSize; // in samples
 	uint32 inputRequestBufferPos; // in samples
 	uint32 buttonStates;
-	bool quiet; // Suppress printks
-#ifdef ARM
-	byte svcPsrMode; // settable so we don't accidentally enable interrupts when crashed
-#else
-	byte spare1;
-#endif
-	byte spare2;
-	byte spare3;
 
 #ifndef HAVE_MMU
 	uintptr crashedHeapLimit;
@@ -260,6 +256,10 @@ typedef struct SuperPage {
 	uint8* audioBufPtr;
 	uint8* audioBufNewestDataEnd;
 
+#ifdef ARM
+	// DFCs implemented using PendSV rather than a Thread in ARMv7-M
+	Thread dfcThread;
+#endif
 #ifdef LUPI_NO_SECTION0
 	// We compact some other data structures into the superpage when we're
 	// on a mem-constrained platform
@@ -363,5 +363,14 @@ byte ring_pop(byte* ring, int size);
 bool ring_empty(byte* ring, int size);
 bool ring_full(byte* ring, int size);
 int ring_free(byte* ring, int size);
+
+static inline void kern_setFlag(Flag f, bool val) {
+	if (val) TheSuperPage->flags |= 1 << f;
+	else TheSuperPage->flags &= ~(1 << f);
+}
+
+static inline bool kern_getFlag(Flag f) {
+	return TheSuperPage->flags & (1 << f);
+}
 
 #endif // LUPI_K_H
