@@ -372,8 +372,8 @@ static void drainFifoAndCompleteRequest() {
 	// Clear the FIFO threshold now we've drained it
 	tsc_register_write(INT_STA, TSC_INT_FIFO_TH);
 
-	if (TheSuperPage->needToSendTouchUp && n < TheSuperPage->inputRequestBufferSize) {
-		TheSuperPage->needToSendTouchUp = false;
+	if (kern_getFlag(NeedToSendTouchUp) && n < TheSuperPage->inputRequestBufferSize) {
+		kern_setFlag(NeedToSendTouchUp, false);
 		*udataPtr++ = InputTouchUp;
 		// And dummy x and y
 		*udataPtr++ = 0;

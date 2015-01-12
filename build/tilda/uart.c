@@ -89,8 +89,6 @@ void uart_init() {
 #endif
 }
 
-#define UART_BUF_SIZE (sizeof(TheSuperPage->uartBuf) - 2)
-
 bool uart_byteReady() {
 	return GET32(SR) & RXRDY;
 }

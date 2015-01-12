@@ -96,7 +96,7 @@ extern byte GET8(uint32 ptr);
 
 static int memBufGetMem(lua_State* L, uintptr ptr, int size) {
 	//printk("Setting trapAbort...\n");
-	TheSuperPage->trapAbort = true;
+	kern_setFlag(TrapAbort, true);
 	int result;
 	if (size == 1) {
 		result = GET8(ptr);
@@ -107,10 +107,10 @@ static int memBufGetMem(lua_State* L, uintptr ptr, int size) {
 	} else {
 		result = *(int64*)ptr;
 	}
-	TheSuperPage->trapAbort = false;
+	kern_setFlag(TrapAbort, false);
 	//printk("Exited trapAbort exception = %d\n", (int)TheSuperPage->exception);
-	if (TheSuperPage->exception) {
-		TheSuperPage->exception = false;
+	if (kern_getFlag(ExceptionOccurred)) {
+		kern_setFlag(ExceptionOccurred, false);
 		return luaL_error(L, "Abort accessing memory at address %p", (void*)ptr);
 	}
 	return result;
@@ -252,9 +252,16 @@ int init_module_kluadebugger(lua_State* L) {
 	MBUF_MEMBER_TYPE(Driver, id, "char[]");
 	MBUF_MEMBER(Driver, execFn);
 
+	MBUF_TYPE(Flag);
+	MBUF_ENUM(Flag, NeedToSendTouchUp);
+	MBUF_ENUM(Flag, TrapAbort);
+	MBUF_ENUM(Flag, ExceptionOccurred);
+
 	MBUF_TYPE(SuperPage);
 	MBUF_MEMBER(SuperPage, totalRam);
 	MBUF_MEMBER(SuperPage, boardRev);
+	MBUF_MEMBER(SuperPage, screenWidth);
+	MBUF_MEMBER(SuperPage, screenHeight);
 	MBUF_MEMBER(SuperPage, bootMode);
 	MBUF_MEMBER(SuperPage, nextPid);
 	MBUF_MEMBER(SuperPage, uptime);
@@ -263,36 +270,36 @@ int init_module_kluadebugger(lua_State* L) {
 	MBUF_MEMBER(SuperPage, numValidProcessPages);
 	MBUF_MEMBER(SuperPage, blockedUartReceiveIrqHandler);
 	MBUF_MEMBER(SuperPage, readyList);
+	MBUF_MEMBER_BITFIELD(SuperPage, flags, "Flag");
+	MBUF_MEMBER(SuperPage, screenFormat);
+	MBUF_MEMBER(SuperPage, numDfcsPending);
 	MBUF_MEMBER(SuperPage, marvin);
-	MBUF_MEMBER(SuperPage, trapAbort);
-	MBUF_MEMBER(SuperPage, exception);
 	MBUF_MEMBER(SuperPage, uartDroppedChars);
 	MBUF_MEMBER_TYPE(SuperPage, uartRequest, "KAsyncRequest");
 	MBUF_MEMBER_TYPE(SuperPage, timerRequest, "KAsyncRequest");
 	MBUF_MEMBER(SuperPage, timerCompletionTime);
 	MBUF_MEMBER_TYPE(SuperPage, crashRegisters, "regset");
+	MBUF_MEMBER(SuperPage, crashFar);
 	// TODO handle arrays...
 	// Servers, for implementation reasons, fill the servers array from the end backwards
 	mbuf_declare_member(L, "SuperPage", "firstServer", offsetof(SuperPage, servers[MAX_SERVERS-1]), sizeof(Server), "Server");
+	MBUF_MEMBER(SuperPage, quiet);
 #ifdef ARM
 	MBUF_MEMBER(SuperPage, rescheduleNeededOnSvcExit);
+	MBUF_MEMBER(SuperPage, svcPsrMode);
 #endif
 #ifdef ARMV7_M
 	MBUF_MEMBER(SuperPage, rescheduleNeededOnPendSvExit);
 #endif
 
-	MBUF_MEMBER(SuperPage, screenFormat);
-	MBUF_MEMBER(SuperPage, numDfcsPending);
-	MBUF_MEMBER(SuperPage, needToSendTouchUp);
+	// MBUF_MEMBER(SuperPage, needToSendTouchUp);
 	// dfcThread has to be declared after Thread
 	MBUF_MEMBER_TYPE(SuperPage, inputRequest, "KAsyncRequest");
 	MBUF_MEMBER(SuperPage, inputRequestBuffer);
 	MBUF_MEMBER(SuperPage, inputRequestBufferSize);
 	MBUF_MEMBER(SuperPage, inputRequestBufferPos);
 	MBUF_MEMBER(SuperPage, buttonStates);
-	MBUF_MEMBER(SuperPage, quiet);
 #ifdef ARM
-	MBUF_MEMBER(SuperPage, svcPsrMode);
 #endif
 #ifndef HAVE_MMU
 	MBUF_MEMBER(SuperPage, crashedHeapLimit);

@@ -6,6 +6,8 @@
 
 #include <lupi/uluaHeap.h>
 
+#define LMEM() (lua_gc(L, LUA_GCCOUNT, 0) * 1024 + lua_gc(L, LUA_GCCOUNTB, 0))
+
 lua_State* newLuaStateForModule(const char* moduleName, lua_State* L);
 void ulua_setupGlobals(lua_State* L);
 
@@ -25,28 +27,33 @@ static const char* modules[] = {
 };
 
 static int test_mem(lua_State* L) {
-	printf("test_mem\n");
+	printf("test_mem " LUA_RELEASE "\n");
 
 	// We tear down the existing heap and lua env entirely
 	Heap* h = (Heap*)0x20070000;
 	uluaHeap_reset(h);
+	HeapStats stats;
+
 	L = lua_newstate(uluaHeap_allocFn, h);
+	uluaHeap_stats(h, &stats);
+	int newStateCost = stats.alloced;
+
+	printf("lua_newstate: %d (%d)\n", newStateCost, LMEM());
 	luaL_openlibs(L);
 
-	HeapStats stats;
 	uluaHeap_stats(h, &stats);
-	printf("Overheads of runtime: %d\n", stats.alloced);
+	printf("luaL_openlibs: %d (%d)\n", stats.alloced - newStateCost, LMEM() - newStateCost);
 
-	// This module itself is fairly minimal
-	newLuaStateForModule("test.memTests", L);
+	newLuaStateForModule("test.emptyModule", L);
 	ulua_setupGlobals(L);
 	lua_call(L, 1, 1);
 	lua_gc(L, LUA_GCCOLLECT, 0);
 	uluaHeap_stats(h, &stats);
 	const int fixedOverhead = stats.alloced;
-	printf("Fixed overheads: %d\n", fixedOverhead);
+	printf("Baseline mem usage: %d\n", fixedOverhead);
 
 	// Check multiple require doesn't cost extra mem
+	/*
 	int requireMem[3];
 	for (int i = 0; i < 3; i++) {
 		lua_getglobal(L, "require");
@@ -57,16 +64,18 @@ static int test_mem(lua_State* L) {
 		requireMem[i] = stats.alloced;
 	}
 	printf("Multiple requires: %d, %d, %d\n", requireMem[0], requireMem[1], requireMem[2]);
+	*/
 
 	for (int i = 0; i < sizeof(modules) / sizeof(char*); i++) {
 		uluaHeap_reset(h);
 		L = lua_newstate(uluaHeap_allocFn, h);
 		luaL_openlibs(L);
 		newLuaStateForModule(modules[i], L);
+		ulua_setupGlobals(L);
 		lua_call(L, 1, 1);
 		lua_gc(L, LUA_GCCOLLECT, 0);
 		uluaHeap_stats(h, &stats);
-		printf("Cost of module %s: %d\n", modules[i], stats.alloced - fixedOverhead);
+		printf("Module %s: %d (%d)\n", modules[i], stats.alloced - fixedOverhead, LMEM() - fixedOverhead);
 	}
 	// No way to safely return from this
 	for(;;) {}

@@ -18,6 +18,7 @@ typedef struct MemBuf {
 #define MBUF_TYPE(t) mbuf_declare_type(L, #t, sizeof(t))
 #define MBUF_MEMBER(t, m) mbuf_declare_member(L, #t, #m, offsetof(t, m), MEMBER_SIZEOF(t, m), NULL)
 #define MBUF_MEMBER_TYPE(t, m, mt) mbuf_declare_member(L, #t, #m, offsetof(t, m), MEMBER_SIZEOF(t, m), mt)
+#define MBUF_MEMBER_BITFIELD(t, m, mt) mbuf_declare_member(L, #t, #m, offsetof(t, m), MEMBER_SIZEOF(t, m), "BITFIELD#" mt)
 #define MBUF_ENUM(t, e) mbuf_declare_enum(L, #t, e, #e)
 #define MBUF_NEW(type, ptr) mbuf_new(L, ptr, sizeof(type), #type)
 
