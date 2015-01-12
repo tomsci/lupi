@@ -109,7 +109,7 @@ function MemBuf:_descriptionForMember(m, printer, linePrefix)
 		-- print(string.format("Describing BITFIELD %s of %s!", m.type, bitfield))
 		if enumType then
 			for enumVal, name in pairs(enumType._values) do
-				if bit32.band(val, bit32.lshift(1, enumVal)) > 0 then
+				if (val & (1 << enumVal)) > 0 then
 					table.insert(parts, name)
 				end
 			end
