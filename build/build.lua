@@ -155,6 +155,7 @@ bootMenuModules = {
 	"modules/test/yieldb.lua",
 	"modules/bitmap/tests.lua",
 	{ path = "modules/test/memTests.lua", native = "testing/memTests.c" },
+	"modules/test/emptyModule.lua",
 }
 
 if _VERSION ~= "Lua 5.2" then
