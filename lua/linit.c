@@ -42,13 +42,13 @@
 static const luaL_Reg loadedlibs[] = {
   {"_G", luaopen_base},
   {LUA_LOADLIBNAME, luaopen_package},
-  //TOMSCI {LUA_COLIBNAME, luaopen_coroutine},
+  {LUA_COLIBNAME, luaopen_coroutine},
   {LUA_TABLIBNAME, luaopen_table},
   //TOMSCI {LUA_IOLIBNAME, luaopen_io},
   //TOMSCI {LUA_OSLIBNAME, luaopen_os},
   {LUA_STRLIBNAME, luaopen_string},
   //TOMSCI {LUA_MATHLIBNAME, luaopen_math},
-  //TOMSCI {LUA_UTF8LIBNAME, luaopen_utf8},
+  {LUA_UTF8LIBNAME, luaopen_utf8},
   {LUA_DBLIBNAME, luaopen_debug},
 #if defined(LUA_COMPAT_BITLIB)
   {LUA_BITLIBNAME, luaopen_bit32},
