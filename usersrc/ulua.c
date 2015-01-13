@@ -225,6 +225,7 @@ static int stfu(lua_State* L) {
 }
 
 static int threadCreate_lua(lua_State* L);
+void ulua_openLibs(lua_State* L);
 void ulua_setupGlobals(lua_State* L);
 
 lua_State* newLuaStateForModule(const char* moduleName, lua_State* L);
@@ -246,7 +247,7 @@ int newProcessEntryPoint() {
 	Heap* h = uluaHeap_init();
 	lua_State* L = lua_newstate(uluaHeap_allocFn, h);
 	uluaHeap_setLuaState(h, L);
-	luaL_openlibs(L);
+	ulua_openLibs(L);
 	lua_atpanic(L, panicFn);
 	newLuaStateForModule(moduleName, L);
 #endif
@@ -263,6 +264,23 @@ int newProcessEntryPoint() {
 
 	lua_call(L, 0, 1);
 	return lua_tointeger(L, -1);
+}
+
+static const luaL_Reg KLibsWeDontHate[] = {
+	{"_G", luaopen_base},
+	{LUA_LOADLIBNAME, luaopen_package},
+	{LUA_TABLIBNAME, luaopen_table},
+	{LUA_STRLIBNAME, luaopen_string},
+	{LUA_BITLIBNAME, luaopen_bit32},
+	{LUA_DBLIBNAME, luaopen_debug},
+	{NULL, NULL}
+};
+
+void ulua_openLibs(lua_State* L) {
+	for (const luaL_Reg* lib = KLibsWeDontHate; lib->func; lib++) {
+		luaL_requiref(L, lib->name, lib->func, 1);
+		lua_pop(L, 1);  /* remove lib */
+	}
 }
 
 void ulua_setupGlobals(lua_State* L) {

@@ -9,6 +9,7 @@
 #define LMEM() (lua_gc(L, LUA_GCCOUNT, 0) * 1024 + lua_gc(L, LUA_GCCOUNTB, 0))
 
 lua_State* newLuaStateForModule(const char* moduleName, lua_State* L);
+void ulua_openLibs(lua_State* L);
 void ulua_setupGlobals(lua_State* L);
 
 static const char* modules[] = {
@@ -39,10 +40,10 @@ static int test_mem(lua_State* L) {
 	int newStateCost = stats.alloced;
 
 	printf("lua_newstate: %d (%d)\n", newStateCost, LMEM());
-	luaL_openlibs(L);
+	ulua_openLibs(L);
 
 	uluaHeap_stats(h, &stats);
-	printf("luaL_openlibs: %d (%d)\n", stats.alloced - newStateCost, LMEM() - newStateCost);
+	printf("ulua_openLibs: %d (%d)\n", stats.alloced - newStateCost, LMEM() - newStateCost);
 
 	newLuaStateForModule("test.emptyModule", L);
 	ulua_setupGlobals(L);
