@@ -4,6 +4,7 @@
 ** See Copyright Notice in lua.h
 */
 
+// ****** TOMSCI: Note - patched
 
 #define linit_c
 #define LUA_LIB
