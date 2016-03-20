@@ -355,7 +355,7 @@ static int doBlit(uintptr arg2) {
 
 static void drainFifoAndCompleteRequest() {
 	int numSamples = tsc_register_read(FIFO_SIZE, 1);
-	if (numSamples == 0 && !TheSuperPage->needToSendTouchUp) return;
+	if (numSamples == 0 && !kern_getFlag(NeedToSendTouchUp)) return;
 
 	int n = min(numSamples, TheSuperPage->inputRequestBufferSize);
 	switch_process(processForThread(TheSuperPage->inputRequest.thread));
@@ -394,7 +394,7 @@ static int doInputRequest(uintptr arg2) {
 static void tft_gpioInterruptDfcFn(uintptr arg1, uintptr arg2, uintptr arg3) {
 	if ((tsc_register_read(INT_STA, 1) & TSC_INT_TOUCH_DET) &&
 		(tsc_register_read(TSC_CTRL, 1) & TSC_STA) == 0) {
-		TheSuperPage->needToSendTouchUp = true;
+		kern_setFlag(NeedToSendTouchUp, true);
 		//printk("Touch up with %d samples to go!\n", tsc_register_read(FIFO_SIZE, 1));
 	}
 	// We've made a note of important TOUCH_DET events
