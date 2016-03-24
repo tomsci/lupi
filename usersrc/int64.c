@@ -4,6 +4,24 @@
 #include <lauxlib.h>
 #include <limits.h>
 
+#if LUA_MAXINTEGER == LLONG_MAX
+
+// 64-bit ints can be represented as native lua_Integers
+
+int64 int64_check(lua_State* L, int idx) {
+	return luaL_checkinteger(L, idx);
+}
+
+void int64_new(lua_State* L, int64 n) {
+	lua_pushinteger(L, n);
+}
+
+int init_module_int64(lua_State* L) {
+	return 0;
+}
+
+#else
+
 #define Int64Metatable "LupiInt64Metatable"
 
 int64 int64_check(lua_State* L, int idx) {
@@ -113,3 +131,5 @@ void int64_new(lua_State* L, int64 n) {
 	}
 	lua_setmetatable(L, -2);
 }
+
+#endif // 32-bit pointers

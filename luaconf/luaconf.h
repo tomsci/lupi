@@ -34,9 +34,12 @@
 ** same configuration.
 */
 /* #define LUA_32BITS */
-#define LUA_32BITS // TOMSCI
-#define lua_getlocaledecpoint() '.' // TOMSCI
 
+//BEGIN TOMSCI
+#define LUA_INT_TYPE	LUA_INT_LONG
+#define lua_getlocaledecpoint() '.'
+#define LUA_FLOAT_TYPE LUA_FLOAT_INTEGER
+//END TOMSCI
 
 /*
 @@ LUA_USE_C89 controls the use of non-ISO-C89 features.
@@ -122,13 +125,12 @@
 /*
 ** 32-bit integers and 'float'
 */
-//TOMSCI #if LUAI_BITSINT >= 32  /* use 'int' if big enough */
-//TOMSCI #define LUA_INT_TYPE	LUA_INT_INT
-//TOMSCI #else  /* otherwise use 'long' */
+#if LUAI_BITSINT >= 32  /* use 'int' if big enough */
+#define LUA_INT_TYPE	LUA_INT_INT
+#else  /* otherwise use 'long' */
 #define LUA_INT_TYPE	LUA_INT_LONG
-//TOMSCI #endif
-//TOMSCI #define LUA_FLOAT_TYPE	LUA_FLOAT_FLOAT
-#define LUA_FLOAT_TYPE LUA_FLOAT_INTEGER // TOMSCI
+#endif
+#define LUA_FLOAT_TYPE	LUA_FLOAT_FLOAT
 
 #elif defined(LUA_C89_NUMBERS)	/* }{ */
 /*
