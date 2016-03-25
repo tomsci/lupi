@@ -173,8 +173,7 @@ function init()
 	dropping = false
 	paused = false
 	tickPeriod = 1000
-	audioDriver = lupi.driverConnect("BEEP")
-	shouldPlayAudio = true
+	shouldPlayAudio, audioDriver = pcall(lupi.driverConnect, "BEEP")
 
 	redrawPlayArea(true)
 
