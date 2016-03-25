@@ -108,7 +108,7 @@ function lessThanUnsigned(a, b)
 
 	-- Otherwise, the curse of signed 32-bit integers strikes again
 	local abig, bbig = a < 0 and 1 or 0, b < 0 and 1 or 0
-	local aa, bb = bit32.band(a, 0x7FFFFFF), bit32.band(b, 0x7FFFFFF)
+	local aa, bb = a & 0x7FFFFFF, b & 0x7FFFFFF
 	-- if debug then
 	-- 	printf("a=%x b=%x abig=%d bbig=%d aa=%x bb=%x", a, b, abig, bbig, aa, bb)
 	-- end

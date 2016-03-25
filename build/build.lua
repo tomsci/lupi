@@ -1,4 +1,4 @@
-#!/usr/local/bin/lua
+#!/usr/local/bin/lua5.3
 
 luaSources = {
 	"lua/lapi.c",
@@ -159,8 +159,8 @@ bootMenuModules = {
 	"modules/test/emptyModule.lua",
 }
 
-if _VERSION ~= "Lua 5.2" then
-	error "Lua 5.2 is required to run this script"
+if _VERSION ~= "Lua 5.3" then
+	error "Lua 5.3 is required to run this script"
 end
 local cmdargs = arg
 
@@ -619,10 +619,10 @@ end
 
 local function le32(val)
 	return string.char(
-		bit32.extract(val, 0, 8),
-		bit32.extract(val, 8, 8),
-		bit32.extract(val, 16, 8),
-		bit32.extract(val, 24, 8)
+		val & 0xFF,
+		(val >> 8) & 0xFF,
+		(val >> 16) & 0xFF,
+		(val >> 24) & 0xFF
 	)
 end
 
@@ -823,7 +823,7 @@ function build_kernel()
 		local symParser = require("modules/symbolParser")
 		local syms = symParser.getSymbolsFromReadElf(readElfOutput)
 		local entryPoint = symParser.findSymbolByName("_start")
-		assert(entryPoint and bit32.band(entryPoint.addr, -2) == config.textSectionStart, "Linker failed to locate the entry point at the start of the text section")
+		assert(entryPoint and (entryPoint.addr & -2) == config.textSectionStart, "Linker failed to locate the entry point at the start of the text section")
 
 		local imgFileSize
 		if includeSymbols then
