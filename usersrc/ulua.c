@@ -46,7 +46,7 @@ void exec_threadExit(int reason);
 int exec_driverConnect(uint32 driverId);
 int exec_driverCmd(uint32 driverHandle, uint32 arg1, uint32 arg2);
 void exec_supressKernelDebug(bool suppress);
-void hang();
+int exec_waitForAnyRequest();
 int exec_replaceProcess(const char* name);
 
 uint32 user_ProcessPid;
@@ -182,9 +182,12 @@ static int panicFn(lua_State* L) {
 	const char* str = lua_tostring(L, lua_gettop(L));
 	lupi_printstring("\nLua panic:\n");
 	lupi_printstring(str);
+	lupi_printstring("\n");
 	// If we've got here, there's nothing we can really do which won't go
 	// recursive except hang.
-	hang();
+	for (;;) {
+		exec_waitForAnyRequest();
+	}
 	return 0;
 }
 

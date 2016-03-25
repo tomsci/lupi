@@ -208,8 +208,11 @@ int64 handleSvc(int cmd, uintptr arg1, uintptr arg2, void* savedRegisters) {
 					break;
 				}
 			}
-			ASSERT(i < MAX_DRIVERS, id);
-			result = i | KDriverHandle;
+			if (i == MAX_DRIVERS) {
+				result = KErrNotFound;
+			} else {
+				result = i | KDriverHandle;
+			}
 			break;
 		}
 		case KExecStfu:

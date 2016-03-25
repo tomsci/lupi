@@ -68,8 +68,8 @@
 #define FlushTLB(reg)			asm("MCR p15, 0, " #reg ", c8, c7, 0")
 
 
-#define WFI(reg)				asm("MCR p15, 0, " #reg ", c7, c4, 0")
-#define WFI_inline(var)			asm("MCR p15, 0, %0, c7, c4, 0" : : "r" (var))
+#define WFI(reg)				asm("MCR p15, 0, " #reg ", c7, c0, 4")
+#define WFI_inline(var)			asm("MCR p15, 0, %0, c7, c0, 4" : : "r" (var))
 
 #define GetKernelStackTop(cond, reg) \
 	asm("MOV" #cond " " #reg ", %0" : : "i" (KSectionZero)); \

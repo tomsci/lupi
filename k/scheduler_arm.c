@@ -127,6 +127,10 @@ NORETURN scheduleThread(Thread* t) {
 	}
 }
 
+// void reschedule_debug() {
+// 	printk("Rescheduling...\n");
+// }
+
 /**
 Perform a reschedule, ie causes a different thread to execute. Does not return.
 Interrupts may or may not be enabled. Must be in SVC mode.
@@ -135,6 +139,7 @@ See also: [reschedule_irq()](#reschedule_irq)
 */
 NORETURN NAKED reschedule() {
 	asm(".doReschedule:");
+	// asm("BL reschedule_debug");
 	asm("BL findNextReadyThread");
 	asm("CMP r0, #0");
 	asm("BNE scheduleThread");
