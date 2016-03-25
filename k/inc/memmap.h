@@ -86,8 +86,10 @@ Peripherals	20000000-20300000	F2000000-F2300000	(3 MB)
 
 #define KLuaDebuggerSection		0x42000000u
 #define KLuaDebuggerStackBase	0x42000000u
-#define KLuaDebuggerSvcStackBase 0x42001000u
-#define KLuaDebuggerSectionHeap	0x42002000u
+#define KLuaDebuggerStackSize	0x00004000u
+#define KLuaDebuggerSvcStackBase 0x42004000u
+#define KLuaDebuggerSvcStackSize 0x00001000u
+#define KLuaDebuggerSectionHeap	0x42005000u
 
 /**
 User memory map

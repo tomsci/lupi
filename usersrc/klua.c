@@ -310,7 +310,7 @@ void NAKED switchToKluaDebuggerMode() {
 	ModeSwitch(KPsrModeSystem | KPsrIrqDisable | KPsrFiqDisable);
 	asm("LDR r13, .stackBase");
 	asm("BX r1");
-	LABEL_WORD(.stackBase, KLuaDebuggerStackBase + 0x1000);
+	LABEL_WORD(.stackBase, KLuaDebuggerStackBase + KLuaDebuggerStackSize);
 #elif defined(ARMV7_M)
 	asm("MOV r0, #0");
 	asm("MSR CONTROL, r0"); // Thread mode privileged (NPRIV=0)

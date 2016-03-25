@@ -429,9 +429,6 @@ int init_module_kluadebugger(lua_State* L) {
 	EXPORT_INT(L, KHandlerStackBase);
 #endif
 	EXPORT_INT(L, KUserHeapBase);
-#ifdef HAVE_MMU
-	EXPORT_INT(L, (uintptr)Al);
-#endif
 
 #ifdef ARMV7_M
 #define MBUF_DECLARE_SCB_REG(name, reg) mbuf_declare_member(L, "SystemControlBlock", name, (reg)-KSystemControlSpace, sizeof(uint32), NULL)

@@ -151,7 +151,7 @@ void NAKED svc() {
 	asm(".loadDebuggerStack:");
 	asm("LDR r13, .debuggerStackTop");
 	asm("B .postStackSet");
-	LABEL_WORD(.debuggerStackTop, KLuaDebuggerSvcStackBase + 0x1000);
+	LABEL_WORD(.debuggerStackTop, KLuaDebuggerSvcStackBase + KLuaDebuggerSvcStackSize);
 }
 
 void NAKED dataAbort() {
