@@ -370,7 +370,7 @@ void mmu_freeUserSection(PageAllocator* pa, Process* p, int sectionIdx) {
 }
 
 bool mmu_mapPagesInProcess(PageAllocator* pa, Process* p, uintptr virtualAddress, int numPages) {
-	//printk("mmu_mapPagesInProcess va=%p n=%d\n", (void*)virtualAddress, numPages);
+	// printk("mmu_mapPagesInProcess p=%p va=%p n=%d\n", p, (void*)virtualAddress, numPages);
 	uint8 pageType = KPageUser;
 	if (numPages < 0) {
 		// The only other page types we support user-side

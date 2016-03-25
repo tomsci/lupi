@@ -2,6 +2,14 @@ require "membuf"
 
 local MemBuf = membuf.MemBuf
 
+local function safech(ch)
+	if ch >= 32 and ch < 127 then
+		return string.char(ch)
+	else
+		return "."
+	end
+end
+
 function MemBuf._declareType(type, size)
 	if not MemBuf._types then MemBuf._types = {} end
 	MemBuf._types[type] = { _type=type, _size=size }

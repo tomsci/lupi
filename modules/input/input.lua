@@ -38,8 +38,8 @@ to be correct for the current screen orientation. Returns `screenX, screenY`.
 ]]
 function calibratedCoords(x, y)
 	if not tscWidth then
-		tscWidth = lupi.getInt(lupi.ScreenWidth)
-		tscHeight = lupi.getInt(lupi.ScreenHeight)
+		tscWidth = lupi.getInt("ScreenWidth")
+		tscHeight = lupi.getInt("ScreenHeight")
 		-- TODO need to know which way we're rotated!
 		rotated = tscWidth > tscHeight
 		if rotated then

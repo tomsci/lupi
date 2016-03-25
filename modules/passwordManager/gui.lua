@@ -5,7 +5,7 @@ require "bitmap"
 local uicontrols = require "passwordManager.uicontrols"
 local window = require "passwordManager.window"
 local keychain = require "passwordManager.keychain"
-local lockscreen = require "passwordManager.lockscreen"
+-- local lockscreen = require "passwordManager.lockscreen"
 
 --BEGIN DEBUG
 for i = 1, 30 do

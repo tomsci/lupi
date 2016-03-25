@@ -104,6 +104,7 @@ static bool thread_init(Thread* t) {
 
 NORETURN process_start(Process* p) {
 	switch_process(p);
+	mmu_finishedUpdatingPageTables();
 	Thread* t = firstThreadForProcess(p);
 	TheSuperPage->currentThread = t;
 	// Now we've switched process and mapped the BSS, we first need to zero all initial memory
