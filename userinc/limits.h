@@ -6,8 +6,8 @@
 
 #define UCHAR_MAX 255
 
-#define CHAR_MAX 255 // unsigned char, bitches
-#define CHAR_MIN 0
+#define CHAR_MAX SCHAR_MAX
+#define CHAR_MIN SCHAR_MIN
 #define CHAR_BIT 8
 
 #define USHRT_MAX 65535

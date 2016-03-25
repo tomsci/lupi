@@ -545,7 +545,7 @@ function compilec(source, extraArgs)
 	if not preprocess and incremental then
 		sysOpts = sysOpts .. " -MD"
 	end
-	local langOpts = "-std=c99 -funsigned-char -Wall -Werror -Wno-error=unused-function"
+	local langOpts = "-std=c99 -fstrict-aliasing -Wall -Werror -Wno-error=unused-function"
 	local platOpts = config.platOpts or ""
 
 	local extraArgsString = join(extraArgs)
