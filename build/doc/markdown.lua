@@ -126,6 +126,7 @@ if setfenv then
 elseif _ENV then
 	_ENV = M
 end
+unpack = table.unpack or unpack
 
 ----------------------------------------------------------------------
 -- Utility functions
