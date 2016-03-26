@@ -1,6 +1,5 @@
 --[[**
-Int64
-=====
+# Int64
 
 The Int64 type is a userdata containing a C `int64` (`long long`). Int64s are
 only returned by a few native APIs, and can not (currently) be created by Lua
@@ -12,7 +11,8 @@ uses the definition of raw equality (in Lua 5.2 and earlier), so two Int64s with
 the same value will *not* index to the same value even though there is an __eq
 metamethod. Convert to a string first, or if performance is more important than
 readability, use [rawval()](#Int64_rawval) to return the raw value as a Lua
-string. ]]
+string.
+]]
 
 --[[**
 Returns the value of the Int64 as a string of 16 hex degits. Usage:

@@ -1062,6 +1062,7 @@ local function calculateBaseDir()
 end
 
 local opts = {
+	{ s = 'h', l = "help", bool = "showHelp" },
 	{ s = 'v', l = "verbose", bool = "verbose" },
 	{ s = 'l', l = "listing", bool = "listing" },
 	{ s = 'm', l = "modules", bool = "compileModules" },
@@ -1072,6 +1073,46 @@ local opts = {
 	{ s = 'b', l = "bootmode", int = "bootMode" },
 	{ s = 't', l = "strip", bool = "shouldStripLuaModules" },
 }
+
+--[[**
+# build.lua
+
+## Syntax
+
+]]
+
+syntaxText = [[
+--[[**
+    ./build/build.lua [options] [<target>] [...]
+        -m | --modules      Precompile Lua modules with luac.
+        -l | --listing      Create assembly listings.
+        -p | --preprocess   Preprocess sources only.
+        -v | --verbose      Verbose mode.
+        -j | --jobs <n>     Run <n> compiles in parallel.
+        -b | --bootmode <n> Set the boot mode.
+        -i | --incremental  Enable incremental build.
+        -t | --strip        Strip Lua modules of debugging symbols when
+                            precompiling. Makes for a smaller ROM but Lua
+                            stacktraces will be much less informative.
+        -s | --symbols      Include C symbols in the ROM.
+
+    Supported targets:
+        clean   Removes all built products.
+        pi      Build for the Raspberry Pi.
+        tilda   Build for the TiLDA MkE 0.33
+        hosted  Build a subset of the code as a native executable (unsupported,
+                often in a state of brokenness).
+        luac    Builds the luac compiler, must have been run to use the
+                --modules option.
+        doc     Generates the HTML documentation.
+]]
+
+function syntax()
+	local text = syntaxText:sub(8) -- skip the initial doc marker
+	for line in text:gmatch("[^\n]+") do
+		print((line:gsub("^    ", ""))) -- And the indentation
+	end
+end
 
 function run()
 	calculateBaseDir()
@@ -1120,6 +1161,11 @@ function run()
 		else
 			table.insert(platforms, a)
 		end
+	end
+
+	if showHelp then
+		syntax()
+		return
 	end
 
 	if not next(platforms) then

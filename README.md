@@ -180,30 +180,7 @@ different build targets which correspond to config files
 `build/<target>/buildconfig.lua`. Intermediate object files are located at
 `bin/obj-<target>/` and build products at `bin/<target>/`.
 
-Syntax:
-
-	./build/build.lua [options] [<target>] [...]
-		-m | --modules      Precompile Lua modules with luac.
-		-l | --listing      Create assembly listings.
-		-p | --preprocess   Preprocess sources only.
-		-v | --verbose      Verbose mode.
-		-j | --jobs <n>     Run <n> compiles in parallel.
-		-b | --bootmode <n> Set the boot mode.
-		-i | --incremental  Enable incremental build.
-		-t | --strip        Strip Lua modules of debugging symbols when
-		                    precompiling. Makes for a smaller ROM but Lua
-		                    stacktraces will be much less informative.
-		-s | --symbols      Include C symbols in the ROM.
-
-	Supported targets:
-		clean	Removes all built products.
-		pi		Build for the Raspberry Pi.
-		tilda	Build for the TiLDA MkE 0.33
-		hosted	Build a subset of the code as a native executable (unsupported,
-				often in a state of brokenness).
-		luac	Builds the luac compiler, must have been run to use the
-				 --modules option.
-		doc		Generates the HTML documentation.
+For syntax, see [build.lua syntax](build/build.lua).
 
 Targets are built in the order specified on the command line, so if you specify
 `clean`, it should be first. Eg:
