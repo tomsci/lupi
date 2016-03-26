@@ -1,10 +1,8 @@
-Geoff
-=====
+# LuPi
 
-Introduction
-------------
+## Introduction
 
-Geoff is an embedded OS for ARM hardware, that deliberately does not do a lot of
+LuPi is an embedded OS for ARM hardware, that deliberately does not do a lot of
 stuff. It is an experiment on how far you can push a few concepts before it all
 falls apart. These concepts are, roughly:
 
@@ -19,10 +17,9 @@ only runs on the Raspberry Pi and the TiLDA MkE. There is no x86 support, no
 device tree or dynamic libraries or any kind, no paging (swap memory), and no
 file system. And definitely no POSIX support or fork/exec.
 
-Kernel design
--------------
+## Kernel design
 
-The kernel is written in C. User-side processes are written in Lua 5.2 with a
+The kernel is written in C. User-side processes are written in Lua 5.3 with a
 minimum of C to glue them together (plus the Lua runtime written in C,
 obviously).
 
@@ -172,15 +169,14 @@ The ARMv6 'kernel' stack is only used during boot-up before the first process
 has started, and during rescheduling. On ARMv7-M the Handler stack is used for
 all exception modes including SVC.
 
-Build process
--------------
+## Build process
 
 LuPi is built using a custom Lua script, `build.lua`. There are a couple of
 different build targets which correspond to config files
 `build/<target>/buildconfig.lua`. Intermediate object files are located at
 `bin/obj-<target>/` and build products at `bin/<target>/`.
 
-For syntax, see [build.lua syntax](build/build.lua).
+For syntax, see [build.lua syntax](build/build.lua#Syntax).
 
 Targets are built in the order specified on the command line, so if you specify
 `clean`, it should be first. Eg:
@@ -209,7 +205,7 @@ dependencies and will delete dependencyCache.lua if it exists.
 
 The system requirements for running build.lua are:
 
-* Lua 5.2 must be on your `PATH`, and must support `io.popen()`.
+* Lua 5.3 must be on your `PATH`, and must support `io.popen()`.
 * For pi builds, `arm-none-eabi-gcc` must be on your `PATH`, and must support
   gcc 4.x syntax.
 * The default system shell must support `find -path`, `mkdir -p`, `rm`.
@@ -363,8 +359,7 @@ the documentation. The Lua Markdown parsing is done using Niklas Frykholm's
 
 [markdown]: http://daringfireball.net/projects/markdown/
 
-IPC mechanism
--------------
+## IPC mechanism
 
 IPC is implemented using a client-server model. All client requests are
 asynchronous, except for `ipc.connect()`.
@@ -403,8 +398,7 @@ laid out in the shared page, and how lifetimes, fragmentation etc are managed.
 This is not ideal and once it starts being used in earnest this will probably
 be pushed down into the IPC layer.
 
-Boot sequence
--------------
+## Boot sequence
 
 The bootloader is expected to handle loading the kernel into memory, and on the
 Pi it must be configured to do so at physical address `0x8000` and to use this
@@ -498,11 +492,10 @@ non-sparse heap growing upwards from `KUserHeapBase` (`0x8000`).
 Once the lua environment is set up, the `main()` function is called and the
 process is fully started.
 
-Differences compared to standard Lua 5.2
-----------------------------------------
+## Differences compared to standard Lua 5.3
 
-The Lua environment used for user-side processes is broadly a standard 5.2
-setup, with none of the 5.1 compatibility options enabled. There are however
+The Lua environment used for user-side processes is broadly a standard 5.3
+setup, with none of the 5.1/5.2 compatibility options enabled. There are however
 several customisations.
 
 ### Numbers are ints
@@ -538,7 +531,7 @@ Any module loaded using the standard `require("modulename")` syntax will
 automatically get a new table for its `_ENV`, and this will always be what is
 returned from `require`. This means you don't have to mess around with contrived
 syntax in your module to avoid polluting the global namespace. `_G` is available
-still for determined polluters. The standard 5.2 modules and functions (except
+still for determined polluters. The standard 5.3 modules and functions (except
 for io and os as described above) are available.
 
 ### The lupi table

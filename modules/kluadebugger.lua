@@ -1,6 +1,5 @@
 --[[**
-The KLua Debugger
-=================
+# The KLua Debugger
 
 This is an interactive command-line debugger that is invoked when the kernel
 crashes. It reuses the user interpreter and membuf modules to provide an

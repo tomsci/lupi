@@ -99,8 +99,7 @@
 // See p37 for overall SAM3X/A memory mappings
 
 /**
-Kernel memory map
------------------
+## Kernel memory map
 
 <pre>
 Code (flash)	00080000-000C0000	(256k)
@@ -128,8 +127,7 @@ SuperPage		20087000-20088000	(4k)
 #define KNfcRamBase				0x20100000
 
 /**
-User memory map
----------------
+## User memory map
 
 <pre>
 ------------					00000000-20070000

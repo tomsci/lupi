@@ -14,8 +14,8 @@ local function fixupLinksInLine(line, filename, lineNum)
 			path = link
 			anchor = ""
 		end
-		if path:match("^[a-z]+:") then
-			-- It's a real URL, do not touch
+		if path:match("^[a-z]+:") or path:match("%.html$") then
+			-- It's a real URL, or one already to an html file, do not touch
 			return link
 		end
 		-- Now check that the file exists (the empty path means a link within
@@ -47,6 +47,13 @@ local function fixupLinksInLine(line, filename, lineNum)
 	return line
 end
 
+local function getIdentifierFromText(txt)
+	-- Where 'txt' is a function definition/declaration in C or Lua, or a
+	-- C #define
+	local id = txt:match("function ([%w_.:]+)") or txt:match("([%w_]+)%(")
+	return id
+end
+
 local function scanFileForInlineDocs(file)
 	local f = assert(io.open(file, "r"))
 	-- Scan file line-by-line for either /** (C style) or --[[** (Lua style)
@@ -58,18 +65,17 @@ local function scanFileForInlineDocs(file)
 		if inDocs then
 			local lastLine = l:match("^%s*(.*)%*/") or l:match("^%s*(.*)%]%]")
 			if lastLine then
-				table.insert(docLines, fixupLinksInLine(lastLine, file, lineNum))
+				l = lastLine
 				inDocs = false
-			else
-				table.insert(docLines, fixupLinksInLine(l, file, lineNum))
 			end
+			table.insert(docLines, fixupLinksInLine(l, file, lineNum))
 		elseif l == "/**" or l == "--[[**" then
 			-- Found docs
 			if not mdf then
+				mdFile = build.objForSrc(file, ".tempmd")
 				if build.verbose then
-					print("Extracting markdown from "..file)
+					print("Extracting markdown from "..file.." to "..mdFile)
 				end
-				mdFile = build.objForSrc(file, ".md")
 				mkdirForFile(mdFile)
 				mdf = assert(io.open(mdFile, "w"))
 			end
@@ -79,13 +85,12 @@ local function scanFileForInlineDocs(file)
 			-- signature - unless it's a documentation in Lua of a native function, in which
 			-- case it will be a comment starting "--native"
 			local header = l:match("(.*)%s*[{;\\]") or l -- Chop the { if there is one
-			header = header:gsub("%-%-native", "") -- Chop native comment
-			local id = header:match("function ([%w_.:]+)") or header:match("([%w_]+)%(")
-			if id then
-				id = id:gsub("[:.]", "_")
-				mdf:write(string.format('<h3><a name="%s"><code>%s</code></a></h3>\n\n', id, header))
-			elseif #header > 0 then
-				mdf:write("<h3>", header, "</h3>\n\n")
+			header = header:gsub("%-%-native%s*", "") -- Chop native comment
+			if #header > 0 then
+				if getIdentifierFromText(header) then
+					header = "`"..header.."`"
+				end
+				mdf:write("### ", header, "\n\n")
 			end
 			mdf:write(table.concat(docLines, "\n"))
 			mdf:write("\n")
@@ -99,18 +104,46 @@ local function scanFileForInlineDocs(file)
 	return mdFile
 end
 
+local function htmlEscape(txt)
+	local rep = {
+		["<"] = "&lt;",
+		[">"] = "&gt;",
+	}
+	return txt:gsub("&", "&amp;"):gsub("[<>]", rep)
+end
+
 local function processMarkdownFile(mdFile, outputFile)
+	if build.verbose then
+		print("Processing markdown "..mdFile.." to "..outputFile)
+	end
 	local f = assert(io.open(mdFile, "r"))
 	mkdirForFile(outputFile)
 	local outf = assert(io.open(outputFile, "w"))
+	local index = {}
 	local lineNum = 1
 	for line in f:lines() do
-		outf:write(fixupLinksInLine(line, mdFile, lineNum))
+		line = fixupLinksInLine(line, mdFile, lineNum)
+		local heading, txt = line:match("^(#+)%s*(.*)")
+		if heading then
+			-- txt might have have `markdown code` markers, so strip them first
+			local uncodedTxt = txt:gsub("`", "")
+			local isCode = (uncodedTxt ~= txt)
+			local id = getIdentifierFromText(uncodedTxt) or txt
+			id = id:gsub("[^%w_]", "_")
+			local htmlTxt = htmlEscape(uncodedTxt)
+			if isCode then
+				htmlTxt = "<code>"..htmlTxt.."</code>"
+			end
+			table.insert(index, { lvl = #heading, txt = uncodedTxt, id = id })
+			line = string.format('<h%d><a name="%s">%s</a></h%d>', #heading, id, htmlTxt, #heading)
+		end
+		outf:write(line)
 		outf:write("\n")
 		lineNum = lineNum + 1
 	end
 	f:close()
 	outf:close()
+	return index
 end
 
 local function docForSrc(source)
@@ -122,6 +155,42 @@ local function docForSrc(source)
 	local result = "bin/doc/" .. source:gsub("%.%a+$", ".html")
 	mkdirForFile(result)
 	return result
+end
+
+local function normaliseHeaderIndex(index)
+	-- The idea here is to munge the h1, h2, etc header indexes into a simpler
+	-- heirarchy. Such that eg an index with a single h1 doesn't bother with it,
+	-- and 'holes' are adjusted down so that a page with eg no h2s doesn't have
+	-- a hole in its heirarchy
+	local newIdx = {}
+	local counts = {0, 0, 0, 0, 0, 0}
+	for _, entry in ipairs(index) do
+		counts[entry.lvl] = counts[entry.lvl] + 1
+	end
+	local adjust = {0, 0, 0, 0, 0, 0}
+	if counts[1] == 1 then
+		-- Need more than 1 h1 to include it in the index
+		adjust[1] = -1
+	end
+	for i = 2, 6 do
+		adjust[i] = adjust[i-1]
+		if counts[i-1] == 0 then
+			adjust[i] = adjust[i] - 1
+		end
+	end
+	if build.verbose then
+		print(string.format("Adjustments = %d,%d,%d,%d,%d,%d", table.unpack(adjust)))
+	end
+	for i, entry in ipairs(index) do
+		local newLvl = entry.lvl + adjust[entry.lvl]
+		if newLvl > 0 then
+			local newEntry = {}
+			for k,v in pairs(entry) do newEntry[k] = v end
+			newEntry.lvl = newLvl
+			table.insert(newIdx, newEntry)
+		end
+	end
+	return newIdx
 end
 
 local headerTemplate = [[
@@ -149,6 +218,7 @@ local function doBuild()
 	 -- Ugh I hate how inconsistant Lua modules are - this one returns a function
 	local markdown = require("build/doc/markdown")
 	local origSources = {} -- Map of .md files to orig files, where relevant
+	local indexes = {} -- Map of .md files to index structures
 	local mdSources = {}
 
 	-- Iterate over all possible files
@@ -165,14 +235,6 @@ local function doBuild()
 	end
 	p:close()
 
-	-- We now process even md files to check links
-	for i, f in ipairs(mdSources) do
-		local processedFile = build.objForSrc(f, ".md")
-		processMarkdownFile(f, processedFile)
-		origSources[processedFile] = f
-		mdSources[i] = processedFile
-	end
-
 	for _, f in ipairs(inlineFiles) do
 		local mdFile = scanFileForInlineDocs(f)
 		if mdFile then
@@ -180,9 +242,20 @@ local function doBuild()
 			table.insert(mdSources, mdFile)
 		end
 	end
+
+	-- We now process all md files even the ungenerated ones to check links
+	-- and to create heading indexes
+	for i, f in ipairs(mdSources) do
+		local processedFile = build.objForSrc(f, ".md")
+		local index = processMarkdownFile(f, processedFile)
+		origSources[processedFile] = origSources[f] or f
+		mdSources[i] = processedFile
+		indexes[processedFile] = index
+	end
+
 	table.sort(mdSources)
 
-	-- Create index
+	-- Create index page
 	local indexFile = build.objForSrc("index.md", ".md")
 	local index = assert(io.open(indexFile, "w"))
 	index:write("# Index\n\n")
@@ -202,7 +275,8 @@ local function doBuild()
 		local src = assert(f:read("*a"))
 		f:close()
 		local result = markdown(src)
-		local h1 = result:match("<h1>(.-)</h1>")
+		local h1, h1pos = result:match("<h1><a [^>]+>(.-)</a></h1>()")
+		if not h1 then h1, h1pos = result:match("<h1>(.-)</h1>()") end
 		local title = h1 or origSources[file] or file
 		local outFile = docForSrc(file)
 		local relCss = build.makeRelativePath("bin/doc/lua.css", outFile)
@@ -210,15 +284,40 @@ local function doBuild()
 		local header = headerTemplate:gsub("TITLE", title, 1)
 		header = header:gsub("STYLESHEET", relCss, 1)
 		header = header:gsub("INDEX", relIdx, 1)
+		local index = indexes[file] and normaliseHeaderIndex(indexes[file])
 
 		f = assert(io.open(outFile, "w"))
-		assert(f:write(header))
-		if not h1 then
+		f:write(header)
+		if h1 then
+			-- Put the index after the first h1
+			f:write(result:sub(1, h1pos))
+			f:write("\n")
+			result = result:sub(h1pos)
+		else
 			-- There wasn't any proper title, so put one in
-			assert(f:write("<h1>", title, "</h1>\n\n"))
+			f:write("<h1>", title, "</h1>\n\n")
 		end
-		assert(f:write(result))
-		assert(f:write(footer))
+		if index and next(index) then
+			local lvl = 0
+			for _, entry in ipairs(index) do
+				while lvl < entry.lvl do
+					f:write("<ul>\n")
+					lvl = lvl + 1
+				end
+				while lvl > entry.lvl do
+					f:write("</ul>\n")
+					lvl = lvl - 1
+				end
+				f:write(string.format('<li><a href="#%s">%s</a></li>\n', entry.id, htmlEscape(entry.txt)))
+			end
+			while lvl > 0 do
+				f:write("</ul>\n")
+				lvl = lvl - 1
+			end
+			f:write("<hr>\n")
+		end
+		f:write(result)
+		f:write(footer)
 		f:close()
 	end
 end

@@ -2,8 +2,7 @@
 #define MEMMAP_H
 
 /**
-Kernel memory map
------------------
+## Kernel memory map
 
 <pre>
 Section Zero:
@@ -92,8 +91,7 @@ Peripherals	20000000-20300000	F2000000-F2300000	(3 MB)
 #define KLuaDebuggerSectionHeap	0x42005000u
 
 /**
-User memory map
----------------
+## User memory map
 
 <pre>
 Unmapped						00000000-00007000
