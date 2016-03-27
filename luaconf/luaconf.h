@@ -507,8 +507,8 @@
 
 #define LUAI_UACNUMBER		LUA_INTEGER
 
-#define LUA_NUMBER_FRMLEN	LUA_INTEGER_FRMLEN //"l"
-#define LUA_NUMBER_FMT		"%" LUA_INTEGER_FRMLEN "d" //"%ld"
+#define LUA_NUMBER_FRMLEN	LUA_INTEGER_FRMLEN
+#define LUA_NUMBER_FMT		LUA_INTEGER_FMT
 
 #define l_mathop(op)		(__builtin_ ## op)
 

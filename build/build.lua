@@ -618,12 +618,7 @@ local function findModulesTableSymbol(symbols)
 end
 
 local function le32(val)
-	return string.char(
-		val & 0xFF,
-		(val >> 8) & 0xFF,
-		(val >> 16) & 0xFF,
-		(val >> 24) & 0xFF
-	)
+	return string.pack("<I4", val)
 end
 
 function build_kernel()

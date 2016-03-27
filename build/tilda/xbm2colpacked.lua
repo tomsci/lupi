@@ -1,4 +1,4 @@
-#!/usr/local/bin/lua
+#!/usr/local/bin/lua5.3
 
 --[[**
 Converts an XBM to the column-packed format used by the TiLDA screen.
@@ -8,15 +8,23 @@ Syntax:
 	./xbm2colpacked.lua < img.xbm
 ]]
 
-require "bit32"
 
 name, width, height = nil, nil, nil
 bytes = {}
 packedBytes = {}
-local band, bor, lshift, rshift, bnot = bit32.band, bit32.bor, bit32.lshift, bit32.rshift, bit32.bnot
+
+-- require "bit32"
+--local band, bor, lshift, rshift, bnot = bit32.band, bit32.bor, bit32.lshift, bit32.rshift, bit32.bnot
+
+-- bit32 compat
+local function band(a, b) return a & b end
+local function bor(a, b) return a | b end
+local function lshift(a, b) return a << b end
+local function rshift(a, b) return a >> b end
+local function bnot(a) return ~a end
 
 local function getBit(bitIdx)
-	local byte = bytes[bit32.rshift(bitIdx, 3) + 1]
+	local byte = bytes[rshift(bitIdx, 3) + 1]
 	if byte == nil then return nil end
 	return band(byte, lshift(1, band(bitIdx, 7)))
 end
@@ -42,7 +50,7 @@ for line in io.lines() do
 	if n then
 		name = n:match("(.*)_xbm") or n
 		width = assert(tonumber(w))
-		stride = bit32.band(width + 7, bnot(7))
+		stride = band(width + 7, bnot(7))
 	else
 		local h = line:match("#define .*_height (.*)")
 		if h then height = assert(tonumber(h)) end
