@@ -73,9 +73,9 @@ NORETURN do_process_start(uint32 sp) {
 void do_thread_new(Thread* t, uintptr context) {
 	uintptr entryPoint;
 	asm("LDR %0, =newThreadEntryPoint" : "=r" (entryPoint));
-	ExceptionStackFrame* esf = pushDummyExceptionStackFrame((uint32*)t->savedRegisters[KSavedR13], entryPoint);
+	ExceptionStackFrame* esf = pushDummyExceptionStackFrame((uint32*)t->savedRegisters[KSavedSp], entryPoint);
 	esf->r0 = context;
-	t->savedRegisters[KSavedR13] = (uintptr)esf;
+	t->savedRegisters[KSavedSp] = (uintptr)esf;
 }
 
 #endif // LUPI_NO_PROCESS
@@ -94,7 +94,7 @@ thread is in an SVC call, and what exception handler is currently running.
 void saveCurrentRegistersForThread(void* savedRegisters) {
 	Thread* t = TheSuperPage->currentThread;
 	const ExceptionStackFrame* esf = getThreadExceptionStackFrame();
-	t->savedRegisters[KSavedR13] = (uintptr)esf;
+	t->savedRegisters[KSavedSp] = (uintptr)esf;
 	if (SVCallCurrent()) {
 		ASSERT(savedRegisters == NULL, (uintptr)savedRegisters);
 	} else {
@@ -133,7 +133,7 @@ static NORETURN USED scheduleThread(Thread* t) {
 }
 
 void thread_writeSvcResult(Thread* t, uintptr result) {
-	ExceptionStackFrame* esf = (ExceptionStackFrame*)(t->savedRegisters[KSavedR13]);
+	ExceptionStackFrame* esf = (ExceptionStackFrame*)(t->savedRegisters[KSavedSp]);
 	esf->r0 = result;
 }
 

@@ -6,6 +6,8 @@
 #define ARMV7_M
 #define CORTEX_M3
 
+#define ARCH_HEADER <armv7-m.h>
+
 #define LUPI_NO_SECTION0 // Implies packed superpage and no MMU translation
 
 #define LUPI_NO_IPC // This is a temporary macro
@@ -14,6 +16,7 @@
 
 #define HAVE_SCREEN
 #define HAVE_MPU
+#define HAVE_AUDIO
 
 #ifdef MALLOC_AVAILABLE
 #define LUPI_USE_MALLOC_FOR_KLUA

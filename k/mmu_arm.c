@@ -3,6 +3,24 @@
 #include <arm.h>
 #include <pageAllocator.h>
 
+#define MB *1024*1024
+#define KSectionShift 20
+#define KAddrToPdeIndexShift KSectionShift
+#define KAddrToPdeAddrShift (KAddrToPdeIndexShift - 2)
+#define KPageTableSize		4096
+#define KSectionMask		0x000FFFFFu
+#define KPagesInSection		(1 << (KSectionShift-KPageShift)) // ie 256
+
+#define PTE_IDX(virtAddr)	(((virtAddr) & KSectionMask) >> KPageShift)
+
+#define PDE_FOR_PROCESS(p) (((uintptr)(p)) | 0x00200000) // Whee for crazy hacks
+#define PT_FOR_PROCESS(p, sectionNum) ((uint32*)(KProcessPtBase | (indexForProcess(p) << KSectionShift) | (sectionNum << KPageShift)))
+
+// masks off all bits except those that distinguish one Process from another
+#define MASKED_PROC_PTR(p) (((uintptr)(p)) & 0x000FF000)
+
+#define KERN_PT_FOR_PROCESS_PTS(p) ((uint32*)(KKernPtForProcPts | MASKED_PROC_PTR(p)))
+
 /**
 Creates a new section map for the given index (where `sectionIdx` is the virtual address right-
 shifted by `KPageShift`) in the given Process.
@@ -503,6 +521,20 @@ Process* switch_process(Process* p) {
 	TheSuperPage->currentProcess = p;
 	// I think we're done - setting context ID does all the flushing required
 	return oldp;
+}
+
+int mmu_processInit(Process* p) {
+	uint32* pde = (uint32*)PDE_FOR_PROCESS(p);
+	uint32* kernPtForTheUserPts = (uint32*)KERN_PT_FOR_PROCESS_PTS(p);
+	if (!p->pdePhysicalAddress) {
+		p->pdePhysicalAddress = mmu_mapPageInSection(Al, (uint32*)KProcessesPdeSection_pt, (uintptr)pde, KPageUserPde);
+		uintptr userPtsStart = (uintptr)PT_FOR_PROCESS(p, 0);
+		mmu_mapSection(Al, userPtsStart, (uintptr)kernPtForTheUserPts, (uint32*)KKernPtForProcPts_pt, KPageKernPtForProcPts);
+		//TODO check return code
+	}
+	zeroPage(pde);
+	mmu_mapPagesInProcess(Al, p, KUserBss, 1 + KNumPreallocatedUserPages);
+	return 0;
 }
 
 void mmu_processExited(PageAllocator* pa, Process* p) {

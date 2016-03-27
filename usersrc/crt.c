@@ -119,6 +119,44 @@ void NAKED longjmp(jmp_buf env, int val) {
 	asm("bx lr");
 }
 
+#elif defined(AARCH64)
+
+int NAKED setjmp(jmp_buf env) {
+	asm("ldr x1, .jmpbufMagicVal");
+	asm("mov x2, sp");
+	asm("stp x1, x2, [x0], #16");
+	asm("stp x19, x20, [x0], #16");
+	asm("stp x21, x22, [x0], #16");
+	asm("stp x23, x24, [x0], #16");
+	asm("stp x25, x26, [x0], #16");
+	asm("stp x27, x28, [x0], #16");
+	asm("stp x29, x30, [x0], #16");
+	asm("mov x0, #0");
+	asm("ret");
+	// TODO fp regs?
+
+	LABEL_WORD(.jmpbufMagicVal, 0x5CAFF01D);
+}
+
+void NAKED longjmp(jmp_buf env, int val) {
+	//TODO check jmpbufMagicVal
+	asm("add x0, x0, #8");
+	asm("ldr x2, [x0], #8");
+	asm("mov sp, x2");
+	asm("ldp x19, x20, [x0], #16");
+	asm("ldp x21, x22, [x0], #16");
+	asm("ldp x23, x24, [x0], #16");
+	asm("ldp x25, x26, [x0], #16");
+	asm("ldp x27, x28, [x0], #16");
+	asm("ldp x29, x30, [x0], #16");
+	asm("mov x0, x1");
+	asm("ret");
+}
+
+#else
+
+#error "Undefined architecture!"
+
 #endif
 
 static int uintToStr(uint val, char* restrict str, int width, char filler) {

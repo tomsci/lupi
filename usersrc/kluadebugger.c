@@ -135,7 +135,7 @@ static int GetProcess_lua(lua_State* L) {
 }
 
 static int lua_newMemBuf(lua_State* L) {
-	uint32 ptr = lua_tointeger(L, 1);
+	lua_Integer ptr = lua_tointeger(L, 1);
 	int len = lua_tointeger(L, 2);
 	const char* type = lua_tostring(L, 3);
 	mbuf_new(L, (void*)ptr, len, type);
@@ -175,7 +175,7 @@ static int GetThreadExceptionStackFrame_lua(lua_State* L) {
 		READ_SPECIAL(PSP, esf);
 	} else {
 		// It'll be saved in the Thread savedRegisters
-		esf = (ExceptionStackFrame*)t->savedRegisters[KSavedR13];
+		esf = (ExceptionStackFrame*)t->savedRegisters[KSavedSp];
 	}
 	mbuf_new(L, esf, sizeof(ExceptionStackFrame), "ExceptionStackFrame");
 	return 1;
@@ -310,11 +310,13 @@ int init_module_kluadebugger(lua_State* L) {
 	MBUF_MEMBER(SuperPage, lastSvcTime);
 	MBUF_MEMBER(SuperPage, lastSvc);
 #endif
+#ifdef HAVE_AUDIO
 	MBUF_MEMBER(SuperPage, audioAddr);
 	MBUF_MEMBER(SuperPage, audioEnd);
 	MBUF_MEMBER(SuperPage, audioLoopLen);
 	MBUF_MEMBER(SuperPage, audioBufPtr);
 	MBUF_MEMBER(SuperPage, audioBufNewestDataEnd);
+#endif
 
 	MBUF_TYPE(ThreadState);
 	MBUF_ENUM(ThreadState, EReady);

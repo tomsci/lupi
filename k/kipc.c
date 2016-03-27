@@ -21,7 +21,7 @@ uintptr ipc_mapNewSharedPageInCurrentProcess() {
 	// Now map it. Since all involved processes get the same address for a given shared
 	// page, we don't need any additional means of referencing the page, and we don't
 	// even need to track its physical address.
-	uint32 userPtr = userAddressForSharedPage(idx);
+	uintptr userPtr = userAddressForSharedPage(idx);
 	Process* owner = TheSuperPage->currentProcess;
 	bool ok = mmu_newSharedPage(Al, owner, userPtr);
 	if (!ok) {

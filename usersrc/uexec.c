@@ -3,6 +3,51 @@
 
 typedef struct AsyncRequest AsyncRequest;
 
+#ifdef AARCH64
+
+// Save x19 - x28 plus x29 (FP)
+
+// TODO this is probably wrong...
+#define DO_EXEC() \
+	asm("STP x19, x20, [sp, #-16]!"); \
+	asm("STP x21, x22, [sp, #-16]!"); \
+	asm("STP x23, x25, [sp, #-16]!"); \
+	asm("STP x25, x27, [sp, #-16]!"); \
+	asm("STP x27, x29, [sp, #-16]!"); \
+	asm("STP x29, x30, [sp, #-16]!"); \
+	asm("SVC 0"); \
+	asm("LDP x29, x30, [sp], #16"); \
+	asm("LDP x27, x28, [sp], #16"); \
+	asm("LDP x25, x26, [sp], #16"); \
+	asm("LDP x23, x24, [sp], #16"); \
+	asm("LDP x21, x22, [sp], #16"); \
+	asm("LDP x19, x20, [sp], #16"); \
+	asm("RET")
+
+#define SLOW_EXEC(code) \
+	asm("MOV x0, %0" : : "i" (code)); \
+	DO_EXEC()
+
+#define SLOW_EXEC1(code) \
+	asm("MOV x1, x0"); \
+	SLOW_EXEC(code)
+
+#define SLOW_EXEC2(code) \
+	asm("MOV x2, x1"); \
+	SLOW_EXEC1(code)
+
+// User-side, fast execs are set up exactly the same as slow ones,
+// except for ORing KFastExec
+#define FAST_EXEC1(code) \
+	asm("MOV x1, x0"); \
+	asm("MOV x0, %0" : : "i" (code)); \
+	asm("ORR x0, x0, %0" : : "i" (KFastExec)); \
+	DO_EXEC()
+
+
+
+#else
+
 #define DO_EXEC() \
 	asm("PUSH {r4-r12}"); \
 	asm("SVC 0"); \
@@ -28,6 +73,8 @@ typedef struct AsyncRequest AsyncRequest;
 	asm("MOV r0, %0" : : "i" (code)); \
 	asm("ORR r0, r0, %0" : : "i" (KFastExec)); \
 	DO_EXEC()
+
+#endif // AARCH64
 
 void* NAKED sbrk(ptrdiff_t inc) {
 	SLOW_EXEC1(KExecSbrk);

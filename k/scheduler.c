@@ -1,10 +1,6 @@
 #include <k.h>
 #include <mmu.h>
-#if defined(ARM)
-#include <arm.h>
-#elif defined(ARMV7_M)
-#include <armv7-m.h>
-#endif
+#include ARCH_HEADER
 
 Thread* findNextReadyThread() {
 	Thread* head = TheSuperPage->readyList;
@@ -97,6 +93,10 @@ int kern_disableInterrupts() {
 	READ_SPECIAL(PRIMASK, result);
 	WRITE_SPECIAL(PRIMASK, 1);
 	return result;
+#elif defined(AARCH64)
+	return 0; //TODO
+#else
+#error "Unsupported architecture!"
 #endif
 }
 
@@ -105,6 +105,10 @@ void kern_enableInterrupts() {
 	ModeSwitch(KPsrModeSvc | KPsrFiqDisable);
 #elif defined(ARMV7_M)
 	WRITE_SPECIAL(PRIMASK, 0);
+#elif defined(AARCH64)
+	//TODO
+#else
+#error "Unsupported architecture!"
 #endif
 }
 

@@ -3,24 +3,9 @@
 
 #include <std.h>
 
-#define MB *1024*1024
-#define KSectionShift 20
-#define KAddrToPdeIndexShift KSectionShift
-#define KAddrToPdeAddrShift (KAddrToPdeIndexShift - 2)
-#define KPageTableSize		4096
-#define KSectionMask		0x000FFFFFu
-#define KPagesInSection		(1 << (KSectionShift-KPageShift)) // ie 256
-
-#define PTE_IDX(virtAddr)	(((virtAddr) & KSectionMask) >> KPageShift)
 #define PAGE_ROUND(addr)	((addr + KPageSize - 1) & ~(KPageSize-1))
 
-#define PDE_FOR_PROCESS(p) (((uintptr)(p)) | 0x00200000) // Whee for crazy hacks
-#define PT_FOR_PROCESS(p, sectionNum) ((uint32*)(KProcessPtBase | (indexForProcess(p) << KSectionShift) | (sectionNum << KPageShift)))
-
-// masks off all bits except those that distinguish one Process from another
-#define MASKED_PROC_PTR(p) (((uintptr)(p)) & 0x000FF000)
-
-#define KERN_PT_FOR_PROCESS_PTS(p) ((uint32*)(KKernPtForProcPts | MASKED_PROC_PTR(p)))
+#define KNumPreallocatedUserPages 0
 
 typedef struct PageAllocator PageAllocator;
 
@@ -123,6 +108,7 @@ switch to a process by doing:
 */
 Process* switch_process(Process* p);
 
+int mmu_processInit(Process* p);
 void mmu_processExited(PageAllocator* pa, Process* p);
 
 #endif

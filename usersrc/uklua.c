@@ -215,7 +215,7 @@ struct stats {
 void malloc_stats();
 
 void mallocInfoCallback(void* start, void* end, size_t used, void* ctxt) {
-	if (used < 0 || (end - start) + 4 < used) {
+	if ((end - start) + 4 < used) {
 		printf("WTF used %d start=%p end=%p\n", (int)used, start, end);
 		return;
 	}

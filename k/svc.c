@@ -2,9 +2,6 @@
 #include <exec.h>
 #include <kipc.h>
 #include <err.h>
-#ifdef ARMV7_M
-#include <armv7-m.h>
-#endif
 
 void putbyte(byte b);
 bool byteReady();
@@ -13,19 +10,24 @@ static int getInt(int arg);
 static const char* getString(int arg);
 
 NOINLINE NAKED uint64 readUserInt64(uintptr ptr) {
-	asm("MOV r2, r0");
 	// ARM supports a post-increment which we use on the first instruction,
 	// but THUMB2 only supports a pre-increment which we use on the second!
 #ifdef ARM
+	asm("MOV r2, r0");
 	asm("LDRT r0, [r2], #4");
 	asm("LDRT r1, [r2]");
+	asm("BX lr");
 #elif defined(THUMB2)
+	asm("MOV r2, r0");
 	asm("LDRT r0, [r2]");
 	asm("LDRT r1, [r2, #4]");
+	asm("BX lr");
+#elif defined(AARCH64)
+	asm("LDTR x0, [x0]");
+	asm("RET");
 #else
 	#error "wtf?"
 #endif
-	asm("BX lr");
 }
 
 int64 handleSvc(int cmd, uintptr arg1, uintptr arg2, void* savedRegisters) {

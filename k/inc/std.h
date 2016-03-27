@@ -17,7 +17,13 @@ typedef unsigned long long uint64;
 #define UINT64_MAX 0xFFFFFFFFFFFFFFFFULL
 
 typedef unsigned long ulong;
+
+#ifdef __LP64__
 typedef unsigned long uintptr;
+#else
+// Be compatible with definition of uint32
+typedef unsigned int uintptr;
+#endif
 
 typedef _Bool bool;
 #define true  ((bool)1)
@@ -27,7 +33,11 @@ typedef _Bool bool;
 
 #define asm __asm
 #define ASM_JFDI __asm __volatile
+#ifdef AARCH64
+#define WORD(x) asm(".word %c0" : : "i" (x))
+#else
 #define WORD(x) asm(".word %a0" : : "i" (x))
+#endif
 #define LABEL_WORD(label, x) asm(#label ":"); WORD(x)
 
 #define ATTRIBUTE_PRINTF(str, check)	__attribute__((format(printf, str, check)))

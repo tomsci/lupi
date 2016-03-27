@@ -9,6 +9,8 @@
 #define BCM2835
 #define ARM_HAS_ERRATA_411920
 
+#define ARCH_HEADER <arm.h>
+
 #define HAVE_SCREEN
 #define HAVE_PITFT
 #define HAVE_MMU

@@ -16,11 +16,15 @@
 #define MAX_PROCESSES 1
 #endif
 
+#ifdef AARCH64
+#define MAX_THREADS 4 //TODO!
+#else
 /*
 Max threads per process
 Hmm, the "one page per process" limit turns out to be somewhat limiting...
 */
 #define MAX_THREADS 48
+#endif
 
 #define MAX_SERVERS 32
 
@@ -74,12 +78,18 @@ typedef struct PageAllocator PageAllocator;
 
 #if defined(ARMV7_M)
 // 0-7 are r4-r11, 8 is r13
-#define KSavedR13 8
+#define KSavedSp 8
 #define NUM_SAVED_REGS 9
 #elif defined(ARM)
 // 0-15 are r0-r15, 16 is PSR
-#define KSavedR13 13
+#define KSavedSp 13
 #define NUM_SAVED_REGS 17
+#elif defined(AARCH64)
+// 0-30 are x0-x30, 31 is SP, 32 is something??
+#define KSavedSp 31
+#define NUM_SAVED_REGS 33
+#else
+#error "Unknown architecture!"
 #endif
 
 typedef struct Thread {
@@ -90,7 +100,7 @@ typedef struct Thread {
 	uint8 timeslice;
 	uint8 completedRequests;
 	int exitReason; // Also holds blockedReason if state is EBlockedFromSvc
-	uint32 savedRegisters[NUM_SAVED_REGS];
+	uintptr savedRegisters[NUM_SAVED_REGS];
 } Thread;
 
 typedef enum ThreadState {
@@ -111,16 +121,16 @@ typedef enum ThreadBlockedReason {
 uint32 atomic_inc(uint32* ptr);
 NOIGNORE uint32 atomic_set(uint32* ptr, uint32 val);
 NOIGNORE bool atomic_cas(uint32* ptr, uint32 expectedVal, uint32 newVal);
-#ifndef LP64
 NOIGNORE static inline Thread* atomic_set_thread(Thread** ptr, Thread* val);
-static inline Thread* atomic_set_thread(Thread** ptr, Thread* val) {
-	return (Thread*)atomic_set((uint32*)ptr, (uint32)val);
-}
 NOIGNORE static inline uintptr atomic_set_uptr(uintptr* ptr, uintptr val);
+static inline Thread* atomic_set_thread(Thread** ptr, Thread* val) {
+	return (Thread*)atomic_set_uptr((uintptr*)ptr, (uintptr)val);
+}
+
+#ifndef __LP64__
 static inline uintptr atomic_set_uptr(uintptr* ptr, uintptr val) {
 	return (uintptr)atomic_set((uint32*)ptr, (uint32)val);
 }
-
 #endif
 
 uint8 atomic_inc8(uint8* ptr);
@@ -218,8 +228,8 @@ typedef struct SuperPage {
 	KAsyncRequest uartRequest;
 	KAsyncRequest timerRequest;
 	uint64 timerCompletionTime;
-	uint32 crashRegisters[17];
-	uint32 crashFar;
+	uintptr crashRegisters[17];
+	uintptr crashFar;
 	byte uartBuf[68];
 	Server servers[MAX_SERVERS];
 	bool quiet; // Suppress printks
@@ -250,11 +260,13 @@ typedef struct SuperPage {
 	uint32 lastSvc;
 #endif
 
-	uint32 audioAddr;
-	uint32 audioEnd;
+#ifdef HAVE_AUDIO
+	uintptr audioAddr;
+	uintptr audioEnd;
 	uint32 audioLoopLen;
 	uint8* audioBufPtr;
 	uint8* audioBufNewestDataEnd;
+#endif
 
 #ifdef ARM
 	// DFCs implemented using PendSV rather than a Thread in ARMv7-M
@@ -284,22 +296,22 @@ ASSERT_COMPILE(sizeof(SuperPage) <= KPageSize);
 #define indexForProcess(p) (0)
 #else
 #define Al ((PageAllocator*)KPageAllocatorAddr)
-#define GetProcess(idx) ((Process*)(KProcessesSection + ((idx) << KPageShift)))
+#define GetProcess(idx) ((Process*)(uintptr)(KProcessesSection + ((idx) << KPageShift)))
 #define indexForProcess(p) ((int)((((uintptr)(p)) >> KPageShift) & 0xFF))
 #endif
 
 
-#ifdef ARM
+#ifdef ARMV7_M
+
+#define userStackForThread(t) (KUserMemLimit - (((t)->index + 1) << USER_STACK_AREA_SHIFT))
+
+#else
 
 // NOTE: don't change these without also updating the asm in svc()
 #define svcStackOffset(threadIdx) (threadIdx << USER_STACK_AREA_SHIFT)
 #define svcStackBase(threadIdx) (KUserStacksBase + svcStackOffset(threadIdx))
 #define userStackBase(threadIdx) (svcStackBase(threadIdx) + 2*KPageSize)
 #define userStackForThread(t) userStackBase(t->index)
-
-#elif defined(ARMV7_M)
-
-#define userStackForThread(t) (KUserMemLimit - (((t)->index + 1) << USER_STACK_AREA_SHIFT))
 
 #endif
 
@@ -333,7 +345,7 @@ NOIGNORE int thread_new(Process* p, uintptr context, Thread** resultThread);
 void thread_setState(Thread* t, enum ThreadState s);
 NORETURN thread_exit(Thread* t, int reason);
 void thread_requestSignal(KAsyncRequest* request);
-void thread_requestComplete(KAsyncRequest* request, int result);
+void thread_requestComplete(KAsyncRequest* request, uintptr result);
 void thread_setBlockedReason(Thread* t, ThreadBlockedReason reason);
 void thread_enqueueBefore(Thread* t, Thread* before);
 void thread_dequeue(Thread* t, Thread** head);

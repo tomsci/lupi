@@ -1,11 +1,7 @@
 #include <k.h>
 #include <mmu.h>
 #include <pageAllocator.h>
-#if defined(ARM)
-#include <arm.h>
-#elif defined(ARMV7_M)
-#include <armv7-m.h>
-#endif
+#include ARCH_HEADER
 #include <atags.h>
 #include <exec.h>
 #include <klua.h>
@@ -159,6 +155,20 @@ static void initSuperPage(const AtagsParams* atags) {
 //TODO move this stuff
 
 void NAKED zeroPage(void* page) {
+#ifdef AARCH64
+	asm("ADD x1, x0, #4096"); // x1 has end pos
+	asm("MOV x2, #0");
+	asm("MOV x3, #0");
+	asm("1:");
+	asm("STP x2, x3, [x0], #16");
+	asm("STP x2, x3, [x0], #16");
+	asm("STP x2, x3, [x0], #16");
+	asm("STP x2, x3, [x0], #16");
+	asm("CMP x0, x1");
+	asm("B.NE 1b");
+
+	asm("RET");
+#else
 	asm("ADD r1, r0, #4096"); // r1 has end pos
 	asm("PUSH {r4-r9}");
 	asm("MOV r2, #0");
@@ -177,6 +187,7 @@ void NAKED zeroPage(void* page) {
 
 	asm("POP {r4-r9}");
 	asm("BX lr");
+#endif // AARCH64
 }
 
 void zeroPages(void* addr, int num) {
@@ -192,7 +203,7 @@ void zeroPages(void* addr, int num) {
 
 void iThinkYouOughtToKnowImFeelingVeryDepressed() {
 	TheSuperPage->quiet = false;
-	uint32 far = getFAR();
+	uintptr far = getFAR();
 	if (!TheSuperPage->marvin) {
 		TheSuperPage->marvin = true;
 		// Make sure IRQs remain disabled in subsequent SVC calls by the klua debugger
@@ -253,6 +264,8 @@ void iThinkYouOughtToKnowImFeelingVeryDepressed() {
 #endif // KLUA_DEBUGGER
 
 const char KAssertionFailed[] = "\nASSERTION FAILURE at %s:%d\nASSERT(%s)\n";
+
+#ifndef AARCH64
 
 // Some careful crafting here so the top of the stack and registers are nice and
 // clean-looking in the debugger. This works quite nicely with the fixed args in
@@ -329,6 +342,8 @@ void NAKED assertionFail(int nextras, const char* file, int line, const char* co
 	LABEL_WORD(.abortStackBase, KAbortStackBase + KPageSize);
 #endif
 }
+
+#endif // AARCH64
 
 // void dumpATAGS() {
 // 	mmu_mapSect0Data(KKernelAtagsBase, KPhysicalAtagsBase, 1);

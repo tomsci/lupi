@@ -3,7 +3,11 @@
 // Otherwise atomic_setbool definition is wrong
 ASSERT_COMPILE(sizeof(bool) == sizeof(byte));
 
-#ifdef WORKING_LDREX
+#if defined(AARCH64)
+
+//TODO
+
+#elif defined(WORKING_LDREX)
 
 /**
 Returns the value previously at this location. If this function is interrupted

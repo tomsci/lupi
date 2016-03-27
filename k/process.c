@@ -1,14 +1,10 @@
 #include <k.h>
 #include <pageAllocator.h>
 #include <mmu.h>
-#ifdef ARM
-#include <arm.h>
-#endif
+#include ARCH_HEADER
 #include <err.h>
 #include <ipc.h>
 #include <module.h>
-
-#define KNumPreallocatedUserPages 0
 
 // These will refer to the *user* addresses of these variables, in the BSS.
 // Therefore, can only be referenced when process_switch()ed to the
@@ -41,16 +37,7 @@ static int process_init(Process* p, const char* processName) {
 	p->pid = TheSuperPage->nextPid++;
 
 #ifdef HAVE_MMU
-	uint32* pde = (uint32*)PDE_FOR_PROCESS(p);
-	uint32* kernPtForTheUserPts = (uint32*)KERN_PT_FOR_PROCESS_PTS(p);
-	if (!p->pdePhysicalAddress) {
-		p->pdePhysicalAddress = mmu_mapPageInSection(Al, (uint32*)KProcessesPdeSection_pt, (uintptr)pde, KPageUserPde);
-		uintptr userPtsStart = (uintptr)PT_FOR_PROCESS(p, 0);
-		mmu_mapSection(Al, userPtsStart, (uintptr)kernPtForTheUserPts, (uint32*)KKernPtForProcPts_pt, KPageKernPtForProcPts);
-		//TODO check return code
-	}
-	zeroPage(pde);
-	mmu_mapPagesInProcess(Al, p, KUserBss, 1 + KNumPreallocatedUserPages);
+	mmu_processInit(p);
 #endif // HAVE_MMU
 
 	p->heapLimit = KUserHeapBase;
@@ -93,11 +80,11 @@ static bool thread_init(Thread* t) {
 	}
 #endif // HAVE_MMU
 
-	t->savedRegisters[KSavedR13] = stackBase + USER_STACK_SIZE;
+	t->savedRegisters[KSavedSp] = stackBase + USER_STACK_SIZE;
 	if ((KUserBss & ~0xFFF) == stackBase) {
 		// Special case for the case where we stuff the BSS into the top of the
 		// stack page
-		t->savedRegisters[KSavedR13] = KUserBss;
+		t->savedRegisters[KSavedSp] = KUserBss;
 	}
 	return true;
 }
@@ -112,7 +99,7 @@ NORETURN process_start(Process* p) {
 		// If BSS is mapped to a page boundary, assume we need to clear it
 		zeroPages((void*)KUserBss, 1 + KNumPreallocatedUserPages);
 	}
-	zeroPages((void*)userStackForThread(t), USER_STACK_SIZE >> KPageShift);
+	zeroPages((void*)(uintptr)userStackForThread(t), USER_STACK_SIZE >> KPageShift);
 
 	// And we can set up the user_* variables
 	user_ProcessPid = p->pid;
@@ -124,7 +111,7 @@ NORETURN process_start(Process* p) {
 		ch = *pname++;
 		*userpname++ = ch;
 	} while (ch);
-	uint32 sp = t->savedRegisters[KSavedR13];
+	uint32 sp = t->savedRegisters[KSavedSp];
 	do_process_start(sp);
 }
 
@@ -349,18 +336,31 @@ void thread_setBlockedReason(Thread* t, ThreadBlockedReason reason) {
 	t->exitReason = reason;
 }
 
+#ifdef AARCH64
+
+static NOINLINE NAKED void do_user_write(uintptr ptr, uintptr data) {
+	asm("STTR x1, [x0]");
+	asm("RET");
+}
+
+#else
+
+/*
 NOINLINE NAKED uint32 do_user_read(uintptr ptr) {
 	asm("LDRT r1, [r0]");
 	asm("MOV r0, r1");
 	asm("BX lr");
 }
+*/
 
-static NOINLINE NAKED void do_user_write(uintptr ptr, uint32 data) {
+static NOINLINE NAKED void do_user_write(uintptr ptr, uintptr data) {
 	asm("STRT r1, [r0]");
 	asm("BX lr");
 }
 
-void thread_requestComplete(KAsyncRequest* request, int result) {
+#endif // AARCH64
+
+void thread_requestComplete(KAsyncRequest* request, uintptr result) {
 	Process* requestProcess = processForThread(request->thread);
 	Process* oldP = switch_process(requestProcess);
 	do_user_write(request->userPtr, result); // AsyncRequest->result = result
