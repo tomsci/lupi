@@ -63,3 +63,7 @@ Process* switch_process(Process* p) {
 	TheSuperPage->currentProcess = p;
 	return oldp;
 }
+
+void mmu_finishedUpdatingPageTables() {
+	// Nothing needs doing
+}
