@@ -44,6 +44,8 @@ static int process_init(Process* p, const char* processName) {
 
 	// Setup initial thread
 	p->numThreads = 1;
+	Thread* t = &p->threads[0];
+	t->index = 0;
 	bool ok = thread_init(&p->threads[0]);
 	if (!ok) return KErrNoMemory;
 
