@@ -6,7 +6,6 @@
 
 int newProcessEntryPoint();
 
-
 static NORETURN NAKED do_first_process_start(uint32 sp, uint32 defaultRegVal) {
 	// We only have one process so we know we must be in initial thread state
 	// So setup stack then drop to depriviledged mode and go
@@ -70,12 +69,11 @@ NORETURN do_process_start(uint32 sp) {
 	}
 }
 
-void do_thread_new(Thread* t, uintptr context) {
-	uintptr entryPoint;
-	asm("LDR %0, =newThreadEntryPoint" : "=r" (entryPoint));
+bool do_thread_init(Thread* t, uintptr entryPoint, uintptr context) {
 	ExceptionStackFrame* esf = pushDummyExceptionStackFrame((uint32*)t->savedRegisters[KSavedSp], entryPoint);
 	esf->r0 = context;
 	t->savedRegisters[KSavedSp] = (uintptr)esf;
+	return true;
 }
 
 #endif // LUPI_NO_PROCESS

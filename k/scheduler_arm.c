@@ -2,39 +2,14 @@
 #include <mmu.h>
 #include <arm.h>
 
-NORETURN NAKED do_process_start(uint32 sp) {
-	ModeSwitch(KPsrModeUsr|KPsrFiqDisable);
-	// We are in user mode now! So no calling printk(), or doing privileged stuff
-	asm("MOV sp, r0");
-	asm("LDR r0, =newProcessEntryPoint");
+void exec_threadExit(int reason);
 
-	// Clear all other registers to make stack dumps clearer
-	asm("LDR r1, .clearReg");
-	asm("MOV r2, r1");
-	asm("MOV r3, r1");
-	asm("MOV r4, r1");
-	asm("MOV r5, r1");
-	asm("MOV r6, r1");
-	asm("MOV r7, r1");
-	asm("MOV r8, r1");
-	asm("MOV r9, r1");
-	asm("MOV r10, r1");
-	asm("MOV r11, r1");
-	asm("MOV r12, r1");
-
-	asm("BLX r0");
-	// And we're off. We might return here if the module's main returns (with return code in r0)
-	asm("B exec_threadExit");
-	// Definitely don't return from here
-	LABEL_WORD(.clearReg, 0xA11FADED);
-}
-
-void do_thread_new(Thread* t, uintptr context) {
+bool do_thread_init(Thread* t, uintptr entryPoint, uintptr context) {
 	t->savedRegisters[0] = context;
-	uintptr entryPoint;
-	asm("LDR %0, =newThreadEntryPoint" : "=r" (entryPoint));
+	t->savedRegisters[14] = (uintptr)exec_threadExit;
 	t->savedRegisters[15] = entryPoint;
 	t->savedRegisters[16] = KPsrModeUsr|KPsrFiqDisable;
+	return true;
 }
 
 // Assumes we were in IRQ mode with interrupts off to start with
@@ -125,6 +100,10 @@ NORETURN scheduleThread(Thread* t) {
 	} else {
 		ASSERT(false, spsr);
 	}
+}
+
+NORETURN do_process_start(uint32 sp) {
+	scheduleThread(TheSuperPage->currentThread);
 }
 
 // void reschedule_debug() {

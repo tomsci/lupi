@@ -13,9 +13,11 @@ extern uint32 user_ProcessPid;
 extern char user_ProcessName[];
 
 #ifndef LUPI_NO_PROCESS
-static bool thread_init(Thread* t);
-NORETURN do_process_start(uint32 sp);
-void do_thread_new(Thread* t, uintptr context);
+static bool thread_init(Thread* t, uintptr context);
+bool do_thread_init(Thread* t, uintptr entryPoint, uintptr context);
+NORETURN do_process_start(uintptr sp);
+int newProcessEntryPoint();
+int newThreadEntryPoint(); // Not the correct signature but good enough to take its addr
 #endif
 
 int strlen(const char *s);
@@ -46,7 +48,7 @@ static int process_init(Process* p, const char* processName) {
 	p->numThreads = 1;
 	Thread* t = &p->threads[0];
 	t->index = 0;
-	bool ok = thread_init(&p->threads[0]);
+	bool ok = thread_init(t, 0);
 	if (!ok) return KErrNoMemory;
 
 	char* pname = p->name;
@@ -56,7 +58,7 @@ static int process_init(Process* p, const char* processName) {
 		*pname++ = ch;
 	} while (ch);
 
-	thread_setState(&p->threads[0], EReady);
+	thread_setState(t, EReady);
 
 	return 0;
 #endif // LUPI_NO_PROCESS
@@ -64,12 +66,13 @@ static int process_init(Process* p, const char* processName) {
 
 #ifndef LUPI_NO_PROCESS
 
-static bool thread_init(Thread* t) {
+static bool thread_init(Thread* t, uintptr context) {
 	t->prev = NULL;
 	t->next = NULL;
 	t->state = EDead;
 	t->timeslice = THREAD_TIMESLICE;
 	t->completedRequests = 0;
+	t->exitReason = 0;
 	uintptr stackBase = userStackForThread(t);
 #ifdef HAVE_MMU
 	Process* p = processForThread(t);
@@ -82,13 +85,17 @@ static bool thread_init(Thread* t) {
 	}
 #endif // HAVE_MMU
 
+	for (int i = 0; i < NUM_SAVED_REGS; i++) {
+		t->savedRegisters[i] = 0xA11FADED;
+	}
 	t->savedRegisters[KSavedSp] = stackBase + USER_STACK_SIZE;
 	if ((KUserBss & ~0xFFF) == stackBase) {
 		// Special case for the case where we stuff the BSS into the top of the
 		// stack page
 		t->savedRegisters[KSavedSp] = KUserBss;
 	}
-	return true;
+	uintptr entryPoint = (uintptr)(t->index ? newThreadEntryPoint : newProcessEntryPoint);
+	return do_thread_init(t, entryPoint, context);
 }
 
 NORETURN process_start(Process* p) {
@@ -113,7 +120,7 @@ NORETURN process_start(Process* p) {
 		ch = *pname++;
 		*userpname++ = ch;
 	} while (ch);
-	uint32 sp = t->savedRegisters[KSavedSp];
+	uintptr sp = t->savedRegisters[KSavedSp];
 	do_process_start(sp);
 }
 
@@ -237,9 +244,8 @@ int thread_new(Process* p, uintptr context, Thread** resultThread) {
 	}
 
 	if (t) {
-		bool ok = thread_init(t);
+		bool ok = thread_init(t, context);
 		if (!ok) return KErrNoMemory;
-		do_thread_new(t, context);
 		thread_setState(t, EReady);
 		*resultThread = t;
 		return 0;
