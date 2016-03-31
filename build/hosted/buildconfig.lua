@@ -1,5 +1,4 @@
 config = {
-	cc = "gcc",
 	include = "hosted.h",
 	machine = { "host" },
 	platOpts = "-O0 -g -arch i386",

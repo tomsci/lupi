@@ -78,6 +78,7 @@ kluaDebuggerModule = {
 
 local function armOnly() return machineIs("arm") end
 local function armv7mOnly() return machineIs("armv7-m") end
+local function aarch64Only() return machineIs("aarch64") end
 local function kluaPresent() return config.klua end
 local function uluaPresent() return config.ulua end
 local function notFullyHosted() return not config.fullyHosted end
@@ -85,7 +86,7 @@ local function bootMenuOnly() return bootMode > 1 end
 local function modulesPresent() return config.ulua or (config.klua and config.kluaIncludesModules) end
 local function ukluaPresent() return modulesPresent() and (config.klua or config.ulua) end
 local function useMalloc() return config.malloc end
-local function useUluaHeap() return not useMalloc() end
+local function useUluaHeap() return (config.klua or config.ulua) and not useMalloc() end
 
 mallocSource = {
 	path = "usersrc/malloc.c",
@@ -119,10 +120,13 @@ memCmpThumb2 = {
 kernelSources = {
 	{ path = "k/cpumode_arm.c", enabled = armOnly },
 	{ path = "k/cpumode_armv7m.c", enabled = armv7mOnly },
+	{ path = "k/cpumode_aarch64.c", enabled = aarch64Only },
 	{ path = "k/scheduler_arm.c", enabled = armOnly },
 	{ path = "k/scheduler_armv7m.c", enabled = armv7mOnly },
+	{ path = "k/scheduler_aarch64.c", enabled = aarch64Only },
 	{ path = "k/mmu_arm.c", enabled = armOnly },
 	{ path = "k/mmu_armv7m.c", enabled = armv7mOnly },
+	{ path = "k/mmu_aarch64.c", enabled = aarch64Only },
 	"k/debug.c",
 	"k/atomic.c",
 	"k/pageAllocator.c",
@@ -195,10 +199,13 @@ local function loadConfig(c)
 	local f = assert(loadfile(baseDir.."build/"..c.."/buildconfig.lua", nil, env))
 	f()
 	local config = env.config
-	if config.toolchainPrefix and not config.cc then
+	if not config.compiler then config.compiler = cc end
+	if config.link == nil and config.linker == nil then config.linker = ld end
+	--TODO fix this!
+	if config.toolchainPrefix --[[and not config.cc]] then
 		config.cc = config.toolchainPrefix .. "gcc"
-		config.as = config.toolchainPrefix .. "as"
-		config.ld = config.toolchainPrefix .. "ld"
+		-- config.as = config.toolchainPrefix .. "as"
+		-- config.ld = config.toolchainPrefix .. "ld"
 		config.objcopy = config.toolchainPrefix .. "objcopy"
 		config.objdump = config.toolchainPrefix .. "objdump"
 		config.readelf = config.toolchainPrefix .. "readelf"
@@ -206,9 +213,6 @@ local function loadConfig(c)
 	config.name = c
 	if config.lua == nil then
 		config.lua = config.klua or config.ulua
-	end
-	if not config.link then
-		config.link = env.link
 	end
 
 	return env.config
@@ -376,7 +380,7 @@ local function updateDepsForObj(objFile, commandLine)
 		-- First line is always the makefile target name, boring
 		f:read("*l")
 		for line in f:lines() do
-			local dep = line:match(" "..baseDir.."(.-) ?\\?$")
+			local dep = line:match("%s+"..baseDir.."(.-) ?\\?$")
 			assert(dep, "Problem reading dependency file")
 			--print(objFile .. " depends on "..dep)
 			-- Flatten relative includes like k/../build/pi/gpio.h
@@ -515,45 +519,24 @@ local function saveDependencyCache(cacheFile, deps)
 	f:close()
 end
 
-function assemble(file)
-	assert(file:match("%.s$"), "Can only assemble .s files")
-	local obj = objForSrc(file)
-	local cmd = string.format("%s %s -o %s ", config.as, qrp(file), qrp(obj))
-	local ok = parallelExec(cmd)
-	if not ok then
-		error("Assemble failed for "..source, 2)
-	end
-	return obj
-end
-
-function compilec(source, extraArgs)
-	--# source can be a string if there's no additional options needed
-	if type(source) == "string" then
-		source = { path = source }
-	end
-
-	local overallOpts = preprocess and "-E" or "-c"
-	if listing then
-		-- This saves intermediary .i (preprocessed) and .s (asm) files
-		overallOpts = overallOpts.." -save-temps=obj"
-	end
+-- This is the default compiler fn, which uses gcc. Returns the command line to invoke
+function cc(stage, config, opts)
+	assert(stage == "compile")
+	local source = opts.source
+	local overallOpts = opts.preprocess and "-E" or "-c"
 	local sysOpts = (source.hosted or config.fullyHosted) and "-ffreestanding" or "-ffreestanding -nostdinc -nostdlib"
-	if listing then
+	if opts.listing then
 		-- Debug is required for objdump to do interleaved listing
 		sysOpts = sysOpts .. " -g"
 	end
-	if not preprocess and incremental then
+	if not opts.preprocess and opts.incremental then
 		sysOpts = sysOpts .. " -MD"
 	end
 	local langOpts = "-std=c99 -fstrict-aliasing -Wall -Werror -Wno-error=unused-function"
 	local platOpts = config.platOpts or ""
-
-	local extraArgsString = join(extraArgs)
-
-	local suff = preprocess and ".i" or ".o"
-	local obj = objForSrc(source.path, suff)
-	local output = "-o "..qrp(obj)
-	local opts = join {
+	local extraArgsString = join(opts.extraArgs)
+	local output = "-o "..qrp(opts.destination)
+	local allOpts = join {
 		overallOpts,
 		sysOpts,
 		langOpts,
@@ -562,8 +545,47 @@ function compilec(source, extraArgs)
 		extraArgsString,
 		output
 	}
+	local exe = opts.compiler
+	if not exe then
+		exe = "gcc"
+		if config.toolchainPrefix then
+			exe = config.toolchainPrefix .. exe
+		end
+	end
+	local cmd = string.format("%s %s %s ", exe, allOpts, qrp(source.path))
+	return cmd
+end
 
-	local cmd = string.format("%s %s %s ", config.cc, opts, qrp(source.path))
+function clang(stage, config, opts)
+	if stage == "compile" then
+		opts.compiler = "clang"
+		-- currently, the 'cc' function can be used to invoke clang fine
+		return cc(stage, config, opts)
+	else
+		error("Not supported!")
+	end
+end
+
+function compilec(source, extraArgs)
+	-- source can be a string if there's no additional options needed
+	if type(source) == "string" then
+		source = { path = source }
+	end
+
+	local suff = preprocess and ".i" or ".o"
+	local obj = objForSrc(source.path, suff)
+
+	local opts = {
+		source = source,
+		destination = obj,
+		listing = listing,
+		incremental = incremental,
+		preprocess = preprocess,
+		extraArgs = extraArgs,
+	}
+	local cmd = config.compiler("compile", config, opts)
+	assert(cmd, "No command returned by compilation phase for "..source.path)
+
 	if incremental then
 		-- Check if we need to build
 		local objClean = isClean(obj, cmd)
@@ -605,6 +627,32 @@ local function findLibgcc()
 	local path = h:read("*l")
 	assert(h:close())
 	return path
+end
+
+function ld(stage, config, opts)
+	local args = {}
+	for i, obj in ipairs(opts.objs) do
+		args[i] = qrp(obj)
+	end
+	if config.klua or config.ulua then
+		-- I need your clothes, your boots and your run-time EABI helper functions
+		table.insert(args, findLibgcc())
+	end
+	-- The only BSS we have is userside, so we can set to a user address
+	assert(config.textSectionStart, "No textSectionStart defined in buildconfig!")
+	assert(config.bssSectionStart, "No bssSectionStart defined in buildconfig!")
+	table.insert(args, string.format("-Ttext 0x%X -Tbss 0x%X", config.textSectionStart, config.bssSectionStart))
+
+	local exe = "ld"
+	if config.toolchainPrefix then
+		exe = config.toolchainPrefix .. exe
+	end
+	local elf = opts.outDir .. "kernel.elf"
+	local cmd = string.format("%s %s -o %s", exe, join(args), qrp(elf))
+	local ok = exec(cmd)
+	if not ok then error("Link failed!") end
+
+	return elf
 end
 
 local function findModulesTableSymbol(symbols)
@@ -751,12 +799,7 @@ function build_kernel()
 	local objs = {}
 	if config.entryPoint then
 		-- Make sure it gets compiled first
-		local obj
-		if config.entryPoint:match("%.s$") then
-			obj = assemble(config.entryPoint)
-		else
-			obj = compilec(config.entryPoint, includes)
-		end
+		local obj = compilec(config.entryPoint, includes)
 		table.insert(objs, obj)
 	end
 
@@ -766,9 +809,6 @@ function build_kernel()
 		end
 		if type(source.enabled) == "function" and not source.enabled() then
 			-- Skip this file
-		elseif source.path:match("%.s$") and source.copts == nil then
-			-- If it has custom copts, assume it wants to be compilec()'d
-			table.insert(objs, assemble(source.path))
 		else
 			table.insert(objs, compilec(source, source.user and userIncludes or includes))
 		end
@@ -782,27 +822,17 @@ function build_kernel()
 	end
 
 	if config.link then
-		config.link(objs)
+		config.link("link", config, {objs=objs})
 	else
 		-- The proper code - link time!
 		local outDir = "bin/" .. config.name .. "/"
 		mkdir(outDir)
-		local elf = outDir .. "kernel.elf"
-		local args = {}
-		for i, obj in ipairs(objs) do
-			args[i] = qrp(obj)
-		end
-		if config.klua or config.ulua then
-			-- I need your clothes, your boots and your run-time EABI helper functions
-			table.insert(args, findLibgcc())
-		end
-		-- The only BSS we have is userside, so we can set to a user address
-		assert(config.textSectionStart, "No textSectionStart defined in buildconfig!")
-		assert(config.bssSectionStart, "No bssSectionStart defined in buildconfig!")
-		table.insert(args, string.format("-Ttext 0x%X -Tbss 0x%X", config.textSectionStart, config.bssSectionStart))
-		local cmd = string.format("%s %s -o %s", config.ld, join(args), qrp(elf))
-		local ok = exec(cmd)
-		if not ok then error("Link failed!") end
+
+		local opts = {
+			objs = objs,
+			outDir = outDir
+		}
+		local elf = config.linker("link", config, opts)
 
 		local img = outDir .. "kernel.img"
 		local cmd = string.format("%s %s -O binary %s", config.objcopy, qrp(elf), qrp(img))

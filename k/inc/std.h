@@ -35,10 +35,14 @@ typedef _Bool bool;
 #define ASM_JFDI __asm __volatile
 #ifdef AARCH64
 #define WORD(x) asm(".word %c0" : : "i" (x))
+#define ADDRESS(x) asm(".quad %c0" : : "i" (x))
+#define LABEL_ADDRESS(label, x) asm(#label ":"); ADDRESS(x)
 #else
 #define WORD(x) asm(".word %a0" : : "i" (x))
+#define LABEL_ADDRESS(label, x) asm(#label ":"); WORD(x)
 #endif
 #define LABEL_WORD(label, x) asm(#label ":"); WORD(x)
+
 
 #define ATTRIBUTE_PRINTF(str, check)	__attribute__((format(printf, str, check)))
 #define NAKED							__attribute__((naked))

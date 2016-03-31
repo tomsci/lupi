@@ -17,7 +17,7 @@
 #endif
 
 #ifdef AARCH64
-#define MAX_THREADS 4 //TODO!
+#define MAX_THREADS 8 //TODO!
 #else
 /*
 Max threads per process
@@ -40,9 +40,9 @@ void worddump(const void* addr, int len);
 NORETURN NAKED assertionFail(int nextras, const char* file, int line, const char* condition, ...);
 NORETURN hang();
 NORETURN reboot();
-uint32 GET32(uint32 addr);
-void PUT32(uint32 addr, uint32 val);
-void PUT8(uint32 addr, byte val);
+uint32 GET32(uintptr addr);
+void PUT32(uintptr addr, uint32 val);
+void PUT8(uintptr addr, byte val);
 
 #define NUMVARARGS(...)  (sizeof((int[]){__VA_ARGS__})/sizeof(int))
 #define KRegisterNotSaved 0xA11FADE5
@@ -77,17 +77,26 @@ typedef struct Thread Thread;
 typedef struct PageAllocator PageAllocator;
 
 #if defined(ARMV7_M)
+
 // 0-7 are r4-r11, 8 is r13
 #define KSavedSp 8
 #define NUM_SAVED_REGS 9
+
 #elif defined(ARM)
+
 // 0-15 are r0-r15, 16 is PSR
 #define KSavedSp 13
 #define NUM_SAVED_REGS 17
+
 #elif defined(AARCH64)
-// 0-30 are x0-x30, 31 is SP, 32 is something??
+
+// 0-30 are x0-x30, 31 is SP, 32 is SPSR, 33 is PC (ELR)
 #define KSavedSp 31
-#define NUM_SAVED_REGS 33
+#define KSavedSpsr 32
+#define KSavedPc 33
+#define NUM_SAVED_REGS 34
+#define SIZEOF_SAVED_REGS (NUM_SAVED_REGS * sizeof(uintptr))
+ASSERT_COMPILE((SIZEOF_SAVED_REGS & 15) == 0);
 #else
 #error "Unknown architecture!"
 #endif

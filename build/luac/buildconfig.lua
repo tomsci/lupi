@@ -1,5 +1,4 @@
 config = {
-	cc = "gcc",
 	platOpts = "-Os -arch i386 -DLUACONF_FULL_FAT_STDIO",
 	machine = { "host" },
 
@@ -16,9 +15,9 @@ config = {
 	lua = true,
 }
 
-function link(objs)
+function config.link(stage, config, opts)
 	local quotedObjs = {}
-	for i, obj in ipairs(objs) do
+	for i, obj in ipairs(opts.objs) do
 		quotedObjs[i] = build.qrp(obj)
 	end
 	local out = build.qrp("bin/luac")

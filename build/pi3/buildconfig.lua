@@ -1,5 +1,5 @@
 config = {
-	cc = "clang",
+	compiler = build.clang,
 	machine = { "aarch64" },
 
 	include = "pi3.h",
@@ -11,16 +11,16 @@ config = {
 
 	sources = {
 		-- "build/pi/gpio.c",
-		-- "build/pi/uart.c",
+		"build/pi/uart.c",
 		-- "build/pi/irq.c",
 		-- "build/pi/pitft.c",
 	},
 
 	-- extraStdInc = "build/pi/stdinc",
 
-	klua = true,
-	ulua = true,
-	malloc = true,
+	klua = false,
+	ulua = false,
+	malloc = false,
 
 	textSectionStart = 0xF8008000,
 	bssSectionStart = 0x00007000,

@@ -1,4 +1,5 @@
 config = {
+	compiler = function() error("Shouldn't be any compilation in docs build!") end,
 	machine = { "host" },
 }
 
@@ -322,4 +323,4 @@ local function doBuild()
 	end
 end
 
-link = doBuild -- The only overridable build step provided by build.lua is called 'link'
+config.link = doBuild -- The only overridable build step provided by build.lua is called 'link'

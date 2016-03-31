@@ -5,23 +5,8 @@ typedef struct AsyncRequest AsyncRequest;
 
 #ifdef AARCH64
 
-// Save x19 - x28 plus x29 (FP)
-
-// TODO this is probably wrong...
 #define DO_EXEC() \
-	asm("STP x19, x20, [sp, #-16]!"); \
-	asm("STP x21, x22, [sp, #-16]!"); \
-	asm("STP x23, x25, [sp, #-16]!"); \
-	asm("STP x25, x27, [sp, #-16]!"); \
-	asm("STP x27, x29, [sp, #-16]!"); \
-	asm("STP x29, x30, [sp, #-16]!"); \
 	asm("SVC 0"); \
-	asm("LDP x29, x30, [sp], #16"); \
-	asm("LDP x27, x28, [sp], #16"); \
-	asm("LDP x25, x26, [sp], #16"); \
-	asm("LDP x23, x24, [sp], #16"); \
-	asm("LDP x21, x22, [sp], #16"); \
-	asm("LDP x19, x20, [sp], #16"); \
 	asm("RET")
 
 #define SLOW_EXEC(code) \
@@ -43,8 +28,6 @@ typedef struct AsyncRequest AsyncRequest;
 	asm("MOV x0, %0" : : "i" (code)); \
 	asm("ORR x0, x0, %0" : : "i" (KFastExec)); \
 	DO_EXEC()
-
-
 
 #else
 

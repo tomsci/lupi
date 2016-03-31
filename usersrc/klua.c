@@ -6,11 +6,7 @@
 #include <lauxlib.h>
 #include <string.h>
 #include <k.h>
-#if defined(ARM)
-#include <arm.h>
-#elif defined(ARMV7_M)
-#include <armv7-m.h>
-#endif
+#include ARCH_HEADER
 
 #ifndef MALLOC_AVAILABLE
 #include <lupi/uluaHeap.h>
@@ -309,7 +305,7 @@ void NAKED switchToKluaDebuggerMode() {
 	ModeSwitch(KPsrModeSystem | KPsrIrqDisable | KPsrFiqDisable);
 	asm("LDR r13, .stackBase");
 	asm("BX r1");
-	LABEL_WORD(.stackBase, KLuaDebuggerStackBase + KLuaDebuggerStackSize);
+	LABEL_ADDRESS(.stackBase, KLuaDebuggerStackBase + KLuaDebuggerStackSize);
 #elif defined(ARMV7_M)
 	asm("MOV r0, #0");
 	asm("MSR CONTROL, r0"); // Thread mode privileged (NPRIV=0)
@@ -319,6 +315,17 @@ void NAKED switchToKluaDebuggerMode() {
 	// We can do this even if there were nested exceptions because we have set
 	// CCR_NONBASETHRDENA
 	RFE_TO_MAIN(lr);
+#elif defined(AARCH64)
+	asm("LDR x1, .stackBase");
+	asm("MSR SP_EL0, x1");
+	asm("MOV x2, %0" : : "i" (SPSR_I | SPSR_F | SPSR_EL1t));
+	asm("MSR SPSR_EL1, x2"); // SPSR_EL1 = return to EL1 with IRQ masked, using stack SP_EL0
+	asm("MSR ELR_EL1, x30"); // ELR_EL1 = LR
+	asm("ERET")
+
+	LABEL_ADDRESS(.stackBase, KLuaDebuggerStackBase + KLuaDebuggerStackSize);
+#else
+#error "Unknown architecture!"
 #endif
 }
 

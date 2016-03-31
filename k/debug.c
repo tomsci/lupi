@@ -26,9 +26,6 @@ static char* uintToStr(ulong val, char* buf, int buflen) {
 	char* result = buf + buflen - 1;
 	*result = 0;
 	do {
-//		int i = val % 10;
-//		*(--result) = '0' + i;
-//		val = val / 10;
 		ulong newVal = val / 10;
 		int i = val - (newVal * 10);
 		*(--result) = '0' + i;
@@ -49,32 +46,25 @@ static char* intToStr(long val, char* buf, int buflen) {
 	return result;
 }
 
-static char* uintToHex(ulong aVal, char* buf, int buflen, bool caps) {
-	// caps also means fill buf with zeros. Why? Because I say so.
-	ulong val = aVal;
+static char* uintToHex(ulong val, char* buf, int buflen, int zeroFillLen) {
+	// Zero fill also means use capitals. Why? Because I say so.
 	char* result = buf + buflen - 1;
 	*result = 0;
-	char a = caps ? 'A' : 'a';
+	const char aminus10 = ((zeroFillLen > 0) ? 'A' : 'a') - 10;
 	do {
 		int digit = val & 0xF;
 		if (digit >= 10) {
-			*(--result) = a + digit - 10;
+			*(--result) = aminus10 + digit;
 		} else {
 			*(--result) = '0' + digit;
 		}
 		val = val >> 4;
-	} while ((val || caps) && result != buf);
+		--zeroFillLen;
+	} while (result != buf && (val || (zeroFillLen > 0)));
 	return result;
 }
 
-#ifdef __LP64__
-#define BUFLEN 21
-#define HEXDIGITS 16
-#else
-#define BUFLEN 12
-#define HEXDIGITS 8
-#endif
-
+#define BUFLEN 21 // Big enough for a 64-bit int in decimal
 #define VA_GETLONG(_args, _isLong) ((_isLong) ? va_arg(_args, long) : (long)va_arg(_args, int))
 #define VA_GETULONG(_args, _isLong) ((_isLong) ? va_arg(_args, ulong) : (ulong)va_arg(_args, uint))
 
@@ -147,15 +137,15 @@ static void doPrint(const char* fmt, va_list args, void (*putch)(char), void (*p
 				break;
 			}
 			case 'x':
-				putstr(uintToHex(VA_GETULONG(args, isLong), buf, sizeof(buf), false));
+				putstr(uintToHex(VA_GETULONG(args, isLong), buf, sizeof(buf), 0));
 				break;
 			case 'p': {
 				putstr("0x");
-				putstr(uintToHex((uintptr)va_arg(args, void*), buf, HEXDIGITS+1, true));
+				putstr(uintToHex((uintptr)va_arg(args, void*), buf, sizeof(buf), sizeof(uintptr)));
 				break;
 			}
 			case 'X':
-				putstr(uintToHex(VA_GETULONG(args, isLong), buf, HEXDIGITS+1, true));
+				putstr(uintToHex(VA_GETULONG(args, isLong), buf, sizeof(buf), isLong ? sizeof(long) : sizeof(int)));
 				break;
 			case '%':
 				// Drop through
@@ -181,7 +171,7 @@ void hexdump(const char* addr, int len) {
 		printk("%p: ", lineStart);
 		for (int j = 0; j < 16; j++) {
 			char ch = lineStart[j];
-			putstr(uintToHex(ch, buf, 3, true));
+			putstr(uintToHex(ch, buf, 3, 2));
 			putch(' ');
 		}
 		putch(' ');
@@ -204,7 +194,7 @@ void worddump(const void* aAddr, int len) {
 		printk("%p: ", lineStart);
 		const int n = (i+1 == nlines ? (nwords - i*4) : 4);
 		for (int j = 0; j < n; j++) {
-			putstr(uintToHex(((const uint32*)lineStart)[j], buf, sizeof(buf), true));
+			putstr(uintToHex(((const uint32*)lineStart)[j], buf, sizeof(buf), sizeof(uint32)));
 			putch(' ');
 		}
 		putch(' ');
