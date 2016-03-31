@@ -1,7 +1,21 @@
 #ifndef LUPI_BUILD_PI3_H
 #define LUPI_BUILD_PI3_H
 
-#include <memmap.h>
+// For now, don't use the memmap.h definitions. Once it's clear how much reuse
+// there can actually be, consider merging them back.
+#define KSectionZero			0xF8000000ul
+#define KSuperPageAddress		0xF8000000ul
+#define KKernelStackBase		0xF808D000ul
+#define KKernelStackSize		0x00001000ul // 4kB
+#define KProcessesSection		0xF8100000ul
+
+#define KLuaDebuggerSvcStackBase 0x42004000ul
+#define KLuaDebuggerSvcStackSize 0x00001000ul
+
+#define KUserStacksBase			0x0FE00000ul
+#define USER_STACK_SIZE (16*1024)
+#define USER_STACK_AREA_SHIFT 15 // 32kB
+#define LoadSuperPageAddress(reg) asm("MOV " #reg ", %0" : : "i" (KSuperPageAddress))
 
 #define AARCH64 // Architecture, cf ARMV6 and ARMV7-M
 #define A64 // Instruction set, cf ARM and THUMB2
@@ -17,16 +31,16 @@
 // #define ENABLE_DCACHE
 // #define ICACHE_IS_STILL_BROKEN
 
-#define KPeripheralPhys		0x20000000
-// #define KPeripheralSize		0x00300000
+#define KPeripheralPhys		0x20000000ul
+// #define KPeripheralSize		0x00300000ul
 
-#define KPhysicalRamBase	0x00000000
+#define KPhysicalRamBase	0x00000000ul
 // // Available RAM is read from ATAGS (it varies depending on the GPU config)
 
 #define KSystemClockFreq	250000000 // 250 MHz
 
 #define KPeripheralBase	KPeripheralPhys
-// #define KPeripheralBase		0xF2000000
+// #define KPeripheralBase		0xF2000000ul
 // //#define KTimerBase		0xF2003000
 
 // #if defined(KLUA)

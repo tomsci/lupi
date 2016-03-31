@@ -220,7 +220,11 @@ end
 
 function exec(cmd)
 	if verbose then print(cmd) end
-	return os.execute(cmd)
+	local ok, exit, n = os.execute(cmd)
+	if not ok and verbose then
+		print("Command "..exit.." "..tostring(n))
+	end
+	return ok
 end
 
 function waitForJob(job)
@@ -264,7 +268,7 @@ function quote(path)
 	return string.format("%q", path)
 end
 
---# quoted relative path
+-- quoted relative path
 function qrp(relPath)
 	return quote(baseDir..relPath)
 end

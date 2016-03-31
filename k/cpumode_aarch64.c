@@ -6,7 +6,7 @@ void iThinkYouOughtToKnowImFeelingVeryDepressed();
 void NAKED hang() {
 	asm("MOV w0, #0");
 	WFI(); // Stops us spinning like crazy
-	asm("B hang");
+	asm("B _hang");
 }
 
 NOINLINE void NAKED dummy() {
@@ -38,6 +38,7 @@ x12-x15: 0000000000000000 0000000000000000 0000000000000000 0000000000000000
 savedpc: 0000000000000000   spsr: 00000000         savedsp: 0000000000000000
     far: 0000000000000000   "_el1:00000000             esr: 00000000
 */
+/*
 	uintptr esr; // Exception syndrome register
 	uintptr spsr_el1;
 	READ_SPECIAL(ESR_EL1, esr);
@@ -61,13 +62,14 @@ savedpc: 0000000000000000   spsr: 00000000         savedsp: 0000000000000000
 		uintptr* cr = TheSuperPage->crashRegisters;
 		memcpy(cr, regs, SIZEOF_SAVED_REGS);
 	}
+*/
 }
 
 // TODO a lot of this can probably be simplified by moving the code into the appropriate bit of
 // vectors, since "we've crashed" will correspond to sync_exception_from_current_level
 NORETURN NAKED svc() {
 	// r4-r15 are free to use
-	asm("MOV x4, %0" : : "i" (KSuperPageAddress)); // x4 = TheSuperPage
+	LoadSuperPageAddress(x4);
 
 	// // If we've crashed, we must be being called from the debugger so use the
 	// // debugger svc stack
@@ -89,34 +91,35 @@ NORETURN NAKED svc() {
 	asm("MOV x19, x8"); // x19 = &currentThread->savedRegisters
 
 	asm(".postStackSet:");
-	asm("BL handleSvc");
+	// asm("BL handleSvc");
 	asm("MOV x8, x19");
 	LOAD_CALLEE_PRESERVED_REGISTERS_FROM_THREAD(x8);
 	// TODO technically only have to restore x19 if we reach here?
 	RESET_SP_EL1_AND_ERET();
 
-//	asm(".loadDebuggerStack:");
-//	asm("LDR x15, .debuggerStackTop");
-// 	// Just save regs to stack, as we can't be preempted in this mode
-// 	asm("SUB sp, x15, %0" : : "i" (SIZEOF_SAVED_REGS));
-// 	SAVE_CALLEE_PRESERVED_REGISTERS_TO_THREAD(sp);
-// 	asm("MOV x19, sp");
-// 	asm("B .postStackSet");
-// 	LABEL_ADDRESS(.debuggerStackTop, KLuaDebuggerSvcStackBase + KLuaDebuggerSvcStackSize);
+	// asm(".loadDebuggerStack:");
+	// asm("ADR x15, .debuggerStackTop");
+	// asm("LDR x15, [x15]");
+	// // Just save regs to stack, as we can't be preempted in this mode
+	// asm("SUB sp, x15, %0" : : "i" (SIZEOF_SAVED_REGS));
+	// SAVE_CALLEE_PRESERVED_REGISTERS_TO_THREAD(sp);
+	// asm("MOV x19, sp");
+	// asm("B .postStackSet");
+	// LABEL_ADDRESS(.debuggerStackTop, KLuaDebuggerSvcStackBase + KLuaDebuggerSvcStackSize);
 }
 
-// const char KUnhandledExceptionStr[] = "Unhandled exception!\n";
+const char KUnhandledExceptionStr[] = "Unhandled exception!\n";
 
-// // We are in EL1, exception may be from EL0 or EL1
-// // TODO worry about what stack we're using?
-// NORETURN NAKED unhandledException() {
-// 	asm("ADD sp, sp, %0" : : "i" (SIZEOF_SAVED_REGS));
-// 	EL1_SAVE_ALL_REGISTERS(sp, x30);
+// We are in EL1, exception may be from EL0 or EL1
+// TODO worry about what stack we're using?
+NORETURN NAKED unhandledException() {
+	asm("ADD sp, sp, %0" : : "i" (SIZEOF_SAVED_REGS));
+	EL1_SAVE_ALL_REGISTERS(sp, x30);
 
-// 	asm("LDR x0, =KUnhandledExceptionStr");
-// 	asm("BL printk");
-// 	asm("MOV x0, sp");
-// 	asm("BL dumpRegisters");
-// 	asm("BL iThinkYouOughtToKnowImFeelingVeryDepressed");
-// 	asm("B hang");
-// }
+	asm("LDR x0, =_KUnhandledExceptionStr");
+	// asm("BL _printk");
+	asm("MOV x0, sp");
+	// asm("BL dumpRegisters");
+	// asm("BL iThinkYouOughtToKnowImFeelingVeryDepressed");
+	asm("B _hang");
+}

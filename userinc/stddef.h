@@ -36,8 +36,8 @@ typedef _Bool bool;
 #define WORD(x) asm(".word %c0" : : "i" (x))
 #else
 #define WORD(x) asm(".word %a0" : : "i" (x))
-#endif
 #define LABEL_WORD(label, x) asm(#label ":"); WORD(x)
+#endif
 
 #define ATTRIBUTE_PRINTF(str, check)	__attribute__((format(printf, str, check)))
 #define NAKED							__attribute__((naked))

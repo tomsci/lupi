@@ -25,6 +25,4 @@ void mmu_init() {
 	// T0SZ = 34, ie TTBR0 size is 2^(64-34) = 2^30 = 1GB
 	uintptr tcr = TCR_TG1_4KB | TCR_PS_4GB | (34 << TCR_T0SZ_SHIFT);
 	WRITE_SPECIAL(TCR_EL1, tcr);
-
-	printk("woo%d", nnn);
 }
