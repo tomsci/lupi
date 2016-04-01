@@ -1,5 +1,5 @@
 config = {
-	platOpts = "-Os -arch i386 -DLUACONF_FULL_FAT_STDIO",
+	platOpts = "-Os -DLUACONF_FULL_FAT_STDIO",
 	machine = { "host" },
 
 	fullyHosted = true,
@@ -15,13 +15,19 @@ config = {
 	lua = true,
 }
 
+function config.compiler(stage, config, opts)
+	opts.compiler = "gcc -arch "..(config.lp64 and "x86_64" or "i386")
+	return build.cc(stage, config, opts)
+end
+
 function config.link(stage, config, opts)
 	local quotedObjs = {}
 	for i, obj in ipairs(opts.objs) do
 		quotedObjs[i] = build.qrp(obj)
 	end
-	local out = build.qrp("bin/luac")
-	local cmd = string.format("gcc -arch i386 -Os -o %s %s ", out, build.join(quotedObjs))
+	local out = build.qrp(config.lp64 and "bin/luac64" or "bin/luac")
+	local arch = config.lp64 and "x86_64" or "i386"
+	local cmd = string.format("gcc -arch %s -Os -o %s %s ", arch, out, build.join(quotedObjs))
 	local ok = build.exec(cmd)
 	if not ok then error("Link failed!") end
 end
