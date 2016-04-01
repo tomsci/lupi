@@ -47,6 +47,47 @@ function getSymbolsFromReadElf(elfFile)
 	return syms
 end
 
+function getSymbolsFromMachOMapFile(mapFile)
+	local f = assert(io.open(mapFile, "r"))
+	local syms = {}
+	local n = 0
+	local sects = {}
+	local inSections, inSymbols = false, false
+	for line in f:lines() do
+		if inSymbols then
+			local addr, size, name = line:match("^0x(%x+)%s+0x(%x+)%s+%[%s*%d+%]%s+([0-9a-zA-Z._]+)$")
+			if addr then
+				addr = tonumber(addr, 16)
+				size = tonumber(size, 16)
+				if addr ~= 0 then
+					table.insert(syms, { addr = addr, size = size, name = name })
+					n = n + 1
+				end
+			end
+		elseif inSections then
+			local addr, size, seg, sect = line:match("^0x(%x+)%s+0x(%x+)%s+([%w_]+)%s+([%w_]+)$")
+			if addr then
+				table.insert(sects, {
+					addr = tonumber(addr, 16),
+					size = tonumber(size, 16),
+					name = seg.." "..sect,
+				})
+			elseif line == "# Symbols:" then
+				inSections = false
+				inSymbols = true
+			end
+		elseif line == "# Sections:" then
+			inSections = true
+		end
+	end
+	table.sort(syms, function(a,b) return a.addr < b.addr end)
+	f:close()
+	syms.n = n
+	symbols = syms
+	sections = sects
+	return syms
+end
+
 function findSymbol(addr)
 	local function lowerBoundSearch(i, j)
 		if debug then print(string.format("lowerBoundSearch(%d, %d)", i, j)) end
@@ -99,14 +140,23 @@ function findSymbolByName(name)
 end
 
 function dumpSymbolsTable()
-	local tbl = { "symbols = {\n" }
+	local tbl = { "symbols = {" }
 	for _, sym in ipairs(symbols) do
-		local s = string.format('	{ addr = 0x%x, name = %q, size = %d },\n',
+		local s = string.format('	{ addr = 0x%x, name = %q, size = %d },',
 			sym.addr, sym.name, sym.size)
 		table.insert(tbl, s)
 	end
-	table.insert(tbl, string.format("	n = %d\n}\n", symbols.n))
-	return table.concat(tbl)
+	table.insert(tbl, string.format("	n = %d\n}", symbols.n))
+	if sections then
+		table.insert(tbl, "\nsections = {")
+		for _, sect in ipairs(sections) do
+			local s = string.format('	{ addr = 0x%x, name = %q, size = %d },',
+				sect.addr, sect.name, sect.size)
+			table.insert(tbl, s)
+		end
+		table.insert(tbl, "}")
+	end
+	return table.concat(tbl, "\n")
 end
 
 return _ENV

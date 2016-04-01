@@ -38,7 +38,7 @@ x12-x15: 0000000000000000 0000000000000000 0000000000000000 0000000000000000
 savedpc: 0000000000000000   spsr: 00000000         savedsp: 0000000000000000
     far: 0000000000000000   "_el1:00000000             esr: 00000000
 */
-/*
+
 	uintptr esr; // Exception syndrome register
 	uintptr spsr_el1;
 	READ_SPECIAL(ESR_EL1, esr);
@@ -62,7 +62,6 @@ savedpc: 0000000000000000   spsr: 00000000         savedsp: 0000000000000000
 		uintptr* cr = TheSuperPage->crashRegisters;
 		memcpy(cr, regs, SIZEOF_SAVED_REGS);
 	}
-*/
 }
 
 // TODO a lot of this can probably be simplified by moving the code into the appropriate bit of
@@ -117,9 +116,9 @@ NORETURN NAKED unhandledException() {
 	EL1_SAVE_ALL_REGISTERS(sp, x30);
 
 	asm("LDR x0, =_KUnhandledExceptionStr");
-	// asm("BL _printk");
+	asm("BL _printk");
 	asm("MOV x0, sp");
-	// asm("BL dumpRegisters");
+	asm("BL _dumpRegisters");
 	// asm("BL iThinkYouOughtToKnowImFeelingVeryDepressed");
 	asm("B _hang");
 }

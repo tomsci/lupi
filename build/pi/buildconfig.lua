@@ -1,6 +1,7 @@
 config = {
 	toolchainPrefix = "arm-none-eabi-",
 	machine = { "arm", "armv6", "armv6-m", "arm1176jzf-s" },
+	postLinker = build.postLinkElf32,
 
 	include = "pi.h",
 	userInclude = "piuser.h",

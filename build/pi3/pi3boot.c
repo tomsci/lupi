@@ -75,3 +75,18 @@ void NAKED start() {
 	asm("1:");
 	asm("B _unhandledException");
 }
+
+// void putbyte(byte c) {
+// 	//TODO
+// }
+
+#undef memcpy
+void* memcpy(void* dst, const void* src, unsigned long n) {
+	// TODO less completely dumb memcpy
+	if (n) {
+		const char* s = (const char*)src;
+		char* d = dst;
+		while (n--) { *d++ = *s++; }
+	}
+	return dst;
+}

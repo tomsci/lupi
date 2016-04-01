@@ -1,21 +1,7 @@
 #ifndef LUPI_BUILD_PI3_H
 #define LUPI_BUILD_PI3_H
 
-// For now, don't use the memmap.h definitions. Once it's clear how much reuse
-// there can actually be, consider merging them back.
-#define KSectionZero			0xF8000000ul
-#define KSuperPageAddress		0xF8000000ul
-#define KKernelStackBase		0xF808D000ul
-#define KKernelStackSize		0x00001000ul // 4kB
-#define KProcessesSection		0xF8100000ul
-
-#define KLuaDebuggerSvcStackBase 0x42004000ul
-#define KLuaDebuggerSvcStackSize 0x00001000ul
-
-#define KUserStacksBase			0x0FE00000ul
-#define USER_STACK_SIZE (16*1024)
-#define USER_STACK_AREA_SHIFT 15 // 32kB
-#define LoadSuperPageAddress(reg) asm("MOV " #reg ", %0" : : "i" (KSuperPageAddress))
+#include <memmap.h>
 
 #define AARCH64 // Architecture, cf ARMV6 and ARMV7-M
 #define A64 // Instruction set, cf ARM and THUMB2

@@ -38,57 +38,57 @@ Peripherals	20000000-20300000	F2000000-F2300000	(3 MB)
 */
 
 
-#define KSectionZero			0xF8000000u
+#define KSectionZero			0xF8000000ul
 
-#define KPhysicalSect0Pt		0x00003000u
-#define KSectionZeroPt			0xF8001000u
+#define KPhysicalSect0Pt		0x00003000ul
+#define KSectionZeroPt			0xF8001000ul
 
-#define KPhysicalPdeBase		0x00088000u
-#define KKernelPdeBase			0xF8004000u
+#define KPhysicalPdeBase		0x00088000ul
+#define KKernelPdeBase			0xF8004000ul
 
-#define KPhysicalStackBase		0x00006000u
-#define KKernelStackBase		0xF808D000u
-#define KKernelStackSize		0x00001000u // 4kB
+#define KPhysicalStackBase		0x00006000ul
+#define KKernelStackBase		0xF808D000ul
+#define KKernelStackSize		0x00001000ul // 4kB
 
-#define KPhysicalCodeBase		0x00008000u
-#define KKernelCodeBase			0xF8008000u
-#define KKernelCodesize			0x00080000u
+#define KPhysicalCodeBase		0x00008000ul
+#define KKernelCodeBase			0xF8008000ul
+#define KKernelCodesize			0x00080000ul
 
-#define KPhysicalAbortStackBase	0x00004000u
-#define KPhysicalIrqStackBase	0x00005000u
+#define KPhysicalAbortStackBase	0x00004000ul
+#define KPhysicalIrqStackBase	0x00005000ul
 #define KTemporaryIdMappingPt	KPhysicalIrqStackBase
 
-#define KAbortStackBase			0xF8089000u
-#define KIrqStackBase			0xF808B000u
+#define KAbortStackBase			0xF8089000ul
+#define KIrqStackBase			0xF808B000ul
 
-#define KPhysPageAllocator		0x0008C000u
-#define KPageAllocatorAddr		0xF80C0000u
-#define KPageAllocatorMaxSize	0x00040000u
+#define KPhysPageAllocator		0x0008C000ul
+#define KPageAllocatorAddr		0xF80C0000ul
+#define KPageAllocatorMaxSize	0x00040000ul
 
-#define KKernelAtagsBase		0xF8091000u
-#define KDfcThreadStack			0xF8092000u
+#define KKernelAtagsBase		0xF8091000ul
+#define KDfcThreadStack			0xF8092000ul
 
-#define KSuperPageAddress		0xF8000000u
+#define KSuperPageAddress		0xF8000000ul
 
 // Other sections and their page tables
 
-#define KProcessesSection		0xF8100000u
-#define KProcessesSection_pt	0xF8002000u
+#define KProcessesSection		0xF8100000ul
+#define KProcessesSection_pt	0xF8002000ul
 
-#define KProcessesPdeSection	0xF8300000u
-#define KProcessesPdeSection_pt	0xF8003000u
+#define KProcessesPdeSection	0xF8300000ul
+#define KProcessesPdeSection_pt	0xF8003000ul
 
-#define KKernPtForProcPts		0xF8200000u
-#define KKernPtForProcPts_pt	0xF8090000u
+#define KKernPtForProcPts		0xF8200000ul
+#define KKernPtForProcPts_pt	0xF8090000ul
 
-#define KProcessPtBase			0x90000000u
+#define KProcessPtBase			0x90000000ul
 
-#define KLuaDebuggerSection		0x42000000u
-#define KLuaDebuggerStackBase	0x42000000u
-#define KLuaDebuggerStackSize	0x00004000u
-#define KLuaDebuggerSvcStackBase 0x42004000u
-#define KLuaDebuggerSvcStackSize 0x00001000u
-#define KLuaDebuggerSectionHeap	0x42005000u
+#define KLuaDebuggerSection		0x42000000ul
+#define KLuaDebuggerStackBase	0x42000000ul
+#define KLuaDebuggerStackSize	0x00004000ul
+#define KLuaDebuggerSvcStackBase 0x42004000ul
+#define KLuaDebuggerSvcStackSize 0x00001000ul
+#define KLuaDebuggerSectionHeap	0x42005000ul
 
 /**
 ## User memory map
@@ -102,14 +102,14 @@ Thread stacks					0FE00000-10000000
 </pre>
 */
 
-#define KUserBss				0x00007000u
+#define KUserBss				0x00007000ul
 // Heap assumed to be immediately following BSS in process_init()
-#define KUserHeapBase			0x00008000u
+#define KUserHeapBase			0x00008000ul
 // Note these next two are also defined in usersrc/ipc.c
-#define KSharedPagesBase		0x0F000000u
-#define KSharedPagesSize		0x00100000u
-#define KUserStacksBase			0x0FE00000u
-#define KUserMemLimit			0x10000000u
+#define KSharedPagesBase		0x0F000000ul
+#define KSharedPagesSize		0x00100000ul
+#define KUserStacksBase			0x0FE00000ul
+#define KUserMemLimit			0x10000000ul
 
 /**
 I'm feeling generous.

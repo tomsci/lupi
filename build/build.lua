@@ -201,15 +201,6 @@ local function loadConfig(c)
 	local config = env.config
 	if not config.compiler then config.compiler = cc end
 	if config.link == nil and config.linker == nil then config.linker = ld end
-	--TODO fix this!
-	if config.toolchainPrefix --[[and not config.cc]] then
-		config.cc = config.toolchainPrefix .. "gcc"
-		-- config.as = config.toolchainPrefix .. "as"
-		-- config.ld = config.toolchainPrefix .. "ld"
-		config.objcopy = config.toolchainPrefix .. "objcopy"
-		config.objdump = config.toolchainPrefix .. "objdump"
-		config.readelf = config.toolchainPrefix .. "readelf"
-	end
 	config.name = c
 	if config.lua == nil then
 		config.lua = config.klua or config.ulua
@@ -627,7 +618,7 @@ function calculateUniqueDirsFromSources(prefix, sources)
 end
 
 local function findLibgcc()
-	local h = io.popen(config.cc.." -print-libgcc-file-name")
+	local h = io.popen((config.toolchainPrefix or "").."gcc -print-libgcc-file-name")
 	local path = h:read("*l")
 	assert(h:close())
 	return path
@@ -647,16 +638,40 @@ function ld(stage, config, opts)
 	assert(config.bssSectionStart, "No bssSectionStart defined in buildconfig!")
 	table.insert(args, string.format("-Ttext 0x%X -Tbss 0x%X", config.textSectionStart, config.bssSectionStart))
 
-	local exe = "ld"
-	if config.toolchainPrefix then
-		exe = config.toolchainPrefix .. exe
-	end
+	local exe = (config.toolchainPrefix or "") .. "ld"
 	local elf = opts.outDir .. "kernel.elf"
 	local cmd = string.format("%s %s -o %s", exe, join(args), qrp(elf))
 	local ok = exec(cmd)
 	if not ok then error("Link failed!") end
 
+	if opts.listing then
+		exe = (config.toolchainPrefix or "") .. "objdump"
+		cmd = string.format("%s -d --section .text --section .rodata --source -w %s > %s", exe, qrp(elf), qrp(opts.outDir .. "kernel.s"))
+		exec(cmd)
+	end
+
 	return elf
+end
+
+function postLinkElf32(stage, config, opts)
+	local img = opts.outDir .. "kernel.img"
+	local objcopy = (config.toolchainPrefix or "") .. "objcopy"
+	local cmd = string.format("%s %s -O binary %s", objcopy, qrp(opts.linkedFile), qrp(img))
+	local ok = exec(cmd)
+	if not ok then error("Objcopy failed!") end
+
+	local readElfOutput = opts.outDir.."kernel.txt"
+	local exe = (config.toolchainPrefix or "") .. "readelf"
+	cmd = string.format("%s -a -W %s > %s", exe, qrp(opts.linkedFile), qrp(readElfOutput))
+	ok = exec(cmd)
+	if not ok then error("Readelf failed!") end
+
+	local symParser = require("modules/symbolParser")
+	symParser.getSymbolsFromReadElf(readElfOutput)
+	local entryPoint = symParser.findSymbolByName("_start")
+	assert(entryPoint and (entryPoint.addr & ~3) == config.textSectionStart, "Linker failed to locate the entry point at the start of the text section")
+
+	return img
 end
 
 local function findModulesTableSymbol(symbols)
@@ -834,32 +849,27 @@ function build_kernel()
 
 		local opts = {
 			objs = objs,
-			outDir = outDir
+			outDir = outDir,
+			listing = listing,
+			includeSymbols = includeSymbols,
+			includeModules = includeModules,
+			compileModules = compileModules,
+			verbose = verbose,
 		}
-		local elf = config.linker("link", config, opts)
+		opts.linkedFile = config.linker("link", config, opts)
 
-		local img = outDir .. "kernel.img"
-		local cmd = string.format("%s %s -O binary %s", config.objcopy, qrp(elf), qrp(img))
-		local ok = exec(cmd)
-		if not ok then error("Objcopy failed!") end
-
-		local readElfOutput = outDir.."kernel.txt"
-		cmd = string.format("%s -a -W %s > %s", config.readelf, qrp(elf), qrp(readElfOutput))
-		ok = exec(cmd)
-		if not ok then error("Readelf failed!") end
-
-		-- Check the entry point ended up in the right place (this can cause evil bugs otherwise)
-		local symParser = require("modules/symbolParser")
-		local syms = symParser.getSymbolsFromReadElf(readElfOutput)
-		local entryPoint = symParser.findSymbolByName("_start")
-		assert(entryPoint and (entryPoint.addr & -2) == config.textSectionStart, "Linker failed to locate the entry point at the start of the text section")
+		local img
+		if opts.linkedFile and config.postLinker then
+			img = config.postLinker("postlink", config, opts)
+		end
 
 		local imgFileSize
-		if includeSymbols then
+		if img and includeSymbols then
 			assert(includeModules, "Cannot include the symbols module unless modules are being built")
 			-- Symbols get appended on the end of the kernel image, and the
 			-- symbols module KLuaModulesTable entry is fixed up to point to it
 			local luaFile = objForSrc("modules/symbols.lua", ".lua")
+			local symParser = require("modules/symbolParser")
 			local moduleText = symParser.dumpSymbolsTable()
 			local f = assert(io.open(luaFile, "w+"))
 			assert(f:write(moduleText))
@@ -867,7 +877,8 @@ function build_kernel()
 			local data
 			if compileModules then
 				local obj = objForSrc(luaFile, ".luac")
-				local compileCmd = "bin/luac -s -o "..qrp(obj).." "..qrp(luaFile)
+				local luac = (config.lp64 and "bin/luac64" or "bin/luac")
+				local compileCmd = luac.." -s -o "..qrp(obj).." "..qrp(luaFile)
 				local ok = exec(compileCmd)
 				if not ok then error("Failed to compile symbols module") end
 				f = assert(io.open(obj, "rb"))
@@ -877,12 +888,13 @@ function build_kernel()
 				data = moduleText
 			end
 
-			local moduleTableSymbol = findModulesTableSymbol(syms)
+			local moduleTableSymbol = findModulesTableSymbol(symParser.symbols)
 			if verbose then
 				print(string.format("symbols: found KLuaModulesTable at %x", moduleTableSymbol.addr))
 			end
 			local imageFile = assert(io.open(baseDir..img, "r+b"))
 			imgFileSize = imageFile:seek("end")
+			assert(not config.lp64, "TODO: make this work on 64-bit binaries")
 			imageFile:seek("set", moduleTableSymbol.addr - config.textSectionStart+ 4)
 			local symbolsAddress = config.textSectionStart + imgFileSize
 			assert(imageFile:write(le32(symbolsAddress)))
@@ -900,11 +912,6 @@ function build_kernel()
 				imageFile:close()
 			end
 			assert(imgFileSize < config.maxCodeSize, "Kernel image exceeded maximum size "..tonumber(config.maxCodeSize))
-		end
-
-		if listing then
-			cmd = string.format("%s -d --section .text --section .rodata --source -w %s > %s", config.objdump, qrp(elf), qrp(outDir .. "kernel.s"))
-			exec(cmd)
 		end
 
 		if incremental then
@@ -956,7 +963,8 @@ function generateLuaModulesSource()
 				shouldStrip = luaModule.strip
 			end
 			local stripArg = shouldStrip and "-s " or ""
-			local compileCmd = "bin/luac "..stripArg.."-o "..qrp(obj).." "..module
+			local luac = (config.lp64 and "bin/luac64" or "bin/luac")
+			local compileCmd = luac .. " "..stripArg.."-o "..qrp(obj).." "..module
 			local finalObj = objForSrc(module, ".luac.o")
 			if incremental and isClean(obj, compileCmd) and isClean(finalObj) then
 				-- We can get away with skipping the compilation

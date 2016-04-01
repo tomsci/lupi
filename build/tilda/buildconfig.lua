@@ -1,6 +1,7 @@
 config = {
 	toolchainPrefix = "arm-none-eabi-",
 	machine = { "armv7-m", "cortex-m3" },
+	postLinker = build.postLinkElf32,
 
 	include = "tilda.h",
 	userInclude = "tildauser.h",
