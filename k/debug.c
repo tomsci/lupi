@@ -68,42 +68,7 @@ static char* uintToHex(ulong val, char* buf, int buflen, int zeroFillLen) {
 #define VA_GETLONG(_args, _isLong) ((_isLong) ? va_arg(_args, long) : (long)va_arg(_args, int))
 #define VA_GETULONG(_args, _isLong) ((_isLong) ? va_arg(_args, ulong) : (ulong)va_arg(_args, uint))
 
-static void doPrint(const char* fmt, va_list args, void (*putch)(char), void (*putstr)(const char*));
-void NAKED lupi_printstring(const char* str);
-void NAKED exec_putch(char ch);
-
-void printk(const char* fmt, ...) {
-	if (TheSuperPage->quiet) return;
-	va_list args;
-	va_start(args, fmt);
-	doPrint(fmt, args, putch, putstr);
-	va_end(args);
-}
-
-void early_printk(const char* fmt, ...) {
-	va_list args;
-	va_start(args, fmt);
-	doPrint(fmt, args, putch, putstr);
-	va_end(args);
-}
-
-
-static void putchNowWithAddedNewlines(char ch) {
-	// exec_putch is more like putbyte
-	if (ch == '\n') {
-		exec_putch('\r');
-	}
-	exec_putch(ch);
-}
-
-void printf(const char* fmt, ...) {
-	va_list args;
-	va_start(args, fmt);
-	doPrint(fmt, args, putchNowWithAddedNewlines, lupi_printstring);
-	va_end(args);
-}
-
-static void doPrint(const char* fmt, va_list args, void (*putch)(char), void (*putstr)(const char*)) {
+void uk_print(const char* fmt, va_list args, void (*putch)(char), void (*putstr)(const char*)) {
 	char buf[BUFLEN];
 	char ch;
 	while ((ch = *fmt++)) {
@@ -205,4 +170,19 @@ void worddump(const void* aAddr, int len) {
 		}
 		putch('\n');
 	}
+}
+
+void early_printk(const char* fmt, ...) {
+	va_list args;
+	va_start(args, fmt);
+	uk_print(fmt, args, putch, putstr);
+	va_end(args);
+}
+
+void printk(const char* fmt, ...) {
+	if (TheSuperPage->quiet) return;
+	va_list args;
+	va_start(args, fmt);
+	uk_print(fmt, args, putch, putstr);
+	va_end(args);
 }

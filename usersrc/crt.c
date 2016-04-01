@@ -301,6 +301,25 @@ int sprintf(char * restrict outstr, const char * restrict fmt, ...) {
 	return str - outstr;
 }
 
+void lupi_printstring(const char* str);
+void exec_putch(char ch);
+void uk_print(const char* fmt, va_list args, void (*putch)(char), void (*putstr)(const char*));
+
+static void putchNowWithAddedNewlines(char ch) {
+	// exec_putch is more like putbyte
+	if (ch == '\n') {
+		exec_putch('\r');
+	}
+	exec_putch(ch);
+}
+
+void printf(const char* fmt, ...) {
+	va_list args;
+	va_start(args, fmt);
+	uk_print(fmt, args, putchNowWithAddedNewlines, lupi_printstring);
+	va_end(args);
+}
+
 // Ok I'm getting bored of this. These are from AOSP
 /*-
  * Copyright (c) 1990 The Regents of the University of California.
