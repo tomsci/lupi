@@ -35,7 +35,7 @@ config.compiler = function(stage, config, opts)
 	local qrp, join = build.qrp, build.join
 	local exe = "clang"
 	-- Figured out by trial, error and "clang -v"
-	local clangOpts = "-cc1 -triple arm64-apple-macosx10.11.0 -emit-obj -mthread-model single -target-abi darwinpcs -backend-option -aarch64-strict-align -nostdsysteminc -nobuiltininc -ffreestanding -fmax-type-align=16 -fdiagnostics-show-option -fcolor-diagnostics -vectorize-loops -vectorize-slp -x c"
+	local clangOpts = "-cc1 -triple arm64-apple-macosx10.11.0 -emit-obj -mthread-model single -target-abi darwinpcs -nostdsysteminc -nobuiltininc -ffreestanding -fmax-type-align=16 -fdiagnostics-show-option -fcolor-diagnostics -vectorize-loops -vectorize-slp -x c"
 	local langOpts = "-std=c99 -Wall -Werror -Wno-error=unused-function"
 	local output = "-o "..qrp(opts.destination)
 	local allOpts = join {
