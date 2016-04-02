@@ -34,7 +34,15 @@ typedef _Bool bool;
 #define asm __asm
 #define ASM_JFDI __asm __volatile
 #ifdef AARCH64
-#define WORD(x) asm(".word %c0" : : "i" (x))
+// #define WORD(x) asm(".word %c0" : : "i" (x))
+
+// Clang asm too stupid to synthesize single instruction MOVZs from compatible
+// MOV declarations, so need a generalised version. Also is too stupid to load
+// from a .word
+#define LOAD_WORD(reg, word) \
+	asm("MOVZ " #reg ", %0" : : "i" (word & 0xFFFF)); \
+	asm("MOVK " #reg ", %0, LSL #16" : : "i" (((uintptr)(word)) >> 16))
+
 #else
 #define WORD(x) asm(".word %a0" : : "i" (x))
 #define LABEL_WORD(label, x) asm(#label ":"); WORD(x)
@@ -65,5 +73,7 @@ typedef __builtin_va_list va_list;
 
 #define min(x,y)				((x) < (y) ? (x) : (y))
 #define max(x,y)				((x) > (y) ? (x) : (y))
+
+#define BIT(n) (1 << (n))
 
 #endif

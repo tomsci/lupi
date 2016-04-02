@@ -1,28 +1,86 @@
 #include <k.h>
-#include <mmu.h>
+// #include <mmu.h>
 #include ARCH_HEADER
 #include <atags.h>
 
-// Sets up early stack, enables MMU, then calls Boot()
+#define SCR_EL3_VALUE (SCR_EL3_NS | (3 << 4) | SCR_EL3_SMD | SCR_EL3_RW)
+#define OSC_FREQ 1000000 // No idea
+
+// CPU Extended Control Register, EL1
+#define CPUECTLR_EL1		S3_1_c15_c2_1
+#define CPUECTLR_EL1_SMPEN	(1 << 6)
+
+// SCTLR_EL2, System Control Register (EL2)
+#define SCTLR_EL2_RES1		(BIT(4) | BIT(5) | BIT(11) | BIT(16) | BIT(18) | BIT(22) | BIT(23) | BIT(28) | BIT(29))
+#define SCTLR_EL2_WXN		BIT(19)
+#define SCTLR_EL2_VALUE		SCTLR_EL2_RES1
+
 void NAKED start() {
-	// Early stack from 0x8000
-	asm("MOV x0, #32768");
-	asm("MOV sp, x0");
 	// Save ATAGS
 	asm("MOV x19, x2");
+
+	LOAD_WORD(x0, OSC_FREQ);
+	asm("MSR CNTFRQ_EL0, x0");
+
+	// Needed?
+	asm("MSR CNTVOFF_EL2, xzr");
+
+	// Set Secure Configuration Register
+	LOAD_WORD(x0, SCR_EL3_VALUE);
+	asm("MSR SCR_EL3, x0");
+
+	// CPU Extended Control Register
+	asm("MOV x0, %0" : : "i" (CPUECTLR_EL1_SMPEN));
+	asm("MSR S3_1_c15_c2_1, x0");
+
+	LOAD_WORD(x0, SCTLR_EL2_VALUE);
+	asm("MSR SCTLR_EL2, x0");
+
+	// Switch to EL2
+	asm("MOV x0, %0" : : "i" (SPSR_D | SPSR_A | SPSR_I | SPSR_F | SPSR_EL2h));
+	asm("MSR SPSR_EL3, x0");
+	// Stupid hack to avoid using ADR which doesn't work in clang...
+	// asm("ADR x0, start_el2");
+	asm("BL get_pc");
+	// x0 now points to the instruction immediately following this comment
+	asm("ADD x0, x0, #12"); // +12 to get to start_el2
+	asm("MSR ELR_EL3, x0");
+	asm("ERET");
+
+	asm("start_el2:");
+	// Get CPU number
+	asm("MRS x0, MPIDR_EL1");
+	asm("AND x0, x0, #3");
+
+	CBZ(0, 2); // CBZ x0, start_cpu0
+	// All other CPUs can go hang
+	asm("B _hang");
+	// Don't add any instructions between here and start_cpu0
+
+	asm("start_cpu0:");
+	// Early stack from 0x8000
+	asm("MOV x0, #0x8000");
+	asm("MOV sp, x0");
 
 	// Init MMU (don't enable yet)
 	// asm("BL mmu_init");
 
 	// Set exception vectors (this will give the MMU-enabled VA)
-	asm("LDR x0, =.vectors");
-	asm("MSR VBAR_EL1, x0");
+	// asm("LDR x0, =.vectors");
+	// asm("MSR VBAR_EL1, x0");
 
 	// Boot
 	asm("MOV x0, x19");
-	// asm("BL Boot");
+	asm("BL _Boot");
 	asm("B _hang");
 
+	asm("get_pc:");
+	asm("MOV x0, lr");
+	asm("RET");
+
+	asm(".balign 0x400"); // Leave a hole for the ATAGS data
+
+#if 0
 	// Done!
 	// See ARMv8 ARM p1452 §D1.10.2 Exception Vectors
 	asm(".balign 2048");
@@ -74,11 +132,8 @@ void NAKED start() {
 	asm(".balign 2048");
 	asm("1:");
 	asm("B _unhandledException");
+#endif
 }
-
-// void putbyte(byte c) {
-// 	//TODO
-// }
 
 #undef memcpy
 void* memcpy(void* dst, const void* src, unsigned long n) {
@@ -89,4 +144,12 @@ void* memcpy(void* dst, const void* src, unsigned long n) {
 		while (n--) { *d++ = *s++; }
 	}
 	return dst;
+}
+
+void uart_init();
+void early_printk(const char* fmt, ...) ATTRIBUTE_PRINTF(1, 2);
+
+void Boot() {
+	uart_init();
+	early_printk("\n\n" LUPI_VERSION_STRING);
 }

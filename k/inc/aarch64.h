@@ -12,6 +12,11 @@
 #define READ_SPECIAL(reg, var)	asm("MRS %0, " #reg : "=r" (var))
 #define WRITE_SPECIAL(reg, var)	asm("MSR " #reg ", %0" : : "r" (var))
 
+// Seriously, clang is just so bad at this (or at least the mach-o backend is)
+// offset is number of instructions
+#define CBZ_instr(reg, offset)	(0xB4000000 | (((offset) & 0x3FFFF) << 5) | reg)
+#define CBZ(reg, offset)		asm(".word %c0" : : "i" (CBZ_instr(reg, offset)))
+
 static inline uintptr getFAR() {
 	uintptr ret;
 	READ_SPECIAL(FAR_EL1, ret);
@@ -89,10 +94,16 @@ static inline uintptr getFAR() {
 #define ESR_EC_MASK	(63u << 26)
 #define ESR_EC_SVC	(21u << 26)
 
-#define SPSR_D		(1 << 9)
-#define SPSR_A		(1 << 8)
-#define SPSR_I		(1 << 7)
-#define SPSR_F		(1 << 6)
+#define SPSR_D		BIT(9)
+#define SPSR_A		BIT(8)
+#define SPSR_I		BIT(7)
+#define SPSR_F		BIT(6)
 #define SPSR_EL1t	(4) // Return to EL1 but with sp = SP_EL0
+#define SPSR_EL2h	(9)
+
+// Secure Configuration Register
+#define SCR_EL3_NS	BIT(0)	// Non-secure EL0&EL1
+#define SCR_EL3_SMD	BIT(7)	// Secure Monitor Disable
+#define SCR_EL3_RW	BIT(10)	// Aarch64 all the way
 
 #endif // LUPI_AARCH64_H

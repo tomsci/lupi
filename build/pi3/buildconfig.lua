@@ -11,6 +11,7 @@ config = {
 	sources = {
 		"k/cpumode_aarch64.c",
 		"k/debug.c",
+		-- "k/boot.c",
 		"build/pi/gpio.c",
 		"build/pi/uart.c",
 		-- "build/pi/irq.c",
@@ -26,16 +27,15 @@ config = {
 
 	-- textSectionStart = 0xF8008000,
 	-- bssSectionStart = 0x00007000,
-	-- maxCodeSize = 512*1024, -- We've only allowed 512KB in the memory map
-
-	textSectionStart = 0x8000,
+	maxCodeSize = 512*1024, -- We've only allowed 512KB in the memory map
+	textSectionStart = 0,
 }
 
 config.compiler = function(stage, config, opts)
 	local qrp, join = build.qrp, build.join
 	local exe = "clang"
 	-- Figured out by trial, error and "clang -v"
-	local clangOpts = "-cc1 -triple arm64-apple-macosx10.11.0 -emit-obj -mthread-model single -target-abi darwinpcs -nostdsysteminc -nobuiltininc -ffreestanding -fmax-type-align=16 -fdiagnostics-show-option -fcolor-diagnostics -vectorize-loops -vectorize-slp -x c"
+	local clangOpts = "-cc1 -triple arm64-apple-macosx10.11.0 -emit-obj -mthread-model single -target-abi darwinpcs -nostdsysteminc -nobuiltininc -ffreestanding -fmax-type-align=16 -fdiagnostics-show-option -fcolor-diagnostics -x c"
 	local langOpts = "-std=c99 -Wall -Werror -Wno-error=unused-function"
 	local output = "-o "..qrp(opts.destination)
 	local allOpts = join {

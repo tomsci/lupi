@@ -17,7 +17,7 @@
 // #define ENABLE_DCACHE
 // #define ICACHE_IS_STILL_BROKEN
 
-#define KPeripheralPhys		0x20000000ul
+#define KPeripheralPhys		0x3F000000ul
 // #define KPeripheralSize		0x00300000ul
 
 #define KPhysicalRamBase	0x00000000ul
@@ -25,8 +25,8 @@
 
 #define KSystemClockFreq	250000000 // 250 MHz
 
-#define KPeripheralBase	KPeripheralPhys
-// #define KPeripheralBase		0xF2000000ul
+#define KPeripheralBase		KPeripheralPhys
+// #define KPeripheralBase	0xF2000000ul
 // //#define KTimerBase		0xF2003000
 
 // #if defined(KLUA)
