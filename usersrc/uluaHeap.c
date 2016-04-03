@@ -54,19 +54,32 @@ int memStats_lua(lua_State* L);
 
 
 // Free cells are always aligned to an 8-byte boundary and are always a min of
-// 8 bytes long
+// 8 bytes long. On LP64 we require that the heap is in the bottom 32-bits of
+// the address space
 struct FreeCell {
+#ifdef __LP64__
+	uint32 __next;
+#else
 	FreeCell* next;
+#endif
 	int __len;
 };
 ASSERT_COMPILE(sizeof(FreeCell) == 8);
+
+#ifdef __LP64__
+#define setNext(fc, _next) (fc)->__next = (uint32)(uintptr)(_next)
+#define getNext(fc) ((FreeCell*)(uintptr)((fc)->__next))
+#else
+#define setNext(fc, _next) (fc)->next = (_next)
+#define getNext(fc) ((fc)->next)
+#endif
 
 #define setLen(fc, len) (fc)->__len = (len)
 #define getLen(fc) ((fc)->__len)
 
 #ifdef DEBUG_LOGGING
 static void dumpFreeList(Heap* h) {
-	for (FreeCell* fc = h->freeList; fc != NULL; fc = fc->next) {
+	for (FreeCell* fc = h->freeList; fc != NULL; fc = getNext(fc)) {
 		DBG(h, "%08lX-%08lX len %d\n", (uintptr)fc, (uintptr)fc + getLen(fc), getLen(fc));
 	}
 }
@@ -77,7 +90,7 @@ static void dumpFreeList(Heap* h) {
 */
 static inline void link(Heap* h, FreeCell* a, FreeCell* b) {
 	if (b) ASSERT_DBG(a < b, "Freecell %p not < %p!", a, b);
-	a->next = b;
+	setNext(a, b);
 
 	if (!b) {
 		DBGV(h, "topCell was %p now %p\n", h->topCell, a);
@@ -92,7 +105,7 @@ void* uluaHeap_init() {
 	h->totalAllocs = 0;
 	h->totalFrees = 0;
 	h->topCell = (FreeCell*)align(h+1);
-	h->topCell->next = 0;
+	setNext(h->topCell, 0);
 	setLen(h->topCell, (uintptr)h + 4096 - (uintptr)h->topCell);
 	h->freeList = h->topCell;
 	h->luaState = NULL;
@@ -105,10 +118,10 @@ void* uluaHeap_init() {
 // cellNewSize must be 8-byte aligned
 static FreeCell* shrinkCell(FreeCell* cell, int cellNewSize) {
 	int remainder = getLen(cell) - cellNewSize;
-	FreeCell* cellNext = cell->next;
+	FreeCell* cellNext = getNext(cell);
 	FreeCell* new = (FreeCell*)((uintptr)cell + cellNewSize);
-	cell->next = new;
-	new->next = cellNext;
+	setNext(cell, new);
+	setNext(new, cellNext);
 	setLen(cell, cellNewSize);
 	setLen(new, remainder);
 	return new;
@@ -117,14 +130,14 @@ static FreeCell* shrinkCell(FreeCell* cell, int cellNewSize) {
 static void addToFreeList(Heap* h, FreeCell* cell) {
 	// Find the freeCell immediately before where this should go
 	FreeCell* prev = (FreeCell*)&h->freeList;
-	for (FreeCell* fc = h->freeList; fc != NULL; fc = fc->next) {
+	for (FreeCell* fc = h->freeList; fc != NULL; fc = getNext(fc)) {
 		if (fc > cell) {
 			break;
 		}
 		prev = fc;
 	}
 
-	FreeCell* next = prev->next;
+	FreeCell* next = getNext(prev);
 	link(h, prev, cell);
 	link(h, cell, next);
 
@@ -138,7 +151,7 @@ static void addToFreeList(Heap* h, FreeCell* cell) {
 	if (next && ((uintptr)cell + getLen(cell) == (uintptr)next)) {
 		DBGV(h, "Merging cell %p len %d with next %p\n", cell, getLen(cell), next);
 		setLen(cell, getLen(cell) + getLen(next));
-		link(h, cell, next->next);
+		link(h, cell, getNext(next));
 	}
 }
 
@@ -188,7 +201,7 @@ void* uluaHeap_allocFn(void *ud, void *ptr, size_t osize, size_t nsize) {
 	FreeCell* found = NULL;
 	FreeCell* foundPrev = (FreeCell*)&h->freeList;
 	FreeCell* prev = foundPrev;
-	for (FreeCell* fc = h->freeList; fc != NULL; fc = fc->next) {
+	for (FreeCell* fc = h->freeList; fc != NULL; fc = getNext(fc)) {
 		if (getLen(fc) == nsize) {
 			// Exact match, use it
 			found = fc;
@@ -199,7 +212,7 @@ void* uluaHeap_allocFn(void *ud, void *ptr, size_t osize, size_t nsize) {
 			found = fc;
 			foundPrev = prev;
 		}
-		if (!found && !fc->next) {
+		if (!found && !getNext(fc)) {
 			ASSERT_DBG(h->topCell == NULL || fc == h->topCell, "Last cell %p not topCell %p\n", fc, h->topCell);
 			// Break before we set prev, so that on exit from the loop, prev
 			// will point to the cell prior to the topcell
@@ -220,9 +233,9 @@ void* uluaHeap_allocFn(void *ud, void *ptr, size_t osize, size_t nsize) {
 		if (remainder) {
 			// Split the cell
 			newCell = shrinkCell(found, nsize);
-			foundPrev->next = newCell;
+			setNext(foundPrev, newCell);
 		} else {
-			foundPrev->next = found->next;
+			setNext(foundPrev, getNext(found));
 		}
 		if (found == h->topCell) {
 			h->topCell = newCell;
@@ -270,25 +283,25 @@ void* uluaHeap_allocFn(void *ud, void *ptr, size_t osize, size_t nsize) {
 	if (!h->topCell) {
 		DBG(h, "Reinstating topCell %p\n", topPtr);
 		h->topCell = (FreeCell*)topPtr;
-		h->topCell->next = 0;
+		setNext(h->topCell, 0);
 		setLen(h->topCell, 0);
 		if (h->freeList == NULL) {
 			ASSERT_DBG(prev == (void*)&h->freeList, "prev %p != h->freeList!", prev);
 			h->freeList = h->topCell;
 		} else {
-			ASSERT_DBG(prev->next && !prev->next->next, "prev->next %p not last free cell (prev=%p)\n", prev->next, prev);
-			prev->next->next = h->topCell;
-			prev = prev->next;
+			ASSERT_DBG(getNext(prev) && !getNext(getNext(prev)), "prev->next %p not last free cell (prev=%p)\n", getNext(prev), prev);
+			setNext(getNext(prev), h->topCell);
+			prev = getNext(prev);
 		}
 	} else {
-		ASSERT_DBG(prev->next == h->topCell, "ERROR: prev->next %p != h->topCell %p\n", prev->next, h->topCell);
+		ASSERT_DBG(getNext(prev) == h->topCell, "ERROR: prev->next %p != h->topCell %p\n", getNext(prev), h->topCell);
 	}
 	setLen(h->topCell, getLen(h->topCell) + growBy);
 	void* result = h->topCell;
 	FreeCell* newTop = shrinkCell(h->topCell, nsize);
 	// If we reach here, prev->next should be pointing to the topCell, unless the topCell was null
 	h->topCell = newTop;
-	prev->next = newTop;
+	setNext(prev, newTop);
 	DBG(h, "Alloc grew heap by %d and returned %p newTop=%p len=%d\n", growBy, result, newTop, getLen(newTop));
 	return result;
 }
@@ -297,7 +310,7 @@ void uluaHeap_stats(Heap* h, HeapStats* stats) {
 	memset(stats, 0, sizeof(HeapStats));
 	stats->totalAllocs = h->totalAllocs;
 	stats->totalFrees = h->totalFrees;
-	for (FreeCell* fc = h->freeList; fc != NULL; fc = fc->next) {
+	for (FreeCell* fc = h->freeList; fc != NULL; fc = getNext(fc)) {
 		stats->freeSpace += getLen(fc);
 		stats->numFreeCells++;
 		if (getLen(fc) > stats->largestFreeCell) stats->largestFreeCell = getLen(fc);
@@ -312,7 +325,7 @@ void uluaHeap_reset(Heap* h) {
 	h->totalAllocs = 0;
 	h->totalFrees = 0;
 	h->topCell = (FreeCell*)align(h+1);
-	h->topCell->next = 0;
+	setNext(h->topCell, 0);
 	setLen(h->topCell, top - (uintptr)h->topCell);
 	h->freeList = h->topCell;
 
