@@ -18,7 +18,7 @@ config = {
 
 	-- extraStdInc = "build/pi/stdinc",
 
-	klua = false,
+	klua = true,
 	ulua = false,
 	malloc = false,
 	lp64 = true,

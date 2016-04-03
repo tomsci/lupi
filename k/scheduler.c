@@ -76,55 +76,6 @@ void thread_setState(Thread* t, ThreadState s) {
 }
 
 /**
-Disables interrupts if they were enabled, otherwise does nothing. Can be called
-from any privileged mode; the mode will not be changed by calling this
-function. Returns the previous interrupt state which when passed to
-[kern_restoreInterrupts()](#kern_restoreInterrupts) will restore interrupts if
-they were enabled when `kern_disableInterrupts()` was called.
-*/
-int kern_disableInterrupts() {
-#if defined(ARM)
-	int result = getCpsr() & 0xFF;
-	int newMode = result | KPsrFiqDisable | KPsrIrqDisable;
-	ModeSwitchVar(newMode);
-	return result;
-#elif defined(ARMV7_M)
-	int result;
-	READ_SPECIAL(PRIMASK, result);
-	WRITE_SPECIAL(PRIMASK, 1);
-	return result;
-#elif defined(AARCH64)
-	return 0; //TODO
-#else
-#error "Unsupported architecture!"
-#endif
-}
-
-void kern_enableInterrupts() {
-#if defined(ARM)
-	ModeSwitch(KPsrModeSvc | KPsrFiqDisable);
-#elif defined(ARMV7_M)
-	WRITE_SPECIAL(PRIMASK, 0);
-#elif defined(AARCH64)
-	//TODO
-#else
-#error "Unsupported architecture!"
-#endif
-}
-
-/**
-Restores the interrupt state which was saved by calling
-[kern_disableInterrupts()](#kern_disableInterrupts).
-*/
-void kern_restoreInterrupts(int mask) {
-#if defined(ARM)
-	ModeSwitchVar(mask);
-#elif defined(ARMV7_M)
-	WRITE_SPECIAL(PRIMASK, mask);
-#endif
-}
-
-/**
 Sleep for a number of milliseconds. Uses the system timer so may sleep up to 1ms
 longer. Can only be called from SVC mode with interrupts enabled (otherwise
 timers can't fire).

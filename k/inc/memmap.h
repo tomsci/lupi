@@ -68,7 +68,9 @@ Peripherals	20000000-20300000	F2000000-F2300000	(3 MB)
 #define KKernelAtagsBase		0xF8091000ul
 #define KDfcThreadStack			0xF8092000ul
 
+#ifndef KSuperPageAddress
 #define KSuperPageAddress		0xF8000000ul
+#endif
 
 // Other sections and their page tables
 

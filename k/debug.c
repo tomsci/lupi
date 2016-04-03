@@ -106,11 +106,11 @@ void uk_print(const char* fmt, va_list args, void (*putch)(char), void (*putstr)
 				break;
 			case 'p': {
 				putstr("0x");
-				putstr(uintToHex((uintptr)va_arg(args, void*), buf, sizeof(buf), sizeof(uintptr)));
+				putstr(uintToHex((uintptr)va_arg(args, void*), buf, sizeof(buf), sizeof(uintptr)*2));
 				break;
 			}
 			case 'X':
-				putstr(uintToHex(VA_GETULONG(args, isLong), buf, sizeof(buf), isLong ? sizeof(long) : sizeof(int)));
+				putstr(uintToHex(VA_GETULONG(args, isLong), buf, sizeof(buf), isLong ? sizeof(long)*2 : sizeof(int)*2));
 				break;
 			case '%':
 				// Drop through
@@ -159,7 +159,7 @@ void worddump(const void* aAddr, int len) {
 		printk("%p: ", lineStart);
 		const int n = (i+1 == nlines ? (nwords - i*4) : 4);
 		for (int j = 0; j < n; j++) {
-			putstr(uintToHex(((const uint32*)lineStart)[j], buf, sizeof(buf), sizeof(uint32)));
+			putstr(uintToHex(((const uint32*)lineStart)[j], buf, sizeof(buf), 8));
 			putch(' ');
 		}
 		putch(' ');

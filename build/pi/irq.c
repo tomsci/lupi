@@ -58,10 +58,10 @@ void board_init() {
 //	PUT32(ARM_TIMER_LOD,4000000-1);
 //	PUT32(ARM_TIMER_RLD,4000000-1);
 
-#ifndef AARCH64 // TODO
+#ifndef INTERRUPTS_OFF
 	kern_enableInterrupts();
-	spi_init();
 #endif
+	spi_init();
 	}
 
 bool handleIrq(void* savedRegs) {

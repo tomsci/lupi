@@ -22,14 +22,14 @@ uint32 NAKED atomic_set(uint32* ptr, uint32 val) {
 #ifdef AARCH64
 	asm("LDAXR w2, [x0]");
 	asm("STLXR w3, w1, [x0]");
-	asm("CBZ w3, 1b");
+	asm("CBNZ w3, 1b");
 	asm("MOV w0, w2");
 	asm("RET");
 #else
 	asm("LDREX r2, [r0]");
 	asm("STREX r3, r1, [r0]");
 	asm("CMP r3, #0");
-	asm("BEQ 1b");
+	asm("BNE 1b");
 	asm("MOV r0, r2");
 	asm("BX lr");
 #endif
@@ -41,7 +41,7 @@ uint64 NAKED atomic_set64(uint64* ptr, uint64 val) {
 #ifdef AARCH64
 	asm("LDAXR x2, [x0]");
 	asm("STLXR w3, x1, [x0]");
-	asm("CBZ w3, 1b");
+	asm("CBNZ w3, 1b");
 	asm("MOV x0, x2");
 	asm("RET");
 #else
@@ -62,7 +62,7 @@ uint32 NAKED atomic_inc(uint32* ptr) {
 	asm("LDAXR w1, [x0]");
 	asm("ADD w1, w1, #1");
 	asm("STLXR w2, w1, [x0]");
-	asm("CBZ w3, 1b");
+	asm("CBNZ w3, 1b");
 	asm("MOV w0, w1");
 	asm("RET");
 #else
@@ -70,7 +70,7 @@ uint32 NAKED atomic_inc(uint32* ptr) {
 	asm("ADD r1, r1, #1");
 	asm("STREX r2, r1, [r0]");
 	asm("CMP r2, #0");
-	asm("BEQ 1b");
+	asm("BNE 1b");
 	asm("MOV r0, r1");
 	asm("BX lr");
 #endif
@@ -81,14 +81,14 @@ uint8 NAKED atomic_set8(uint8* ptr, uint8 val) {
 #ifdef AARCH64
 	asm("LDAXRB w2, [x0]");
 	asm("STLXRB w3, w1, [x0]");
-	asm("CBZ w3, 1b");
+	asm("CBNZ w3, 1b");
 	asm("MOV w0, w2");
 	asm("RET");
 #else
 	asm("LDREXB r2, [r0]");
 	asm("STREXB r3, r1, [r0]");
 	asm("CMP r3, #0");
-	asm("BEQ 1b");
+	asm("BNE 1b");
 	asm("MOV r0, r2");
 	asm("BX lr");
 #endif
@@ -100,7 +100,7 @@ uint8 NAKED atomic_inc8(uint8* ptr) {
 	asm("LDAXRB w1, [x0]");
 	asm("ADD w1, w1, #1");
 	asm("STLXRB w2, w1, [x0]");
-	asm("CBZ w2, 1b");
+	asm("CBNZ w2, 1b");
 	asm("MOV w0, w1");
 	asm("RET");
 #else
@@ -108,7 +108,7 @@ uint8 NAKED atomic_inc8(uint8* ptr) {
 	asm("ADD r1, r1, #1");
 	asm("STREXB r2, r1, [r0]");
 	asm("CMP r2, #0");
-	asm("BEQ 1b");
+	asm("BNE 1b");
 	asm("MOV r0, r1");
 	asm("BX lr");
 #endif
@@ -121,7 +121,7 @@ bool NAKED atomic_cas(uint32* ptr, uint32 expectedVal, uint32 newVal) {
 	asm("CMP w3, w1"); // Does *ptr == expectedVal?
 	asm("B.NE 2f");
 	asm("STLXR w3, w2, [x0]"); // *ptr = newVal, w3 = strexSucceeded
-	asm("CBZ w3, 1b");
+	asm("CBNZ w3, 1b");
 	asm("MOV w0, #1"); // Succeeded
 	asm("RET");
 
@@ -135,7 +135,7 @@ bool NAKED atomic_cas(uint32* ptr, uint32 expectedVal, uint32 newVal) {
 	asm("BNE .cas_failed");
 	asm("STREX r3, r2, [r0]"); // *ptr = newVal, r3 = strexSucceeded
 	asm("CMP r3, #0");
-	asm("BEQ 1b");
+	asm("BNE 1b");
 	asm("MOV r0, #1"); // Succeeded
 	asm("BX lr");
 
@@ -153,7 +153,7 @@ bool NAKED atomic_cas8(uint8* ptr, uint8 expectedVal, uint8 newVal) {
 	asm("CMP w3, w1"); // Does *ptr == expectedVal?
 	asm("B.NE 2f");
 	asm("STLXR w3, w2, [x0]"); // *ptr = newVal, r3 = strexSucceeded
-	asm("CBZ w3, 1b"); // Interupted, so retry
+	asm("CBNZ w3, 1b"); // Interupted, so retry
 	asm("MOV w0, #1"); // Succeeded
 	asm("RET");
 
@@ -167,7 +167,7 @@ bool NAKED atomic_cas8(uint8* ptr, uint8 expectedVal, uint8 newVal) {
 	asm("BNE .cas_failed");
 	asm("STREXB r3, r2, [r0]"); // *ptr = newVal, r3 = strexSucceeded
 	asm("CMP r3, #0");
-	asm("BEQ 1b"); // Interupted, so retry
+	asm("BNE 1b"); // Interupted, so retry
 	asm("MOV r0, #1"); // Succeeded
 	asm("BX lr");
 #endif

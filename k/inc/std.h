@@ -41,7 +41,7 @@ typedef _Bool bool;
 // from a .word
 #define LOAD_WORD(reg, word) \
 	asm("MOVZ " #reg ", %0" : : "i" ((word) & 0xFFFF)); \
-	asm("MOVK " #reg ", %0, LSL #16" : : "i" (((uintptr)(word)) >> 16))
+	asm("MOVK " #reg ", %0, LSL #16" : : "i" (((uint32)(word)) >> 16))
 
 #else
 #define WORD(x) asm(".word %a0" : : "i" (x))

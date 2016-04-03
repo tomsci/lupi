@@ -105,6 +105,9 @@ static inline uintptr getFAR() {
 // Secure Configuration Register
 #define SCR_EL3_NS	BIT(0)	// Non-secure EL0&EL1
 #define SCR_EL3_SMD	BIT(7)	// Secure Monitor Disable
-#define SCR_EL3_RW	BIT(10)	// Aarch64 all the way
+#define SCR_EL3_RW	BIT(10)	// EL2 is Aarch64
+
+// Hypervisor Configuration Register
+#define HCR_EL2_RW	BIT(31) // EL1 is AArch64
 
 #endif // LUPI_AARCH64_H

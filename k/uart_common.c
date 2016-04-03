@@ -28,9 +28,12 @@ bool byteReady() {
 }
 
 byte getch() {
+#ifndef INTERRUPTS_OFF
 	SuperPage* s = TheSuperPage;
 	if (!s->quiet) {
+		printk("Calling atomic_set8\n");
 		uint8 droppedChars = atomic_set8(&s->uartDroppedChars, 0);
+		printk("atomic_set8 returned %d\n", droppedChars);
 		if (droppedChars) {
 			printk("|Warning: %d dropped chars|", droppedChars);
 		}
@@ -38,7 +41,7 @@ byte getch() {
 	if (!ring_empty(s->uartBuf, UART_BUF_SIZE)) {
 		return ring_pop(s->uartBuf, UART_BUF_SIZE);
 	}
-
+#endif
 	while (!byteReady()) {
 		// Spin
 	}

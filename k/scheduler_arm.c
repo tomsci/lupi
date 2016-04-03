@@ -2,6 +2,32 @@
 #include <mmu.h>
 #include <arm.h>
 
+/**
+Disables interrupts if they were enabled, otherwise does nothing. Can be called
+from any privileged mode; the mode will not be changed by calling this
+function. Returns the previous interrupt state which when passed to
+[kern_restoreInterrupts()](#kern_restoreInterrupts) will restore interrupts if
+they were enabled when `kern_disableInterrupts()` was called.
+*/
+int kern_disableInterrupts() {
+	int result = getCpsr() & 0xFF;
+	int newMode = result | KPsrFiqDisable | KPsrIrqDisable;
+	ModeSwitchVar(newMode);
+	return result;
+}
+
+void kern_enableInterrupts() {
+	ModeSwitch(KPsrModeSvc | KPsrFiqDisable);
+}
+
+/**
+Restores the interrupt state which was saved by calling
+[kern_disableInterrupts()](#kern_disableInterrupts).
+*/
+void kern_restoreInterrupts(int mask) {
+	ModeSwitchVar(mask);
+}
+
 void exec_threadExit(int reason);
 
 bool do_thread_init(Thread* t, uintptr entryPoint, uintptr context) {

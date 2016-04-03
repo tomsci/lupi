@@ -2,6 +2,21 @@
 #include <armv7-m.h>
 #include <exec.h>
 
+int kern_disableInterrupts() {
+	int result;
+	READ_SPECIAL(PRIMASK, result);
+	WRITE_SPECIAL(PRIMASK, 1);
+	return result;
+}
+
+void kern_enableInterrupts() {
+	WRITE_SPECIAL(PRIMASK, 0);
+}
+
+void kern_restoreInterrupts(int mask) {
+	WRITE_SPECIAL(PRIMASK, mask);
+}
+
 #ifndef LUPI_NO_PROCESS
 
 int newProcessEntryPoint();

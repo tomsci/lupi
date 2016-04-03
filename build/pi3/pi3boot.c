@@ -3,7 +3,7 @@
 #include ARCH_HEADER
 #include <atags.h>
 
-#define SCR_EL3_VALUE (SCR_EL3_NS | (3 << 4) | SCR_EL3_SMD | SCR_EL3_RW)
+#define SCR_EL3_VALUE (SCR_EL3_NS | BIT(4) | BIT(5) | SCR_EL3_SMD | SCR_EL3_RW)
 #define OSC_FREQ 1000000 // No idea
 
 // CPU Extended Control Register, EL1
@@ -14,6 +14,11 @@
 #define SCTLR_EL2_RES1		(BIT(4) | BIT(5) | BIT(11) | BIT(16) | BIT(18) | BIT(22) | BIT(23) | BIT(28) | BIT(29))
 #define SCTLR_EL2_WXN		BIT(19)
 #define SCTLR_EL2_VALUE		SCTLR_EL2_RES1
+
+#define HCR_EL2_VALUE		HCR_EL2_RW
+
+#define SCTLR_EL1_RES1		(BIT(11) | BIT(20) | BIT(22) | BIT(23) | BIT(28) | BIT(29))
+#define SCTLR_EL1_VALUE		SCTLR_EL1_RES1
 
 void NAKED start() {
 	LOAD_WORD(x0, OSC_FREQ);
@@ -37,14 +42,28 @@ void NAKED start() {
 	asm("MOV x0, %0" : : "i" (SPSR_D | SPSR_A | SPSR_I | SPSR_F | SPSR_EL2h));
 	asm("MSR SPSR_EL3, x0");
 	// Stupid hack to avoid using ADR which doesn't work in clang...
-	// asm("ADR x0, start_el2");
-	asm("BL get_pc");
+	// asm("ADR x0, .start_el2");
+	asm("BL .get_pc");
 	// x0 now points to the instruction immediately following this comment
-	asm("ADD x0, x0, #12"); // +12 to get to start_el2
+	asm("ADD x0, x0, #12"); // +12 to get to .start_el2
 	asm("MSR ELR_EL3, x0");
 	asm("ERET");
 
-	asm("start_el2:");
+	asm(".start_el2:");
+	LOAD_WORD(x0, HCR_EL2_VALUE);
+	asm("MSR HCR_EL2, x0");
+	LOAD_WORD(x0, SCTLR_EL1_VALUE);
+	asm("MSR SCTLR_EL1, x0");
+
+	// Switch to EL1
+	asm("MOV x0, %0" : : "i" (SPSR_D | SPSR_A | SPSR_I | SPSR_F | SPSR_EL1h));
+	asm("MSR SPSR_EL2, x0");
+	asm("BL .get_pc");
+	asm("ADD x0, x0, #12"); // +12 to get to .start_el1
+	asm("MSR ELR_EL2, x0");
+	asm("ERET");
+
+	asm(".start_el1:");
 	// Get CPU number
 	asm("MRS x0, MPIDR_EL1");
 	asm("AND x0, x0, #3");
@@ -63,8 +82,8 @@ void NAKED start() {
 	// asm("BL mmu_init");
 
 	// Set exception vectors (this will give the MMU-enabled VA)
-	// asm("LDR x0, =.vectors");
-	// asm("MSR VBAR_EL1, x0");
+	asm("LDR x0, =.vectors");
+	asm("MSR VBAR_EL1, x0");
 
 	// Boot
 	// aarch64 boot code doesn't configure ATAGS so hardcode what it should do
@@ -72,13 +91,12 @@ void NAKED start() {
 	asm("BL _Boot");
 	asm("B _hang");
 
-	asm("get_pc:");
+	asm(".get_pc:");
 	asm("MOV x0, lr");
 	asm("RET");
 
 	asm(".balign 0x400"); // Leave a hole for the ATAGS data
 
-#if 0
 	// Done!
 	// See ARMv8 ARM p1452 §D1.10.2 Exception Vectors
 	asm(".balign 2048");
@@ -130,7 +148,6 @@ void NAKED start() {
 	asm(".balign 2048");
 	asm("1:");
 	asm("B _unhandledException");
-#endif
 }
 
 #undef memcpy

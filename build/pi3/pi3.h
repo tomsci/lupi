@@ -1,8 +1,6 @@
 #ifndef LUPI_BUILD_PI3_H
 #define LUPI_BUILD_PI3_H
 
-#include <memmap.h>
-
 #define AARCH64 // Architecture, cf ARMV6 and ARMV7-M
 #define A64 // Instruction set, cf ARM and THUMB2
 #define BCM2837
@@ -13,6 +11,7 @@
 // #define HAVE_PITFT
 // #define HAVE_MMU
 #define WORKING_LDREX
+#define INTERRUPTS_OFF
 
 // #define NON_SECURE // Ie we do drop to NS mode
 // #define ENABLE_DCACHE
@@ -22,16 +21,18 @@
 // #define KPeripheralSize		0x00300000ul
 
 #define KPhysicalRamBase	0x00000000ul
-// // Available RAM is read from ATAGS (it varies depending on the GPU config)
 
 #define KSystemClockFreq	250000000 // 250 MHz
 
 #define KPeripheralBase		KPeripheralPhys
 // #define KPeripheralBase	0xF2000000ul
-// //#define KTimerBase		0xF2003000
+
+#ifndef HAVE_MMU
+#define KSuperPageAddress	0x00200000ul
+#endif
 
 #ifdef KLUA
-#define KLuaHeapBase		0x00200000ul
+#define KLuaHeapBase		0x00201000ul
 #endif
 
 // See BCM-2835-ARM-Peripherals p8
@@ -77,5 +78,7 @@
 #define AUXENB_MiniUartEnable			1
 #define AUXENB_Spi1Enable				2
 #define AUXENB_Spi2Enable				4
+
+#include <memmap.h>
 
 #endif // LUPI_BUILD_PI3_H

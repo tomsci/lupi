@@ -2,6 +2,21 @@
 #include <mmu.h>
 #include ARCH_HEADER
 
+int kern_disableInterrupts() {
+	uint64 result;
+	READ_SPECIAL(DAIF, result);
+	WRITE_SPECIAL(DAIF, (uint64)(SPSR_D | SPSR_A | SPSR_I | SPSR_F));
+	return (int)result;
+}
+
+void kern_enableInterrupts() {
+	WRITE_SPECIAL(DAIF, (uint64)(SPSR_F));
+}
+
+void kern_restoreInterrupts(int mask) {
+	WRITE_SPECIAL(DAIF, (uint64)mask);
+}
+
 void exec_threadExit(int reason);
 
 bool do_thread_init(Thread* t, uintptr entryPoint, uintptr context) {
