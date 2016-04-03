@@ -8,7 +8,7 @@
 #include <k.h>
 #include ARCH_HEADER
 
-#ifndef MALLOC_AVAILABLE
+#ifdef KLUA_MODULES // only if we have modules do we need uluaheap
 #include <lupi/uluaHeap.h>
 #endif
 
@@ -45,21 +45,6 @@ NORETURN hang();
 void abort() {
 	printk("abort called. Arse!\n");
 	hang();
-}
-
-// Only here to satisfy linkage of luaL_newstate (which we don't use)
-void* realloc(void* ptr, size_t len) {
-	printk("realloc bork!\n");
-	hang();
-}
-
-void free(void *ptr) {
-	printk("free bork!\n");
-	hang();
-}
-
-void* malloc(size_t len) {
-	return realloc(NULL, len);
 }
 
 static int reboot_lua(lua_State* L) {

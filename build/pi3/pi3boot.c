@@ -143,3 +143,34 @@ void* memcpy(void* dst, const void* src, unsigned long n) {
 	}
 	return dst;
 }
+
+int memcmp(const void *s1, const void *s2, unsigned long n) {
+	// Likewise
+	for (const uint8 *c1 = (const uint8*)s1, *c2 = (const uint8*)s2;
+		n > 0; ++c1, ++c2, --n) {
+		int r = *c2 - *c1;
+		if (r) return r;
+	}
+	return 0;
+}
+
+// Wouldn't it be nice if this was documented somewhere?
+
+#define PM_RSTC						(KPeripheralBase + 0x0010001c)
+#define PM_WDOG						(KPeripheralBase + 0x00100024)
+#define PM_PASSWORD					0x5a000000
+#define PM_RSTC_WRCFG_MASK			0x00000030
+#define PM_RSTC_WRCFG_FULL_RESET	0x00000020
+
+NORETURN reboot() {
+	uint32 val;
+	// I think this sets the watchdog timeout to 10 ticks (~150us)
+	PUT32(PM_WDOG, 10 | PM_PASSWORD);
+	// And this sets the behaviour when it expires?
+	val = GET32(PM_RSTC);
+	val &= ~PM_RSTC_WRCFG_MASK;
+	val |= PM_PASSWORD | PM_RSTC_WRCFG_FULL_RESET;
+	PUT32(PM_RSTC, val);
+	// This doesn't reboot immediately, so hang until it does
+	hang();
+}

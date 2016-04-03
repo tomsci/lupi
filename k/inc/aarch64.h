@@ -99,6 +99,7 @@ static inline uintptr getFAR() {
 #define SPSR_I		BIT(7)
 #define SPSR_F		BIT(6)
 #define SPSR_EL1t	(4) // Return to EL1 but with sp = SP_EL0
+#define SPSR_EL1h	(5)
 #define SPSR_EL2h	(9)
 
 // Secure Configuration Register

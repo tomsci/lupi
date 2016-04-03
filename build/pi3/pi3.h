@@ -30,9 +30,9 @@
 // #define KPeripheralBase	0xF2000000ul
 // //#define KTimerBase		0xF2003000
 
-// #if defined(KLUA)
-// #define KLuaHeapBase		0x00200000
-// #endif
+#ifdef KLUA
+#define KLuaHeapBase		0x00200000ul
+#endif
 
 // See BCM-2835-ARM-Peripherals p8
 #define AUX_ENABLES		(KPeripheralBase + 0x00215004)

@@ -85,11 +85,20 @@ config.postLinker = function(stage, config, opts)
 		local f = io.open(sectFile, "rb")
 		local data = assert(f:read("a"))
 		local offset = outf:seek()
+		local pad = section.addr - config.textSectionStart - offset
+		local maxpad = 16
+		if section.name == "__DATA __const" then
+			-- Linker puts data section on a new page, bah
+			maxpad = 4096
+		end
 		if opts.verbose then
-			print(string.format("Writing section %q (addr=%x len=%x) to image offset %x", section.name, section.addr, section.size, offset))
+			print(string.format("Writing section %q (addr=%x len=%x) to image offset %x pad=%d", section.name, section.addr, section.size, offset, pad))
 		end
 		assert(#data == section.size, "Section "..section.name.." size doesn't match map file size!")
-		assert(offset == section.addr - config.textSectionStart, "Section "..section.name.." isn't at the right offset!")
+		assert(pad >= 0 and pad < maxpad, "Section "..section.name.." address doesn't match file offset!")
+		if pad > 0 then
+			outf:write(string.rep("\0", pad))
+		end
 		assert(outf:write(data))
 		f:close()
 		os.remove(sectFile)

@@ -771,6 +771,8 @@ function build_kernel()
 		if config.ulua then
 			table.insert(kluaCopts, "-DULUA_PRESENT")
 			table.insert(kluaCopts, "-DKLUA_DEBUGGER")
+		else
+			table.insert(kluaCopts, "-DKLUA")
 		end
 		if includeModules then
 			table.insert(kluaCopts, "-DKLUA_MODULES")

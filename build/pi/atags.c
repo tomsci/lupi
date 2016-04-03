@@ -55,4 +55,9 @@ void parseAtags(uint32* ptr, AtagsParams* params) {
 		}
 		ptr += tagsize; // tagsize is in words, so this is the correct thing to do
 	}
+
+	if (params->boardRev == 0xA02082) {
+		// The Pi 3 I have seems to report only 128MB of RAM. I think it should be more than that...
+		// params->totalRam = 1024*1024*1024;
+	}
 }
