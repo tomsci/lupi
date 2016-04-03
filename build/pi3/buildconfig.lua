@@ -32,8 +32,17 @@ config = {
 config.compiler = function(stage, config, opts)
 	local qrp, join = build.qrp, build.join
 	local exe = "clang"
+	local op = opts.preprocess and "-E" or "-emit-obj"
+
 	-- Figured out by trial, error and "clang -v"
-	local clangOpts = "-cc1 -triple arm64-apple-macosx10.11.0 -emit-obj -mthread-model single -target-abi darwinpcs -nostdsysteminc -nobuiltininc -ffreestanding -fmax-type-align=16 -fdiagnostics-show-option -fcolor-diagnostics -x c"
+	local clangOpts = "-cc1 -triple arm64-apple-macosx10.11.0 "..op.." -mthread-model single -target-abi darwinpcs -nostdsysteminc -nobuiltininc -ffreestanding -fmax-type-align=16 -fdiagnostics-show-option -fcolor-diagnostics -x c"
+	if not opts.preprocess and opts.incremental then
+		clangOpts = clangOpts .. " -dependency-file "..qrp(build.objForSrc(opts.source.path, ".d")).." -MT "..qrp(opts.destination)
+	end
+	if opts.listing then
+		clangOpts = clangOpts.." -dwarf-column-info -debug-info-kind=standalone -dwarf-version=2"
+	end
+
 	local langOpts = "-std=c99 -Wall -Werror -Wno-error=unused-function"
 	local output = "-o "..qrp(opts.destination)
 	local allOpts = join {
@@ -43,9 +52,7 @@ config.compiler = function(stage, config, opts)
 		join(opts.extraArgs),
 		output
 	}
-	if opts.listing then
-		allOpts = allOpts.." -g"
-	end
+
 	local cmd = string.format("%s %s %s ", exe, allOpts, qrp(opts.source.path))
 	return cmd
 end
@@ -75,12 +82,13 @@ config.postLinker = function(stage, config, opts)
 	symParser.getSymbolsFromMachOMapFile(opts.mapFile)
 	-- print(symParser.dumpSymbolsTable())
 
-	local cmd = string.format("segedit %s -extract ", build.qrp(opts.linkedFile))
+	local qrp = build.qrp
+	local cmd = string.format("segedit %s -extract ", qrp(opts.linkedFile))
 	local outFile = opts.outDir.."kernel.img"
 	local outf = assert(io.open(outFile, "wb"))
 	for _, section in ipairs(symParser.sections) do
 		local sectFile = opts.linkedFile.."."..(section.name:gsub(" ", "."))
-		local ok = build.exec(cmd..section.name.." "..build.qrp(sectFile))
+		local ok = build.exec(cmd..section.name.." "..qrp(sectFile))
 		assert(ok, "Extract of section "..section.name.." failed!")
 		local f = io.open(sectFile, "rb")
 		local data = assert(f:read("a"))
@@ -104,6 +112,11 @@ config.postLinker = function(stage, config, opts)
 		os.remove(sectFile)
 	end
 	outf:close()
+
+	if opts.listing then
+		local cmd = string.format("otool -tv %s > %s", qrp(opts.linkedFile), qrp(opts.outDir .. "kernel.s"))
+		build.exec(cmd)
+	end
 
 	return outFile
 end
