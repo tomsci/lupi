@@ -14,6 +14,7 @@ config = {
 	entryPoint = "build/pi/piboot.c",
 
 	sources = {
+		"build/pi/atags.c",
 		"build/pi/gpio.c",
 		"build/pi/uart.c",
 		"build/pi/irq.c",

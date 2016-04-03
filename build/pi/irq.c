@@ -1,5 +1,5 @@
 #include <k.h>
-#include <arm.h>
+#include ARCH_HEADER
 #include "gpio.h"
 
 //#define SLOW_TIME
@@ -58,8 +58,10 @@ void board_init() {
 //	PUT32(ARM_TIMER_LOD,4000000-1);
 //	PUT32(ARM_TIMER_RLD,4000000-1);
 
+#ifndef AARCH64 // TODO
 	kern_enableInterrupts();
 	spi_init();
+#endif
 	}
 
 bool handleIrq(void* savedRegs) {
@@ -93,10 +95,15 @@ bool handleIrq(void* savedRegs) {
 		if (pending2 & (1 << (GPIO0_INT - 32))) {
 			uint32 gpioInts = GET32(GPEDS0);
 			if (gpioInts & (1<<24)) {
+#ifdef HAVE_SCREEN
 				tft_gpioHandleInterrupt();
+#endif
 			}
 		}
 	}
+#ifdef AARCH64
+	// TODO!
+#else
 	bool dfcsPending = irq_checkDfcs();
 	if (threadTimeExpired || dfcsPending) {
 		uint32 spsr;
@@ -110,16 +117,6 @@ bool handleIrq(void* savedRegs) {
 			return true; // Reschedule right now
 		}
 	}
+#endif
 	return false; // Normally, just return from the IRQ
-}
-
-void NAKED irq() {
-	asm("PUSH {r0-r12, r14}");
-	asm("MOV r0, sp"); // Full descending stack means sp now points to the regs we saved
-	asm("BL handleIrq");
-	asm("CMP r0, #0"); // Has thread timeslice expired?
-	asm("BLNE reschedule_irq"); // If so, handleIrq() will have saved thread state, so just reschedule()
-	// Otherwise, return to thread
-	asm("POP  {r0-r12, r14}");
-	asm("SUBS pc, r14, #4");
 }

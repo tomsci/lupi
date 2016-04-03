@@ -220,6 +220,7 @@ int64 handleSvc(int cmd, uintptr arg1, uintptr arg2, void* savedRegisters) {
 		case KExecStfu:
 			TheSuperPage->quiet = (bool)arg1;
 			break;
+#ifndef LUPI_NO_PROCESS
 		case KExecReplaceProcess: {
 			const char* newName = (const char*)arg1;
 			ASSERT_USER_PTR8(newName);
@@ -230,6 +231,7 @@ int64 handleSvc(int cmd, uintptr arg1, uintptr arg2, void* savedRegisters) {
 			// Doesn't return
 			break;
 		}
+#endif
 		default: {
 			ASSERT(cmd & KDriverHandle, cmd);
 			int driverIdx = cmd & 0xFF;

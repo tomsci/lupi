@@ -135,12 +135,15 @@ NOIGNORE static inline uintptr atomic_set_uptr(uintptr* ptr, uintptr val);
 static inline Thread* atomic_set_thread(Thread** ptr, Thread* val) {
 	return (Thread*)atomic_set_uptr((uintptr*)ptr, (uintptr)val);
 }
+NOIGNORE uint64 atomic_set64(uint64* ptr, uint64 val);
 
-#ifndef __LP64__
 static inline uintptr atomic_set_uptr(uintptr* ptr, uintptr val) {
+#ifdef __LP64__
+	return atomic_set64(ptr, val);
+#else
 	return (uintptr)atomic_set((uint32*)ptr, (uint32)val);
-}
 #endif
+}
 
 uint8 atomic_inc8(uint8* ptr);
 NOIGNORE uint8 atomic_set8(uint8* ptr, uint8 val);

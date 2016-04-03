@@ -11,7 +11,8 @@
 
 // #define HAVE_SCREEN
 // #define HAVE_PITFT
-#define HAVE_MMU
+// #define HAVE_MMU
+#define WORKING_LDREX
 
 // #define NON_SECURE // Ie we do drop to NS mode
 // #define ENABLE_DCACHE

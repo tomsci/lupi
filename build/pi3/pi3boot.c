@@ -16,9 +16,6 @@
 #define SCTLR_EL2_VALUE		SCTLR_EL2_RES1
 
 void NAKED start() {
-	// Save ATAGS
-	asm("MOV x19, x2");
-
 	LOAD_WORD(x0, OSC_FREQ);
 	asm("MSR CNTFRQ_EL0, x0");
 
@@ -52,14 +49,14 @@ void NAKED start() {
 	asm("MRS x0, MPIDR_EL1");
 	asm("AND x0, x0, #3");
 
-	CBZ(0, 2); // CBZ x0, start_cpu0
+	asm("CBZ x0, 1f"); // start_cpu
 	// All other CPUs can go hang
 	asm("B _hang");
 	// Don't add any instructions between here and start_cpu0
 
-	asm("start_cpu0:");
-	// Early stack from 0x8000
-	asm("MOV x0, #0x8000");
+	asm("1:"); asm("start_cpu0:");
+	// Early stack at 1MB
+	asm("MOV x0, #0x100000");
 	asm("MOV sp, x0");
 
 	// Init MMU (don't enable yet)
@@ -70,7 +67,8 @@ void NAKED start() {
 	// asm("MSR VBAR_EL1, x0");
 
 	// Boot
-	asm("MOV x0, x19");
+	// aarch64 boot code doesn't configure ATAGS so hardcode what it should do
+	asm("MOV x0, #0x100"); // atags addr = 0x100
 	asm("BL _Boot");
 	asm("B _hang");
 
@@ -144,12 +142,4 @@ void* memcpy(void* dst, const void* src, unsigned long n) {
 		while (n--) { *d++ = *s++; }
 	}
 	return dst;
-}
-
-void uart_init();
-void early_printk(const char* fmt, ...) ATTRIBUTE_PRINTF(1, 2);
-
-void Boot() {
-	uart_init();
-	early_printk("\n\n" LUPI_VERSION_STRING);
 }

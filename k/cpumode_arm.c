@@ -238,3 +238,14 @@ void dumpRegisters(const uint32* regs, uint32 pc, uint32 dataAbortFar) {
 		cr[16] = spsr;
 	}
 }
+
+void NAKED irq() {
+	asm("PUSH {r0-r12, r14}");
+	asm("MOV r0, sp"); // Full descending stack means sp now points to the regs we saved
+	asm("BL handleIrq");
+	asm("CMP r0, #0"); // Has thread timeslice expired?
+	asm("BLNE reschedule_irq"); // If so, handleIrq() will have saved thread state, so just reschedule()
+	// Otherwise, return to thread
+	asm("POP  {r0-r12, r14}");
+	asm("SUBS pc, r14, #4");
+}

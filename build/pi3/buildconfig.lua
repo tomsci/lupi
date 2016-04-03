@@ -1,5 +1,5 @@
 config = {
-	machine = { "aarch64", "host" },
+	machine = { "aarch64" },
 
 	include = "pi3.h",
 	userInclude = "pi3user.h",
@@ -9,12 +9,10 @@ config = {
 	entryPoint = "build/pi3/pi3boot.c",
 
 	sources = {
-		"k/cpumode_aarch64.c",
-		"k/debug.c",
-		-- "k/boot.c",
+		"build/pi/atags.c",
 		"build/pi/gpio.c",
 		"build/pi/uart.c",
-		-- "build/pi/irq.c",
+		"build/pi/irq.c",
 		-- "build/pi/pitft.c",
 	},
 

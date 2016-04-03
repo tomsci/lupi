@@ -51,6 +51,12 @@ static int sharedPageIsValid(uintptr sharedPage, bool toServer) {
 	return sharedPageIdx;
 }
 
+#else
+
+uintptr ipc_mapNewSharedPageInCurrentProcess() {
+	return 0;
+}
+
 #endif // HAVE_MMU
 
 // returns server idx or err
@@ -112,6 +118,7 @@ void ipc_requestServerMsg(Thread* serverThread, uintptr serverRequest) {
 }
 
 int ipc_connectToServer(uint32 id, uintptr sharedPage) {
+#ifdef HAVE_MMU
 	//printk("ipc_connectToServer %p\n", (void*)sharedPage);
 	Process* src = TheSuperPage->currentProcess;
 	int sharedPageIdx = sharedPageIsValid(sharedPage, true);
@@ -154,9 +161,13 @@ int ipc_connectToServer(uint32 id, uintptr sharedPage) {
 	// We'll get serviced (eventually) from ipc_requestServerMsg
 	reschedule();
 	//return 0;
+#else
+	return KErrNotSupported;
+#endif
 }
 
 void ipc_processExited(PageAllocator* pa, Process* p) {
+#ifdef HAVE_MMU
 	// Check for shared pages
 	for (int i = 0; i < MAX_SHARED_PAGES; i++) {
 		Server* server = serverForSharedPage(i);
@@ -184,9 +195,11 @@ void ipc_processExited(PageAllocator* pa, Process* p) {
 			setSharedPageMapping(i, server, owner);
 		}
 	}
+#endif
 }
 
 int ipc_completeRequest(uintptr request, bool toServer) {
+#ifdef HAVE_MMU
 	int sharedPageIdx = sharedPageIsValid(request, toServer);
 	if (sharedPageIdx < 0) {
 		return sharedPageIdx;
@@ -201,6 +214,9 @@ int ipc_completeRequest(uintptr request, bool toServer) {
 	// User-side handles writing the result, we just have to signal
 	thread_requestSignal(&req);
 	return 0;
+#else
+	return KErrNotSupported;
+#endif
 }
 
 #endif

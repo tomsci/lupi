@@ -122,7 +122,7 @@ void NAKED longjmp(jmp_buf env, int val) {
 #elif defined(AARCH64)
 
 int NAKED setjmp(jmp_buf env) {
-	asm("ldr x1, .jmpbufMagicVal");
+	LOAD_WORD(x1, 0x5CAFF01D);
 	asm("mov x2, sp");
 	asm("stp x1, x2, [x0], #16");
 	asm("stp x19, x20, [x0], #16");
@@ -134,8 +134,6 @@ int NAKED setjmp(jmp_buf env) {
 	asm("mov x0, #0");
 	asm("ret");
 	// TODO fp regs?
-
-	LABEL_WORD(.jmpbufMagicVal, 0x5CAFF01D);
 }
 
 void NAKED longjmp(jmp_buf env, int val) {

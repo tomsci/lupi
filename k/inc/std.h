@@ -40,7 +40,7 @@ typedef _Bool bool;
 // MOV declarations, so need a generalised version. Also is too stupid to load
 // from a .word
 #define LOAD_WORD(reg, word) \
-	asm("MOVZ " #reg ", %0" : : "i" (word & 0xFFFF)); \
+	asm("MOVZ " #reg ", %0" : : "i" ((word) & 0xFFFF)); \
 	asm("MOVK " #reg ", %0, LSL #16" : : "i" (((uintptr)(word)) >> 16))
 
 #else

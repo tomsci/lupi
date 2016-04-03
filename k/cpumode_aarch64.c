@@ -90,7 +90,7 @@ NORETURN NAKED svc() {
 	asm("MOV x19, x8"); // x19 = &currentThread->savedRegisters
 
 	asm(".postStackSet:");
-	// asm("BL handleSvc");
+	asm("BL _handleSvc");
 	asm("MOV x8, x19");
 	LOAD_CALLEE_PRESERVED_REGISTERS_FROM_THREAD(x8);
 	// TODO technically only have to restore x19 if we reach here?

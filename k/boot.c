@@ -51,7 +51,7 @@ void Boot(uintptr atagsPhysAddr) {
 #endif
 
 	AtagsParams atags;
-#ifdef LUPI_NO_SECTION0
+#ifndef HAVE_MMU
 	parseAtags((uint32*)atagsPhysAddr, &atags);
 #else
 	// Set up data structures that weren't part of mmu_init()
@@ -69,7 +69,7 @@ void Boot(uintptr atagsPhysAddr) {
 	}
 	early_printk(" (RAM = %d %s, board = %X, bootMode = %d)\n", amt, units, atags.boardRev, BOOT_MODE);
 
-#ifdef LUPI_NO_SECTION0
+#ifndef HAVE_MMU
 	initSuperPage(&atags);
 	Process* firstProcess = GetProcess(0);
 #else
@@ -265,7 +265,16 @@ void iThinkYouOughtToKnowImFeelingVeryDepressed() {
 
 const char KAssertionFailed[] = "\nASSERTION FAILURE at %s:%d\nASSERT(%s)\n";
 
-#ifndef AARCH64
+#ifdef AARCH64
+
+void NAKED assertionFail(int nextras, const char* file, int line, const char* condition, ...) {
+	asm("LDR x0, =_KAssertionFailed");
+	asm("BL _printk");
+	// TODO the stack and register hygene
+	asm("B _iThinkYouOughtToKnowImFeelingVeryDepressed");
+}
+
+#else
 
 // Some careful crafting here so the top of the stack and registers are nice and
 // clean-looking in the debugger. This works quite nicely with the fixed args in
