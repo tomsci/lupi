@@ -6,9 +6,9 @@ typedef int (*lua_CFunction) (lua_State *L);
 
 typedef struct LuaModule {
 	const char* name;
+	lua_CFunction nativeInit;
 	const char* data;
 	int size;
-	lua_CFunction nativeInit;
 } LuaModule;
 
 const LuaModule* getLuaModule(const char* moduleName);

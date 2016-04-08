@@ -688,6 +688,10 @@ local function le32(val)
 	return string.pack("<I4", val)
 end
 
+local function le64(val)
+	return string.pack("<I8", val)
+end
+
 function build_kernel()
 	local cacheFile = objForSrc("dependencyCache.lua", ".lua")
 	if incremental then
@@ -896,10 +900,14 @@ function build_kernel()
 			end
 			local imageFile = assert(io.open(baseDir..img, "r+b"))
 			imgFileSize = imageFile:seek("end")
-			assert(not config.lp64, "TODO: make this work on 64-bit binaries")
-			imageFile:seek("set", moduleTableSymbol.addr - config.textSectionStart+ 4)
 			local symbolsAddress = config.textSectionStart + imgFileSize
-			assert(imageFile:write(le32(symbolsAddress)))
+			if config.lp64 then
+				imageFile:seek("set", moduleTableSymbol.addr - config.textSectionStart + 16)
+				assert(imageFile:write(le64(symbolsAddress)))
+			else
+				imageFile:seek("set", moduleTableSymbol.addr - config.textSectionStart + 8)
+				assert(imageFile:write(le32(symbolsAddress)))
+			end
 			assert(imageFile:write(le32(#data)))
 			imageFile:seek("end")
 			assert(imageFile:write(data))

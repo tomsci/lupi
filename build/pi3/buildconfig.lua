@@ -103,6 +103,7 @@ config.postLinker = function(stage, config, opts)
 			print(string.format("Writing section %q (addr=%x len=%x) to image offset %x pad=%d", section.name, section.addr, section.size, offset, pad))
 		end
 		assert(#data == section.size, "Section "..section.name.." size doesn't match map file size!")
+		assert(offset + section.size <= config.maxCodeSize, "Kernel image has exceeded maxCodeSize!")
 		assert(pad >= 0 and pad < maxpad, "Section "..section.name.." address doesn't match file offset!")
 		if pad > 0 then
 			outf:write(string.rep("\0", pad))
