@@ -39,11 +39,7 @@ void NAKED start() {
 	// Switch to EL2
 	asm("MOV x0, %0" : : "i" (SPSR_D | SPSR_A | SPSR_I | SPSR_F | SPSR_EL2h));
 	asm("MSR SPSR_EL3, x0");
-	// Stupid hack to avoid using ADR which doesn't work in clang...
-	// asm("ADR x0, .start_el2");
-	asm("BL .get_pc");
-	// x0 now points to the instruction immediately following this comment
-	asm("ADD x0, x0, #12"); // +12 to get to .start_el2
+	asm("LDR x0, =.start_el2");
 	asm("MSR ELR_EL3, x0");
 	asm("ERET");
 
@@ -56,8 +52,7 @@ void NAKED start() {
 	// Switch to EL1
 	asm("MOV x0, %0" : : "i" (SPSR_D | SPSR_A | SPSR_I | SPSR_F | SPSR_EL1h));
 	asm("MSR SPSR_EL2, x0");
-	asm("BL .get_pc");
-	asm("ADD x0, x0, #12"); // +12 to get to .start_el1
+	asm("LDR x0, =.start_el1");
 	asm("MSR ELR_EL2, x0");
 	asm("ERET");
 
@@ -69,7 +64,6 @@ void NAKED start() {
 	asm("CBZ x0, 1f"); // start_cpu
 	// All other CPUs can go hang
 	asm("B _hang");
-	// Don't add any instructions between here and start_cpu0
 
 	asm("1:"); asm("start_cpu0:");
 	// Early stack at 520KB-516KB
@@ -91,10 +85,6 @@ void NAKED start() {
 	asm("BL _Boot");
 	asm("B _hang");
 	// Done!
-
-	asm(".get_pc:");
-	asm("MOV x0, lr");
-	asm("RET");
 
 	asm(".balign 0x400"); // Leave a hole for the ATAGS data 0x100-0x300
 
