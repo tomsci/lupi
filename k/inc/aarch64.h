@@ -12,11 +12,6 @@
 #define READ_SPECIAL(reg, var)	asm("MRS %0, " #reg : "=r" (var))
 #define WRITE_SPECIAL(reg, var)	asm("MSR " #reg ", %0" : : "r" (var))
 
-// Seriously, clang is just so bad at this (or at least the mach-o backend is)
-// offset is number of instructions
-#define CBZ_instr(reg, offset)	(0xB4000000 | (((offset) & 0x3FFFF) << 5) | reg)
-#define CBZ(reg, offset)		asm(".word %c0" : : "i" (CBZ_instr(reg, offset)))
-
 static inline uintptr getFAR() {
 	uintptr ret;
 	READ_SPECIAL(FAR_EL1, ret);
@@ -85,8 +80,7 @@ static inline uintptr getFAR() {
 	LOAD_CALLEE_PRESERVED_REGISTERS(sp, 19*8)
 
 #define RESET_SP_EL1_AND_ERET() \
-	asm("MOV x30, %0" : : "i" (KSectionZero)); \
-	asm("ADD x30, x30, %0" : : "i" ((KKernelStackBase + KKernelStackSize) - KSectionZero)); \
+	LOAD_WORD(x30, KKernelStackBase + KKernelStackSize); \
 	asm("MOV sp, x30"); \
 	asm("ERET")
 
@@ -109,5 +103,14 @@ static inline uintptr getFAR() {
 
 // Hypervisor Configuration Register
 #define HCR_EL2_RW	BIT(31) // EL1 is AArch64
+
+// System Control Register (EL1)
+#define SCTLR_EL1_RES1		(BIT(11) | BIT(20) | BIT(22) | BIT(23) | BIT(28) | BIT(29))
+#define SCTLR_EL1_WXN		BIT(19)
+#define SCTLR_EL1_I			BIT(12)
+#define SCTLR_EL1_C			BIT(2)
+#define SCTLR_EL1_A			BIT(1)
+#define SCTLR_EL1_M			BIT(0)
+
 
 #endif // LUPI_AARCH64_H

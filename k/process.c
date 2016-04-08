@@ -190,16 +190,8 @@ int process_new(const char* name, Process** resultProcess) {
 		}
 	}
 #if MAX_PROCESSES > 1
-	if (!p && s->numValidProcessPages < MAX_PROCESSES) {
-		// Map ourselves a new one
-		Process* newp = GetProcess(s->numValidProcessPages);
-		uintptr phys = mmu_mapPageInSection(Al, (uint32*)KProcessesSection_pt, (uintptr)newp, KPageProcess);
-		if (phys) {
-			mmu_finishedUpdatingPageTables();
-			p = newp;
-			p->pdePhysicalAddress = 0;
-			s->numValidProcessPages++;
-		}
+	if (!p) {
+		p = mmu_newProcess(Al);
 	}
 #endif
 

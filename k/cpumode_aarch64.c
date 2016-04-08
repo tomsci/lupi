@@ -119,6 +119,6 @@ NORETURN NAKED unhandledException() {
 	asm("BL _printk");
 	asm("MOV x0, sp");
 	asm("BL _dumpRegisters");
-	// asm("BL iThinkYouOughtToKnowImFeelingVeryDepressed");
+	asm("BL _iThinkYouOughtToKnowImFeelingVeryDepressed");
 	asm("B _hang");
 }

@@ -12,12 +12,10 @@
 
 // SCTLR_EL2, System Control Register (EL2)
 #define SCTLR_EL2_RES1		(BIT(4) | BIT(5) | BIT(11) | BIT(16) | BIT(18) | BIT(22) | BIT(23) | BIT(28) | BIT(29))
-#define SCTLR_EL2_WXN		BIT(19)
 #define SCTLR_EL2_VALUE		SCTLR_EL2_RES1
 
 #define HCR_EL2_VALUE		HCR_EL2_RW
 
-#define SCTLR_EL1_RES1		(BIT(11) | BIT(20) | BIT(22) | BIT(23) | BIT(28) | BIT(29))
 #define SCTLR_EL1_VALUE		SCTLR_EL1_RES1
 
 void NAKED start() {
@@ -74,12 +72,14 @@ void NAKED start() {
 	// Don't add any instructions between here and start_cpu0
 
 	asm("1:"); asm("start_cpu0:");
-	// Early stack at 1MB
-	asm("MOV x0, #0x100000");
+	// Early stack at 520KB-516KB
+	LOAD_WORD(x0, KPhysicalStackBase + KKernelStackSize);
 	asm("MOV sp, x0");
 
 	// Init MMU (don't enable yet)
-	// asm("BL mmu_init");
+#ifdef HAVE_MMU
+	asm("BL _mmu_init");
+#endif
 
 	// Set exception vectors (this will give the MMU-enabled VA)
 	asm("LDR x0, =.vectors");
@@ -90,14 +90,14 @@ void NAKED start() {
 	asm("MOV x0, #0x100"); // atags addr = 0x100
 	asm("BL _Boot");
 	asm("B _hang");
+	// Done!
 
 	asm(".get_pc:");
 	asm("MOV x0, lr");
 	asm("RET");
 
-	asm(".balign 0x400"); // Leave a hole for the ATAGS data
+	asm(".balign 0x400"); // Leave a hole for the ATAGS data 0x100-0x300
 
-	// Done!
 	// See ARMv8 ARM p1452 §D1.10.2 Exception Vectors
 	asm(".balign 2048");
 	asm(".vectors:");

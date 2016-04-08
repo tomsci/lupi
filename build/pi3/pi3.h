@@ -10,30 +10,59 @@
 // #define HAVE_SCREEN
 // #define HAVE_PITFT
 // #define HAVE_MMU
+#define IDENTITY_MMU
 #define WORKING_LDREX
 #define INTERRUPTS_OFF
+#define LUPI_NO_IPC
 
-// #define NON_SECURE // Ie we do drop to NS mode
-// #define ENABLE_DCACHE
-// #define ICACHE_IS_STILL_BROKEN
+#define KPeripheralPhys			0x3F000000ul
+#define KPeripheralSize			0x00300000ul
 
-#define KPeripheralPhys		0x3F000000ul
-// #define KPeripheralSize		0x00300000ul
-
-#define KPhysicalRamBase	0x00000000ul
-
-#define KSystemClockFreq	250000000 // 250 MHz
-
-#define KPeripheralBase		KPeripheralPhys
-// #define KPeripheralBase	0xF2000000ul
-
-#ifndef HAVE_MMU
-#define KSuperPageAddress	0x00200000ul
-#endif
+#define KPhysicalRamBase		0x00000000ul
+#define KPhysicalStackBase		0x00081000ul
+#define KPhysPageAllocator		0x000C0000ul
+#define KPhysicalPdeBase		0x00100000ul
 
 #ifdef KLUA
-#define KLuaHeapBase		0x00201000ul
+#define KLuaHeapBase			0x00201000ul
 #endif
+
+#define KKernelCodesize			0x00080000ul
+
+#if defined(HAVE_MMU) && !defined(IDENTITY_MMU)
+// TODO finish these
+#define KSectionZero			0xFFFFFFFFFFF00000ul
+#define KKernelCodeBase			0xFFFFFFFFFFF00000ul
+#define KSuperPageAddress		0xFFFFFFFFFFF80000ul
+#define KPeripheralBase			0xFFFFFFFFFFC00000ul
+#define KPageAllocatorAddr		0xFFFFFFFFFFFC0000ul
+#define KKernelStackBase		0xFFFFFFFFFFF81000ul
+#else
+#define KSectionZero			0
+#define KPeripheralBase			KPeripheralPhys
+#define KSuperPageAddress		0x00080000ul
+#define KKernelCodeBase			KPhysicalRamBase
+#define KPageAllocatorAddr		KPhysPageAllocator
+#define KKernelStackBase		KPhysicalStackBase
+#endif
+
+#define KKernelStackSize		0x00001000ul // 4kB
+
+
+#define KPageAllocatorMaxSize	0x00040000ul // 256KB, enough for 1GB RAM
+
+// Code 0-512KB
+// Superpage 512-516
+// Kern stack 516-520
+// Stuff
+// Page Allocator 768k-1MB
+// Identity mappings 1MB-3MB
+
+// TODO FIX THESE
+#define KProcessesSection		0xF8100000ul
+
+#define LoadSuperPageAddress(reg) asm("MOV " #reg ", %0" : : "i" (KSuperPageAddress))
+
 
 // See BCM-2835-ARM-Peripherals p8
 #define AUX_ENABLES		(KPeripheralBase + 0x00215004)
@@ -79,6 +108,38 @@
 #define AUXENB_Spi1Enable				2
 #define AUXENB_Spi2Enable				4
 
-#include <memmap.h>
+#define KSystemClockFreq	250000000 // 250 MHz
+
+// #include <memmap.h>
+
+//// User memmap stuff ////
+
+#define KUserBss				0x00007000ul
+// Heap assumed to be immediately following BSS in process_init()
+#define KUserHeapBase			0x00008000ul
+// Note these next two are also defined in usersrc/ipc.c
+#define KSharedPagesBase		0x0F000000ul
+#define KSharedPagesSize		0x00100000ul
+#define KUserStacksBase			0x0FE00000ul
+#define KUserMemLimit			0x10000000ul
+
+/**
+I'm feeling generous.
+*/
+#define USER_STACK_SIZE (16*1024)
+
+#define USER_STACK_AREA_SHIFT 15 // 32kB
+
+/**
+The format of each user stack area is as follows. Note the svc stack for a
+thread is always 4kB, and that the area is rounded up to a power of 2 to make
+calculating the svc stack address simpler.
+
+	svc stack			1 page
+	guard page			---------------
+	user stack			USER_STACK_SIZE (16kB)
+	guard page			---------------
+	padding				--------------- (4kB)
+*/
 
 #endif // LUPI_BUILD_PI3_H

@@ -110,5 +110,6 @@ Process* switch_process(Process* p);
 
 int mmu_processInit(Process* p);
 void mmu_processExited(PageAllocator* pa, Process* p);
+Process* mmu_newProcess(PageAllocator* pa);
 
 #endif

@@ -547,3 +547,19 @@ void mmu_processExited(PageAllocator* pa, Process* p) {
 	int asid = indexForProcess(p);
 	asm("MCR p15, 0, %0, c8, c7, 2" : : "r" (asid)); // Invalidate TLB by ASID p218
 }
+
+Process* mmu_newProcess(PageAllocator* pa) {
+	Process* result = NULL;
+	SuperPage* s = TheSuperPage;
+	if (s->numValidProcessPages < MAX_PROCESSES) {
+		// Map ourselves a new one
+		result = GetProcess(s->numValidProcessPages);
+		uintptr phys = mmu_mapPageInSection(Al, (uint32*)KProcessesSection_pt, (uintptr)result, KPageProcess);
+		if (phys) {
+			mmu_finishedUpdatingPageTables();
+			result->pdePhysicalAddress = 0;
+			s->numValidProcessPages++;
+		}
+	}
+	return result;
+}

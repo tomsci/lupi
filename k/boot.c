@@ -33,13 +33,18 @@ void Boot(uintptr atagsPhysAddr) {
 #ifdef ICACHE_IS_STILL_BROKEN
 #ifdef ENABLE_DCACHE
 	mmu_setCache(false, true);
+#else
+	mmu_setCache(false, false); // Presumably...?
 #endif
+#elif defined(HAVE_MMU)
+	mmu_enable();
 #endif
 	uart_init();
 
 	early_printk("\n\n" LUPI_VERSION_STRING);
 
 #ifdef HAVE_MPU
+	//TODO can we move this up to where the other mmu_enable() is?
 	mmu_enable();
 #endif
 
@@ -53,10 +58,13 @@ void Boot(uintptr atagsPhysAddr) {
 	AtagsParams atags;
 #ifndef HAVE_MMU
 	parseAtags((uint32*)atagsPhysAddr, &atags);
-#else
+#elif defined(KKernelAtagsBase)
 	// Set up data structures that weren't part of mmu_init()
 	mmu_mapSect0Data(KKernelAtagsBase, atagsPhysAddr & ~0xFFF, 1);
 	parseAtags((uint32*)(KKernelAtagsBase + (atagsPhysAddr & 0xFFF)), &atags);
+#else
+	// Assume it's mapped offset relative to the start of section 0
+	parseAtags((uint32*)(KSectionZero + (atagsPhysAddr - KPhysicalRamBase)), &atags);
 #endif
 	const char* units;
 	int amt;
@@ -69,7 +77,7 @@ void Boot(uintptr atagsPhysAddr) {
 	}
 	early_printk(" (RAM = %d %s, board = %X, bootMode = %d)\n", amt, units, atags.boardRev, BOOT_MODE);
 
-#ifndef HAVE_MMU
+#if !defined(HAVE_MMU) || defined(IDENTITY_MMU)
 	initSuperPage(&atags);
 	Process* firstProcess = GetProcess(0);
 #else
