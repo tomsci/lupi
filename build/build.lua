@@ -1,4 +1,4 @@
-#!/usr/local/bin/lua5.3
+#!/usr/local/bin/lua
 
 luaSources = {
 	"lua/lapi.c",
@@ -1152,6 +1152,10 @@ syntaxText = [[
         luac    Builds the luac compiler, must have been run to use the
                 --modules option.
         doc     Generates the HTML documentation.
+]]
+
+--[[**
+For supported boot modes, see [bootmenu.c](../k/bootmenu.c#Supported_boot_modes)
 ]]
 
 function syntax()

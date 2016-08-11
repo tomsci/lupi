@@ -16,6 +16,23 @@ enum BootMode {
 	BootModeTestInitLua = 't',
 };
 
+/**
+## Supported boot modes
+
+0: Start the Lua interpreter communicating over the serial port.
+
+1: Start the kluadebugger on the serial port. This is low-level debugging mode
+generally only used when porting to a new board.
+
+2: Display a textual boot menu on the serial port.
+
+3,4: An unfinished password manager that is not in any way useful.
+
+5: Tetris!
+
+6: Show graphical boot menu.
+*/
+
 static int displayBootMenu() {
 	printk("\
 Boot menu:\n\
