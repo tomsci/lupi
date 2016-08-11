@@ -13,9 +13,11 @@ user-side.
 * Everything else should be written in Lua.
 
 Further to those concepts, it is a microkernel architecture that (currently)
-only runs on the Raspberry Pi and the TiLDA MkE. There is no x86 support, no
+only runs on the Raspberry Pi and the [TiLDA MKe][mke]. There is no x86 support, no
 device tree or dynamic libraries or any kind, no paging (swap memory), and no
 file system. And definitely no POSIX support or fork/exec.
+
+[mke]: https://badge.emfcamp.org/wiki/Main_Page#EMF2014_-_TiLDA_MKe
 
 ## Project layout
 
